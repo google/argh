@@ -1,0 +1,18 @@
+[package]
+name = "argh_derive"
+version = "0.1.0"
+authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain<bwb@google.com>"]
+edition = "2018"
+license = "BSD License 2.0"
+description = "Derive-based argument parsing optimized for code size"
+repository = "https://github.com/google/argh"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+heck = "0.3.1"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = "1.0"
+argh_shared = {path = "../argh_shared" }

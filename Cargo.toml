@@ -1,0 +1,12 @@
+[package]
+name = "argh"
+version = "0.1.0"
+authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain<bwb@google.com>"]
+edition = "2018"
+license = "BSD License 2.0"
+description = "Derive-based argument parser optimized for code size"
+repository = "https://github.com/google/argh"
+
+[dependencies]
+argh_shared = {path = "./argh_shared"}
+argh_derive = {path = "./argh_derive"}

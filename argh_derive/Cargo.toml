@@ -1,9 +1,9 @@
 [package]
 name = "argh_derive"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain<bwb@google.com>"]
 edition = "2018"
-license = "BSD-2-Clause"
+license = "BSD-3-Clause"
 description = "Derive-based argument parsing optimized for code size"
 repository = "https://github.com/google/argh"
 
@@ -15,4 +15,4 @@ heck = "0.3.1"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = "1.0"
-argh_shared = { version = "0.1.0", path = "../argh_shared" }
+argh_shared = { version = "0.1.1", path = "../argh_shared" }

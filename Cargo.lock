@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "argh"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "argh_derive 0.1.0",
  "argh_shared 0.1.0",

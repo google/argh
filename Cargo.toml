@@ -1,12 +1,12 @@
 [package]
 name = "argh"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain<bwb@google.com>"]
 edition = "2018"
-license = "BSD-2-Clause"
+license = "BSD-3-Clause"
 description = "Derive-based argument parser optimized for code size"
 repository = "https://github.com/google/argh"
 
 [dependencies]
-argh_shared = { version = "0.1.0", path = "./argh_shared" }
-argh_derive = { version = "0.1.0", path = "./argh_derive" }
+argh_shared = { version = "0.1.1", path = "./argh_shared" }
+argh_derive = { version = "0.1.1", path = "./argh_derive" }

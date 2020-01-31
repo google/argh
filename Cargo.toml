@@ -1,9 +1,9 @@
 [package]
 name = "argh"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain<bwb@google.com>"]
 edition = "2018"
-license = "BSD License 2.0"
+license = "BSD-2-Clause"
 description = "Derive-based argument parser optimized for code size"
 repository = "https://github.com/google/argh"
 

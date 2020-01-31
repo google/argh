@@ -1,3 +1,5 @@
 /target/
+argh_derive/target/
+argh_shared/target/
 **/*.rs.bk
 *.swp

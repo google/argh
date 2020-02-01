@@ -1,7 +1,7 @@
 # Argh
 **Argh is an opinionated Derive-based argument parser optimized for code size**
 
-![crates.io](https://img.shields.io/crates/v/argh.svg)
+[![crates.io](https://img.shields.io/crates/v/argh.svg)](https://crates.io/crates/argh)
 
 Derive-based argument parsing optimized for code size and conformance
 to the Fuchsia commandline tools specification

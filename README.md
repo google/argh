@@ -2,6 +2,9 @@
 **Argh is an opinionated Derive-based argument parser optimized for code size**
 
 [![crates.io](https://img.shields.io/crates/v/argh.svg)](https://crates.io/crates/argh)
+[![license](https://img.shields.io/badge/license-BSD3.0-blue.svg)](https://github.com/google/argh/LICENSE)
+[![docs.rs](https://docs.rs/com/badge.svg)](https://docs.rs/crate/argh/)
+![Argh](https://github.com/google/argh/workflows/Argh/badge.svg)
 
 Derive-based argument parsing optimized for code size and conformance
 to the Fuchsia commandline tools specification
@@ -69,7 +72,7 @@ If more customized parsing is required, you can supply a custom
 `fn(&str) -> Result<T, String>` using the `from_str_fn` attribute:
 
 ```rust
-# use argh::FromArgs;
+use argh::FromArgs;
 
 #[derive(FromArgs)]
 /// Goofy thing.

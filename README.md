@@ -68,7 +68,7 @@ Custom option types can be deserialized so long as they implement the
 If more customized parsing is required, you can supply a custom
 `fn(&str) -> Result<T, String>` using the `from_str_fn` attribute:
 
-```
+```rust
 # use argh::FromArgs;
 
 #[derive(FromArgs)]
@@ -90,6 +90,7 @@ the structure:
 
 ```rust
 use argh::FromArgs;
+
 #[derive(FromArgs, PartialEq, Debug)]
 /// A command with positional arguments.
 struct WithPositional {

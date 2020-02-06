@@ -307,7 +307,9 @@ impl<T> ParseValueSlot for ParseValueSlotTy<Vec<T>, T> {
 /// A type which can be the receiver of a `Flag`.
 pub trait Flag {
     /// Creates a default instance of the flag value;
-    fn default() -> Self where Self: Sized;
+    fn default() -> Self
+    where
+        Self: Sized;
     /// Sets the flag. This function is called when the flag is provided.
     fn set_flag(&mut self);
 }
@@ -336,10 +338,7 @@ macro_rules! impl_flag_for_integers {
     }
 }
 
-impl_flag_for_integers![
-    u8, u16, u32, u64, u128,
-    i8, i16, i32, i64, i128,
-];
+impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 
 // `--` or `-` options, including a mutable reference to their value.
 #[doc(hidden)]
@@ -393,9 +392,9 @@ pub fn parse_option(
     match &mut output_table[pos] {
         CmdOption::Flag(b) => b.set_flag(),
         CmdOption::Value(pvs) => {
-            let value = remaining_args.get(0).ok_or_else(|| {
-                ["No value provided for option '", arg, "'.\n"].concat()
-            })?;
+            let value = remaining_args
+                .get(0)
+                .ok_or_else(|| ["No value provided for option '", arg, "'.\n"].concat())?;
             *remaining_args = &remaining_args[1..];
             pvs.fill_slot(value).map_err(|s| {
                 ["Error parsing option '", arg, "' with value '", value, "': ", &s, "\n"].concat()
@@ -481,9 +480,7 @@ impl MissingRequirements {
     // describing the missing args.
     #[doc(hidden)]
     pub fn err_on_any(&self) -> Result<(), String> {
-        if self.options.is_empty()
-            && self.subcommands.is_none()
-            && self.positional_args.is_empty()
+        if self.options.is_empty() && self.subcommands.is_none() && self.positional_args.is_empty()
         {
             return Ok(());
         }

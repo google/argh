@@ -1,0 +1,15 @@
+# Fuchsia Format Style
+# last reviewed: Jan 29, 2019
+
+# Fuchsia uses 2018 edition only
+edition = "2018"
+
+# The "Default" setting has a heuristic which splits lines too aggresively.
+# We are willing to revisit this setting in future versions of rustfmt.
+# Bugs:
+#   * https://github.com/rust-lang/rustfmt/issues/3119
+#   * https://github.com/rust-lang/rustfmt/issues/3120
+use_small_heuristics = "Max"
+
+# Prevent carriage returns
+newline_style = "Unix"

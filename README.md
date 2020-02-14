@@ -42,7 +42,7 @@ fn main() {
 
 `./some_bin --help` will then output the following:
 
-```bash
+```
 Usage: cmdname [-j] --height <height> [--pilot-nickname <pilot-nickname>]
 
 Reach new heights.

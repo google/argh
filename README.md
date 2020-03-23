@@ -64,7 +64,36 @@ Switches, like `jump`, are optional and will be set to true if provided.
 Options, like `height` and `pilot_nickname`, can be either required,
 optional, or repeating, depending on whether they are contained in an
 `Option` or a `Vec`. Default values can be provided using the
-`#[argh(default = "<your_code_here>")]` attribute.
+`#[argh(default = "<your_code_here>")]` attribute, and in this case an
+option is treated as optional.
+
+```rust
+use argh::FromArgs;
+
+fn default_height() -> usize {
+    5
+}
+
+#[derive(FromArgs)]
+/// Reach new heights.
+struct GoUp {
+    /// an optional nickname for the pilot
+    #[argh(option)]
+    pilot_nickname: Option<String>,
+
+    /// an optional height
+    #[argh(option, default = "default_height()")]
+    height: usize,
+
+    /// an optional direction which is "up" by default
+    #[argh(option, default = "String::from(\"only up\")")]
+    direction: String,
+}
+
+fn main() {
+    let up: GoUp = argh::from_env();
+}
+```
 
 Custom option types can be deserialized so long as they implement the
 `FromArgValue` trait (automatically implemented for all `FromStr` types).
@@ -103,7 +132,7 @@ struct WithPositional {
 ```
 
 The last positional argument may include a default, or be wrapped in
-`Option` or `Vec` to indicate an optional or repeating positional arugment.
+`Option` or `Vec` to indicate an optional or repeating positional argument.
 
 Subcommands are also supported. To use a subcommand, declare a separate
 `FromArgs` type for each subcommand as well as an enum that cases

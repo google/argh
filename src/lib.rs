@@ -230,6 +230,25 @@ impl From<String> for EarlyExit {
     }
 }
 
+impl EarlyExit {
+    /// Prints the output to stderr or stdout, and exits the process.
+    ///
+    /// Failures are printed to stderr and result in an exit status 1.
+    /// Help output is printed to stdout and results in an exit status 0.
+    pub fn print_and_exit(&self) -> ! {
+        std::process::exit(match self.status {
+            Ok(()) => {
+                println!("{}", self.output);
+                0
+            },
+            Err(()) => {
+                eprintln!("{}", self.output);
+                1
+            },
+        })
+    }
+}
+
 /// Create a `FromArgs` type from the current process's `env::args`.
 ///
 /// This function will exit early from the current process if argument parsing
@@ -237,13 +256,7 @@ impl From<String> for EarlyExit {
 pub fn from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[strs[0]], &strs[1..]).unwrap_or_else(|early_exit| {
-        println!("{}", early_exit.output);
-        std::process::exit(match early_exit.status {
-            Ok(()) => 0,
-            Err(()) => 1,
-        })
-    })
+    T::from_args(&[strs[0]], &strs[1..]).unwrap_or_else(|exit| exit.print_and_exit())
 }
 
 /// Create a `FromArgs` type from the current process's `env::args`.
@@ -256,13 +269,7 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 pub fn cargo_from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[strs[1]], &strs[2..]).unwrap_or_else(|early_exit| {
-        println!("{}", early_exit.output);
-        std::process::exit(match early_exit.status {
-            Ok(()) => 0,
-            Err(()) => 1,
-        })
-    })
+    T::from_args(&[strs[1]], &strs[2..]).unwrap_or_else(|exit| exit.print_and_exit())
 }
 
 /// Types which can be constructed from a single commandline value.

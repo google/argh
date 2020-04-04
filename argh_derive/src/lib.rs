@@ -3,7 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-
 /// Implementation of the `FromArgs` and `argh(...)` derive attributes.
 ///
 /// For more thorough documentation, see the `argh` crate itself.
@@ -16,7 +15,6 @@ use {
     },
     proc_macro2::{Span, TokenStream},
     quote::{quote, quote_spanned, ToTokens},
-    std::str::FromStr,
     syn::spanned::Spanned,
 };
 
@@ -58,7 +56,7 @@ fn impl_from_args(input: &syn::DeriveInput) -> TokenStream {
 /// The kind of optionality a parameter has.
 enum Optionality {
     None,
-    Defaulted(TokenStream),
+    Defaulted(String),
     Optional,
     Repeating,
 }
@@ -145,22 +143,7 @@ impl<'a> StructField<'a> {
             }
             FieldKind::Option | FieldKind::Positional => {
                 if let Some(default) = &attrs.default {
-                    let tokens = match TokenStream::from_str(&default.value()) {
-                        Ok(tokens) => tokens,
-                        Err(_) => {
-                            errors.err(&default, "Invalid tokens: unable to lex `default` value");
-                            return None;
-                        }
-                    };
-                    // Set the span of the generated tokens to the string literal
-                    let tokens: TokenStream = tokens
-                        .into_iter()
-                        .map(|mut tree| {
-                            tree.set_span(default.span().clone());
-                            tree
-                        })
-                        .collect();
-                    optionality = Optionality::Defaulted(tokens);
+                    optionality = Optionality::Defaulted(default.value().trim().to_owned());
                     ty_without_wrapper = &field.ty;
                 } else {
                     let mut inner = None;
@@ -506,9 +489,14 @@ fn unwrap_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = Toke
                 Optionality::Optional | Optionality::Repeating => {
                     quote! { #field_name: #field_name.slot }
                 }
-                Optionality::Defaulted(tokens) => {
+                Optionality::Defaulted(string) => {
                     quote! {
-                        #field_name: #field_name.slot.unwrap_or_else(|| #tokens)
+                        #field_name: {
+                            let parse_func = #field_name.parse_func;
+                            #field_name.slot.unwrap_or_else(|| {
+                                (parse_func)(#string).expect("Parsing default attribute")
+                            })
+                        }
                     }
                 }
             },

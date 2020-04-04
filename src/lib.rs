@@ -66,10 +66,6 @@
 //! ```rust
 //! use argh::FromArgs;
 //!
-//! fn default_height() -> usize {
-//!     5
-//! }
-//!
 //! #[derive(FromArgs)]
 //! /// Reach new heights.
 //! struct GoUp {
@@ -78,11 +74,11 @@
 //!     pilot_nickname: Option<String>,
 //!
 //!     /// an optional height
-//!     #[argh(option, default = "default_height()")]
+//!     #[argh(option, default = "5")]
 //!     height: usize,
 //!
 //!     /// an optional direction which is "up" by default
-//!     #[argh(option, default = "String::from(\"only up\")")]
+//!     #[argh(option, default = "only up")]
 //!     direction: String,
 //! }
 //!

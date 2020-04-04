@@ -3,7 +3,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-use {argh::FromArgs, std::fmt::Debug};
+use {
+    argh::{FromArgValue, FromArgs},
+    std::fmt::Debug,
+};
 
 #[test]
 fn basic_example() {
@@ -151,22 +154,45 @@ fn default_number() {
 }
 
 #[test]
-fn default_function() {
-    const MSG: &str = "hey I just met you";
-    fn call_me_maybe() -> String {
-        MSG.to_string()
-    }
-
+fn default_string() {
     #[derive(FromArgs)]
     /// Short description
     struct Cmd {
-        #[argh(option, default = "call_me_maybe()")]
+        #[argh(option, default = "hey I just met you")]
         /// fooey
         msg: String,
     }
 
     let cmd = Cmd::from_args(&["cmdname"], &[]).unwrap();
-    assert_eq!(cmd.msg, MSG);
+    assert_eq!(cmd.msg, "hey I just met you");
+}
+
+#[test]
+fn default_struct() {
+    #[derive(PartialEq, Debug)]
+    struct StringVec {
+        parts: Vec<String>,
+    }
+
+    impl FromArgValue for StringVec {
+        fn from_arg_value(value: &str) -> Result<Self, String> {
+            Ok(StringVec { parts: value.split_whitespace().map(|s| s.to_string()).collect() })
+        }
+    }
+
+    #[derive(FromArgs)]
+    /// Short description
+    struct Cmd {
+        #[argh(option, default = "I met you")]
+        /// fooey
+        msg: StringVec,
+    }
+
+    let cmd = Cmd::from_args(&["cmdname"], &[]).unwrap();
+    assert_eq!(
+        cmd.msg,
+        StringVec { parts: vec!["I".to_string(), "met".to_string(), "you".to_string()] }
+    );
 }
 
 #[test]
@@ -676,6 +702,10 @@ Options:
         #[argh(option, short = 's')]
         scribble: String,
 
+        /// path with a default value
+        #[argh(option, default = "~/very/very/long/long/long/default/path/to/file")]
+        path: String,
+
         /// say more. Defaults to $BLAST_VERBOSE.
         #[argh(switch, short = 'v')]
         verbose: bool,
@@ -722,6 +752,7 @@ Options:
                 force: true,
                 scribble: "fooey".to_string(),
                 really_really_really_long_name_for_pat: false,
+                path: "~/very/very/long/long/long/default/path/to/file".to_string(),
                 verbose: false,
                 command: HelpExampleSubCommands::BlowUp(BlowUp { safely: true }),
             },
@@ -748,7 +779,7 @@ Options:
     #[test]
     fn help_example() {
         assert_help_string::<HelpExample>(
-            r###"Usage: test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]
+            r###"Usage: test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [--path <path>] [-v] <command> [<args>]
 
 Destroy the contents of <file>.
 
@@ -758,6 +789,8 @@ Options:
   --really-really-really-long-name-for-pat
                     documentation
   -s, --scribble    write <scribble> repeatedly
+  --path            path with a default value [default:
+                    ~/very/very/long/long/long/default/path/to/file]
   -v, --verbose     say more. Defaults to $BLAST_VERBOSE.
   --help            display usage information
 

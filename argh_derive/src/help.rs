@@ -194,8 +194,14 @@ Add a doc comment or an `#[argh(description = \"...\")]` attribute.",
 fn option_description(errors: &Errors, out: &mut String, field: &StructField<'_>) {
     let short = field.attrs.short.as_ref().map(|s| s.value());
     let long_with_leading_dashes = field.long_name.as_ref().expect("missing long name for option");
-    let description =
+    let mut description =
         require_description(errors, field.name.span(), &field.attrs.description, "field");
+
+    if let Optionality::Defaulted(value) = &field.optionality {
+        description.push_str(" [default: ");
+        description.push_str(value);
+        description.push(']');
+    }
 
     option_description_format(out, short, long_with_leading_dashes, &description)
 }

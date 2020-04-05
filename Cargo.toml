@@ -11,3 +11,6 @@ repository = "https://github.com/google/argh"
 [dependencies]
 argh_shared = { version = "0.1.1", path = "./argh_shared" }
 argh_derive = { version = "0.1.1", path = "./argh_derive" }
+
+[dev-dependencies]
+assert_cmd = "1.0.1"

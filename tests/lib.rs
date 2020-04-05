@@ -359,6 +359,35 @@ Options:
     }
 }
 
+/// Test output that should go to stderr instead of stdout.
+mod stderr {
+    use assert_cmd::Command;
+
+    #[test]
+    fn help() {
+        let output = Command::cargo_bin("examples/empty").unwrap().arg("--help").output().unwrap();
+        assert!(output.status.success());
+        assert!(!output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
+
+    #[test]
+    fn fail() {
+        let output = Command::cargo_bin("examples/empty").unwrap().arg("--fail").output().unwrap();
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(!output.stderr.is_empty());
+    }
+
+    #[test]
+    fn ok() {
+        let output = Command::cargo_bin("examples/empty").unwrap().output().unwrap();
+        assert!(output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
+}
+
 /// Tests derived from
 /// https://fuchsia.dev/fuchsia-src/development/api/cli and
 /// https://fuchsia.dev/fuchsia-src/development/api/cli_help

@@ -3,7 +3,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/argh.svg)](https://crates.io/crates/argh)
 [![license](https://img.shields.io/badge/license-BSD3.0-blue.svg)](https://github.com/google/argh/LICENSE)
-[![docs.rs](https://docs.rs/com/badge.svg)](https://docs.rs/crate/argh/)
+[![docs.rs](https://docs.rs/argh/badge.svg)](https://docs.rs/crate/argh/)
 ![Argh](https://github.com/google/argh/workflows/Argh/badge.svg)
 
 Derive-based argument parsing optimized for code size and conformance

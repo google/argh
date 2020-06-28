@@ -134,7 +134,7 @@ impl FieldAttrs {
                 FieldKind::SubCommand | FieldKind::Switch => errors.err(
                     default,
                     "`default` may only be specified on `#[argh(option)]` \
-                     or `#[argh(subcommand)]` fields",
+                     or `#[argh(positional)]` fields",
                 ),
             }
         }

@@ -6,6 +6,7 @@ use {
     crate::errors::Errors,
     proc_macro2::Span,
     std::collections::hash_map::{Entry, HashMap},
+    inflector::cases::{camelcase::is_camel_case, kebabcase::is_kebab_case, snakecase::is_snake_case},
 };
 
 /// Attributes applied to a field of a `#![derive(FromArgs)]` struct.
@@ -161,8 +162,8 @@ impl FieldAttrs {
         if !value.is_ascii() {
             errors.err(long, "Long names must be ASCII");
         }
-        if !value.chars().all(|c| c.is_lowercase()) {
-            errors.err(long, "Long names must be lowercase");
+        if !(is_camel_case(&value) || is_snake_case(&value) || is_kebab_case(&value)) {
+            errors.err(long, "Long names must be camel, snake, and kebab cases");
         }
     }
 

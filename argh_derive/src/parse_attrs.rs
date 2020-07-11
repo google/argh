@@ -161,7 +161,7 @@ impl FieldAttrs {
         if !value.is_ascii() {
             errors.err(long, "Long names must be ASCII");
         }
-        if !value.chars().all(|c| c.is_lowercase()) {
+        if !value.chars().all(|c| c.is_lowercase() || c == '-') {
             errors.err(long, "Long names must be lowercase");
         }
     }

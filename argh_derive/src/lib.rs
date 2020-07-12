@@ -237,6 +237,7 @@ fn impl_from_args_struct(
         })
         .collect();
 
+    ensure_unique_long_name(errors, &fields);
     ensure_only_last_positional_is_optional(errors, &fields);
     let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
     let init_fields = declare_local_storage_for_fields(&fields);
@@ -418,6 +419,22 @@ fn ensure_only_last_positional_is_optional(errors: &Errors, fields: &[StructFiel
                 first_non_required_span = Some(field.field.span());
             }
         }
+    }
+}
+
+/// Ensures that only one long name is used.
+fn ensure_unique_long_name(errors: &Errors, fields: &[StructField<'_>]) {
+    let mut seen_names = std::collections::HashMap::new();
+    for field in fields {
+            if let Some(first_use_span) = seen_names.get(&field.long_name.as_ref()) {
+            errors.err_span(
+                *first_use_span,
+                &format!("The long name of \"{}\" was already used here.", field.long_name.as_ref().unwrap_or(&"".to_string())),
+            );
+            errors.err(&field.field, "Later usage here.");
+            return;
+        }
+        seen_names.insert(field.long_name.as_ref(), field.field.span());
     }
 }
 

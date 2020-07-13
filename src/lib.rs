@@ -236,8 +236,13 @@ impl From<String> for EarlyExit {
 /// was unsuccessful or if information like `--help` was requested.
 pub fn from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
+    let cmd = std::path::Path::new(&strings[0])
+        .file_name()
+        .map(|s| s.to_str())
+        .flatten()
+        .unwrap_or(strings[0].as_str());
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[strs[0]], &strs[1..]).unwrap_or_else(|early_exit| {
+    T::from_args(&[cmd], &strs[1..]).unwrap_or_else(|early_exit| {
         println!("{}", early_exit.output);
         std::process::exit(match early_exit.status {
             Ok(()) => 0,
@@ -255,8 +260,13 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 /// was unsuccessful or if information like `--help` was requested.
 pub fn cargo_from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
+    let cmd = std::path::Path::new(&strings[1])
+        .file_name()
+        .map(|s| s.to_str())
+        .flatten()
+        .unwrap_or(strings[0].as_str());
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[strs[1]], &strs[2..]).unwrap_or_else(|early_exit| {
+    T::from_args(&[cmd], &strs[2..]).unwrap_or_else(|early_exit| {
         println!("{}", early_exit.output);
         std::process::exit(match early_exit.status {
             Ok(()) => 0,

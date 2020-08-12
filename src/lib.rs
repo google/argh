@@ -525,6 +525,9 @@ impl MissingRequirements {
         }
 
         if !self.options.is_empty() {
+            if !self.positional_args.is_empty() {
+                output.push_str("\n");
+            }
             output.push_str("Required options not provided:");
             for option in &self.options {
                 output.push_str(NEWLINE_INDENT);

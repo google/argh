@@ -306,6 +306,37 @@ Options:
 
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
+    struct WithOption {
+        #[argh(positional)]
+        /// fooey
+        a: String,
+        #[argh(option)]
+        /// fooey
+        b: String,
+    }
+
+    #[test]
+    fn mixed_with_option() {
+        assert_output(
+            &["first", "--b", "foo"],
+            WithOption {
+                a: "first".into(),
+                b: "foo".into(),
+            },
+        );
+
+        assert_error::<WithOption>(
+            &[],
+            r###"Required positional arguments not provided:
+    a
+Required options not provided:
+    --b
+"###,
+        );
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
     struct WithSubcommand {
         #[argh(positional)]
         /// fooey

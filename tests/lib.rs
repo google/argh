@@ -317,13 +317,7 @@ Options:
 
     #[test]
     fn mixed_with_option() {
-        assert_output(
-            &["first", "--b", "foo"],
-            WithOption {
-                a: "first".into(),
-                b: "foo".into(),
-            },
-        );
+        assert_output(&["first", "--b", "foo"], WithOption { a: "first".into(), b: "foo".into() });
 
         assert_error::<WithOption>(
             &[],

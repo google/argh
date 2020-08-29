@@ -21,7 +21,7 @@ const SECTION_SEPARATOR: &str = "\n\n";
 /// in favor of the `subcommand` argument.
 pub(crate) fn help(
     errors: &Errors,
-    cmd_name_str_array_ident: syn::Ident,
+    ty_ident: &syn::Ident,
     ty_attrs: &TypeAttrs,
     fields: &[StructField<'_>],
     subcommand: Option<&StructField<'_>>,
@@ -98,10 +98,14 @@ pub(crate) fn help(
 
     format_lit.push_str("\n");
 
-    quote! { {
-        #subcommand_calculation
-        format!(#format_lit, command_name = #cmd_name_str_array_ident.join(" "), #subcommand_format_arg)
-    } }
+    quote! {
+		impl ::argh::HelpMessage for #ty_ident {
+			fn help_message(command_name: &[&str]) -> String {
+				#subcommand_calculation
+				format!(#format_lit, command_name = command_name.join(" "), #subcommand_format_arg)
+			}
+		}
+	}
 }
 
 /// A section composed of exactly just the literals provided to the program.

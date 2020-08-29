@@ -304,7 +304,7 @@ fn impl_from_args_struct(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help_impl = help::help(errors, name, type_attrs, &fields, subcommand);
 
     let trait_impl = quote_spanned! { impl_span =>
         impl argh::FromArgs for #name {
@@ -377,8 +377,9 @@ fn impl_from_args_struct(
                 }
 
                 if __help {
+					let __help_message = <Self as ::argh::HelpMessage>::help_message(#cmd_name_str_array_ident);
                     return std::result::Result::Err(argh::EarlyExit {
-                        output: #help,
+                        output: __help_message,
                         status: std::result::Result::Ok(()),
                     });
                 }
@@ -396,7 +397,8 @@ fn impl_from_args_struct(
         }
 
         #top_or_sub_cmd_impl
-    };
+		#help_impl
+	};
 
     trait_impl.into()
 }

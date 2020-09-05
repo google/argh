@@ -268,6 +268,7 @@ pub struct TypeAttrs {
     pub is_subcommand: Option<syn::Ident>,
     pub name: Option<syn::LitStr>,
     pub description: Option<Description>,
+	pub disable_help: Option<syn::LitBool>,
     pub examples: Vec<syn::LitStr>,
     pub notes: Vec<syn::LitStr>,
     pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
@@ -297,6 +298,10 @@ impl TypeAttrs {
                 if name.is_ident("description") {
                     if let Some(m) = errors.expect_meta_name_value(&meta) {
                         parse_attr_description(errors, m, &mut this.description);
+                    }
+                } else if name.is_ident("disable_help") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        this.parse_attr_disable_help(errors, m);
                     }
                 } else if name.is_ident("error_code") {
                     if let Some(m) = errors.expect_meta_list(&meta) {
@@ -369,6 +374,13 @@ impl TypeAttrs {
         }
     }
 
+	fn parse_attr_disable_help(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
+		if let Some(first) = self.disable_help.as_ref() {
+			errors.duplicate_attrs("disable_help", &first, m);
+		}
+		self.disable_help = errors.expect_lit_bool(&m.lit).cloned();
+	}
+	
     fn parse_attr_error_code(&mut self, errors: &Errors, ml: &syn::MetaList) {
         if ml.nested.len() != 2 {
             errors.err(&ml, "Expected two arguments, an error number and a string description");
@@ -484,7 +496,7 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
 /// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
 /// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
 pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes } = type_attrs;
+    let TypeAttrs { is_subcommand, name, description, disable_help: _, examples, notes, error_codes } = type_attrs;
 
     // Ensure that `#[argh(subcommand)]` is present.
     if is_subcommand.is_none() {

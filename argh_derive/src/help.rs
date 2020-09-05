@@ -62,8 +62,10 @@ pub(crate) fn help(
     for option in options {
         option_description(errors, &mut format_lit, option);
     }
-    // Also include "help"
-    option_description_format(&mut format_lit, None, "--help", "display usage information");
+    // Also include "help" unless it has been disabled
+	if !ty_attrs.disable_help.as_ref().map(|lit_bool| lit_bool.value).unwrap_or(false) {
+		option_description_format(&mut format_lit, None, "--help", "display usage information");
+	}
 
     let subcommand_calculation;
     let subcommand_format_arg;

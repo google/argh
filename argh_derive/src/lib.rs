@@ -305,6 +305,7 @@ fn impl_from_args_struct(
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
     let help_impl = help::help(errors, name, type_attrs, &fields, subcommand);
+	let disable_help = type_attrs.disable_help.clone().unwrap_or_else(|| syn::LitBool { value: false, span: impl_span.clone() });
 
     let trait_impl = quote_spanned! { impl_span =>
         impl argh::FromArgs for #name {
@@ -328,7 +329,7 @@ fn impl_from_args_struct(
                 let mut __positional_index = 0;
                 'parse_args: while let Some(&__next_arg) = __remaining_args.get(0) {
                     __remaining_args = &__remaining_args[1..];
-                    if __next_arg == "--help" || __next_arg == "help" {
+                    if !#disable_help && __next_arg == "--help" || __next_arg == "help" {
                         __help = true;
                         continue;
                     }

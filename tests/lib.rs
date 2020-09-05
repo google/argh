@@ -3,7 +3,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-use {argh::FromArgs, std::fmt::Debug};
+use {
+    argh::{FromArgs, HelpMessage},
+    std::fmt::Debug,
+};
 
 #[test]
 fn basic_example() {
@@ -43,6 +46,22 @@ fn custom_from_str_example() {
 
     let f = FiveStruct::from_args(&["cmdname"], &["--five", "woot"]).expect("failed to five");
     assert_eq!(f.five, 5);
+}
+
+#[test]
+fn custom_help_flag_example() {
+    #[derive(FromArgs)]
+    #[argh(disable_help = true)]
+    /// Yay, `-?` will work.
+    struct OnlyQuestionmark {
+        /// show this help message
+        #[argh(switch, short = '?')]
+        help: bool,
+    }
+
+    let oq = OnlyQuestionmark::from_args(&["cmdname"], &["-?"]).expect("failed custom help flag");
+    assert_eq!(oq.help, true);
+    assert_help_message::<OnlyQuestionmark>("Usage: test_arg_0 [-?]\n\nYay, `-?` will work.\n\nOptions:\n  -?, --help        show this help message\n");
 }
 
 #[test]
@@ -185,7 +204,8 @@ fn missing_option_value() {
     assert!(e.status.is_err());
 }
 
-fn assert_help_string<T: FromArgs>(help_str: &str) {
+fn assert_help_string<T: HelpMessage>(help_str: &str) {
+    assert_help_message::<T>(help_str);
     match T::from_args(&["test_arg_0"], &["--help"]) {
         Ok(_) => panic!("help was parsed as args"),
         Err(e) => {
@@ -193,6 +213,10 @@ fn assert_help_string<T: FromArgs>(help_str: &str) {
             e.status.expect("help returned an error");
         }
     }
+}
+
+fn assert_help_message<T: HelpMessage>(help_str: &str) {
+    assert_eq!(help_str, T::help_message(&["test_arg_0"]));
 }
 
 fn assert_output<T: FromArgs + Debug + PartialEq>(args: &[&str], expected: T) {

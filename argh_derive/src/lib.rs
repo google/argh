@@ -115,7 +115,7 @@ struct StructField<'a> {
 impl<'a> StructField<'a> {
     /// Attempts to parse a field of a `#[derive(FromArgs)]` struct, pulling out the
     /// fields required for code generation.
-    fn new(errors: &Errors, field: &'a syn::Field, attrs: FieldAttrs) -> Option<Self> {
+    fn new(errors: &Errors, ty_attrs: &TypeAttrs, field: &'a syn::Field, attrs: FieldAttrs) -> Option<Self> {
         let name = field.ident.as_ref().expect("missing ident for named field");
 
         // Ensure that one "kind" is present (switch, option, subcommand, positional)
@@ -193,8 +193,8 @@ impl<'a> StructField<'a> {
                     .as_ref()
                     .map(syn::LitStr::value)
                     .unwrap_or_else(|| heck::KebabCase::to_kebab_case(&*name.to_string()));
-                if long_name == "help" {
-                    errors.err(field, "Custom `--help` flags are not supported.");
+                if long_name == "help" && !ty_attrs.disable_help.as_ref().map(|lit_bool| lit_bool.value).unwrap_or(false) {
+                    errors.err(field, "Custom `--help` flags are not supported unless `#[argh(disable_help = true)]` is specified.");
                 }
                 let long_name = format!("--{}", long_name);
                 Some(long_name)
@@ -233,7 +233,7 @@ fn impl_from_args_struct(
         .iter()
         .filter_map(|field| {
             let attrs = FieldAttrs::parse(errors, field);
-            StructField::new(errors, field, attrs)
+            StructField::new(errors, &type_attrs, field, attrs)
         })
         .collect();
 

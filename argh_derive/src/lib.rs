@@ -52,6 +52,7 @@ fn impl_from_args(input: &syn::DeriveInput) -> TokenStream {
         }
     };
     errors.to_tokens(&mut output_tokens);
+    
     output_tokens
 }
 
@@ -304,7 +305,10 @@ fn impl_from_args_struct(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help = help::help(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+
+    // Get `TokenStream` of `print_usage` implementation
+    let print_usage = help::print_usage(name, &help);
 
     let trait_impl = quote_spanned! { impl_span =>
         impl argh::FromArgs for #name {
@@ -396,6 +400,8 @@ fn impl_from_args_struct(
         }
 
         #top_or_sub_cmd_impl
+
+        #print_usage
     };
 
     trait_impl.into()

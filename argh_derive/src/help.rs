@@ -15,13 +15,14 @@ use {
 
 const SECTION_SEPARATOR: &str = "\n\n";
 
+
 /// Returns a `TokenStream` generating a `String` help message.
 ///
 /// Note: `fields` entries with `is_subcommand.is_some()` will be ignored
 /// in favor of the `subcommand` argument.
 pub(crate) fn help(
     errors: &Errors,
-    cmd_name_str_array_ident: syn::Ident,
+    cmd_name_str_array_ident: &syn::Ident,
     ty_attrs: &TypeAttrs,
     fields: &[StructField<'_>],
     subcommand: Option<&StructField<'_>>,
@@ -102,6 +103,24 @@ pub(crate) fn help(
         #subcommand_calculation
         format!(#format_lit, command_name = #cmd_name_str_array_ident.join(" "), #subcommand_format_arg)
     } }
+}
+
+/// Returns a `TokenStream` of the `print_usage` method implementation
+/// The `print_usage` method allows to manually print usage
+pub(crate) fn print_usage(
+    name: &syn::Ident,
+    help: &TokenStream
+) -> TokenStream {
+    quote! {
+        impl #name {
+            fn print_usage(self: &Self) -> String {
+                let strings: Vec<String> = std::env::args().collect();
+                let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
+                let __cmd_name = &[strs[0]];
+                #help.to_string()
+            }
+        }
+    }
 }
 
 /// A section composed of exactly just the literals provided to the program.

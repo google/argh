@@ -206,6 +206,33 @@ fn assert_error<T: FromArgs + Debug>(args: &[&str], err_msg: &str) {
     e.status.expect_err("error had a positive status");
 }
 
+#[test]
+fn print_usage() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Reach new heights.
+    struct GoUp {
+        /// whether or not to jump
+        #[argh(switch, short = 'j')]
+        jump: bool,
+
+        /// how high to go
+        #[argh(option)]
+        height: usize,
+
+        /// an optional nickname for the pilot
+        #[argh(option)]
+        pilot_nickname: Option<String>,
+    }
+
+    let up = GoUp::from_args(&["cmdname"], &["-j", "--height", "5"]).expect("failed go_up");
+
+    let usage_is = up.print_usage();
+
+    let usage_should_be = "Usage: ".to_owned() + &std::env::current_exe().unwrap().into_os_string().into_string().unwrap() + &" [-j] --height <height> [--pilot-nickname <pilot-nickname>]\n\nReach new heights.\n\nOptions:\n  -j, --jump        whether or not to jump\n  --height          how high to go\n  --pilot-nickname  an optional nickname for the pilot\n  --help            display usage information\n".to_owned();
+
+    assert_eq!(usage_is, usage_should_be);
+}
+
 mod positional {
     use super::*;
 
@@ -317,13 +344,7 @@ Options:
 
     #[test]
     fn mixed_with_option() {
-        assert_output(
-            &["first", "--b", "foo"],
-            WithOption {
-                a: "first".into(),
-                b: "foo".into(),
-            },
-        );
+        assert_output(&["first", "--b", "foo"], WithOption { a: "first".into(), b: "foo".into() });
 
         assert_error::<WithOption>(
             &[],

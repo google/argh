@@ -15,7 +15,6 @@ use {
 
 const SECTION_SEPARATOR: &str = "\n\n";
 
-
 /// Returns a `TokenStream` generating a `String` help message.
 ///
 /// Note: `fields` entries with `is_subcommand.is_some()` will be ignored
@@ -107,10 +106,7 @@ pub(crate) fn help(
 
 /// Returns a `TokenStream` of the `print_usage` method implementation
 /// The `print_usage` method allows to manually print usage
-pub(crate) fn print_usage(
-    name: &syn::Ident,
-    help: &TokenStream
-) -> TokenStream {
+pub(crate) fn print_usage(name: &syn::Ident, help: &TokenStream) -> TokenStream {
     quote! {
         impl #name {
             fn print_usage(self: &Self) -> String {

@@ -507,7 +507,28 @@ mod fuchsia_commandline_tools_rubric {
     /// even when their syntax matches that of options. e.g. `foo -- -e` should be parsed
     /// as passing a single positional argument with the value `-e`.
     #[test]
-    fn double_dash_positional() {}
+    fn double_dash_positional() {
+        #[derive(FromArgs, Debug, PartialEq)]
+        /// Positional arguments list
+        struct StringList {
+            #[argh(positional)]
+            /// a list of strings
+            strs: Vec<String>,
+
+            #[argh(switch)]
+            /// some flag
+            flag: bool,
+        }
+
+        assert_output(
+            &["--", "a", "-b", "--flag"],
+            StringList { strs: vec!["a".into(), "-b".into(), "--flag".into()], flag: false },
+        );
+        assert_output(
+            &["--flag", "--", "-a", "b"],
+            StringList { strs: vec!["-a".into(), "b".into()], flag: true },
+        );
+    }
 
     /// Double-dash can be parsed into an optional field using a provided
     /// `fn(&[&str]) -> Result<T, EarlyExit>`.

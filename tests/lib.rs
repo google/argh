@@ -206,6 +206,28 @@ fn assert_error<T: FromArgs + Debug>(args: &[&str], err_msg: &str) {
     e.status.expect_err("error had a positive status");
 }
 
+mod options {
+    use super::*;
+
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Parsed {
+        #[argh(option, short = 'n')]
+        /// fooey
+        n: usize,
+    }
+
+    #[test]
+    fn parsed() {
+        assert_output(&["-n", "5"], Parsed { n: 5 });
+        assert_error::<Parsed>(
+            &["-n", "x"],
+            r###"Error parsing option '-n' with value 'x': invalid digit found in string
+"###,
+        );
+    }
+}
+
 mod positional {
     use super::*;
 
@@ -300,6 +322,24 @@ Options:
             &["5"],
             r###"Required positional arguments not provided:
     b
+"###,
+        );
+    }
+
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Parsed {
+        #[argh(positional)]
+        /// fooey
+        n: usize,
+    }
+
+    #[test]
+    fn parsed() {
+        assert_output(&["5"], Parsed { n: 5 });
+        assert_error::<Parsed>(
+            &["x"],
+            r###"Error parsing positional argument 'n' with value 'x': invalid digit found in string
 "###,
         );
     }

@@ -326,6 +326,7 @@ fn impl_from_args_struct(
                 let mut __help = false;
                 let mut __remaining_args = __args;
                 let mut __positional_index = 0;
+                let mut __options_ended = false;
                 'parse_args: while let Some(&__next_arg) = __remaining_args.get(0) {
                     __remaining_args = &__remaining_args[1..];
                     if __next_arg == "--help" || __next_arg == "help" {
@@ -333,7 +334,12 @@ fn impl_from_args_struct(
                         continue;
                     }
 
-                    if __next_arg.starts_with("-") {
+                    if __next_arg.starts_with("-") && !__options_ended {
+                        if __next_arg == "--" {
+                            __options_ended = true;
+                            continue;
+                        }
+
                         if __help {
                             return Err(
                                 "Trailing arguments are not allowed after `help`."

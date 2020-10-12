@@ -445,7 +445,8 @@ pub fn parse_positional(
 ) -> Result<(), String> {
     let (slot, name) = positional;
     slot.fill_slot(arg).map_err(|s| {
-        ["Error parsing positional argument '", name, "' with value '", arg, ": ", &s].concat()
+        ["Error parsing positional argument '", name, "' with value '", arg, "': ", &s, "\n"]
+            .concat()
     })
 }
 

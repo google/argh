@@ -1,8 +1,9 @@
 [package]
 name = "argh"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain<bwb@google.com>"]
 edition = "2018"
+readme = "README.md"
 keywords = ["args", "arguments", "derive", "cli"]
 license = "BSD-3-Clause"
 description = "Derive-based argument parser optimized for code size"

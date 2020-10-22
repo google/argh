@@ -452,7 +452,8 @@ pub fn parse_positional(
 ) -> Result<(), String> {
     let (slot, name) = positional;
     slot.fill_slot(arg).map_err(|s| {
-        ["Error parsing positional argument '", name, "' with value '", arg, ": ", &s].concat()
+        ["Error parsing positional argument '", name, "' with value '", arg, "': ", &s, "\n"]
+            .concat()
     })
 }
 
@@ -532,6 +533,9 @@ impl MissingRequirements {
         }
 
         if !self.options.is_empty() {
+            if !self.positional_args.is_empty() {
+                output.push_str("\n");
+            }
             output.push_str("Required options not provided:");
             for option in &self.options {
                 output.push_str(NEWLINE_INDENT);

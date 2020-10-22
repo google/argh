@@ -206,6 +206,28 @@ fn assert_error<T: FromArgs + Debug>(args: &[&str], err_msg: &str) {
     e.status.expect_err("error had a positive status");
 }
 
+mod options {
+    use super::*;
+
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Parsed {
+        #[argh(option, short = 'n')]
+        /// fooey
+        n: usize,
+    }
+
+    #[test]
+    fn parsed() {
+        assert_output(&["-n", "5"], Parsed { n: 5 });
+        assert_error::<Parsed>(
+            &["-n", "x"],
+            r###"Error parsing option '-n' with value 'x': invalid digit found in string
+"###,
+        );
+    }
+}
+
 mod positional {
     use super::*;
 
@@ -300,6 +322,49 @@ Options:
             &["5"],
             r###"Required positional arguments not provided:
     b
+"###,
+        );
+    }
+
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Parsed {
+        #[argh(positional)]
+        /// fooey
+        n: usize,
+    }
+
+    #[test]
+    fn parsed() {
+        assert_output(&["5"], Parsed { n: 5 });
+        assert_error::<Parsed>(
+            &["x"],
+            r###"Error parsing positional argument 'n' with value 'x': invalid digit found in string
+"###,
+        );
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct WithOption {
+        #[argh(positional)]
+        /// fooey
+        a: String,
+        #[argh(option)]
+        /// fooey
+        b: String,
+    }
+
+    #[test]
+    fn mixed_with_option() {
+        assert_output(&["first", "--b", "foo"], WithOption { a: "first".into(), b: "foo".into() });
+
+        assert_error::<WithOption>(
+            &[],
+            r###"Required positional arguments not provided:
+    a
+Required options not provided:
+    --b
 "###,
         );
     }
@@ -482,7 +547,28 @@ mod fuchsia_commandline_tools_rubric {
     /// even when their syntax matches that of options. e.g. `foo -- -e` should be parsed
     /// as passing a single positional argument with the value `-e`.
     #[test]
-    fn double_dash_positional() {}
+    fn double_dash_positional() {
+        #[derive(FromArgs, Debug, PartialEq)]
+        /// Positional arguments list
+        struct StringList {
+            #[argh(positional)]
+            /// a list of strings
+            strs: Vec<String>,
+
+            #[argh(switch)]
+            /// some flag
+            flag: bool,
+        }
+
+        assert_output(
+            &["--", "a", "-b", "--flag"],
+            StringList { strs: vec!["a".into(), "-b".into(), "--flag".into()], flag: false },
+        );
+        assert_output(
+            &["--flag", "--", "-a", "b"],
+            StringList { strs: vec!["-a".into(), "b".into()], flag: true },
+        );
+    }
 
     /// Double-dash can be parsed into an optional field using a provided
     /// `fn(&[&str]) -> Result<T, EarlyExit>`.

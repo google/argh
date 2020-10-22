@@ -230,14 +230,20 @@ impl From<String> for EarlyExit {
     }
 }
 
+/// Extract the base cmd from a path
+pub fn cmd<'a>(default: &'a String, path: &'a String) -> &'a str {
+    std::path::Path::new(path).file_name().map(|s| s.to_str()).flatten().unwrap_or(default.as_str())
+}
+
 /// Create a `FromArgs` type from the current process's `env::args`.
 ///
 /// This function will exit early from the current process if argument parsing
 /// was unsuccessful or if information like `--help` was requested.
 pub fn from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
+    let cmd = cmd(&strings[0], &strings[0]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[strs[0]], &strs[1..]).unwrap_or_else(|early_exit| {
+    T::from_args(&[cmd], &strs[1..]).unwrap_or_else(|early_exit| {
         println!("{}", early_exit.output);
         std::process::exit(match early_exit.status {
             Ok(()) => 0,
@@ -255,8 +261,9 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 /// was unsuccessful or if information like `--help` was requested.
 pub fn cargo_from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
+    let cmd = cmd(&strings[1], &strings[1]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[strs[1]], &strs[2..]).unwrap_or_else(|early_exit| {
+    T::from_args(&[cmd], &strs[2..]).unwrap_or_else(|early_exit| {
         println!("{}", early_exit.output);
         std::process::exit(match early_exit.status {
             Ok(()) => 0,

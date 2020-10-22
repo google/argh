@@ -232,11 +232,7 @@ impl From<String> for EarlyExit {
 
 /// Extract the base cmd from a path
 pub fn cmd<'a>(default: &'a String, path: &'a String) -> &'a str {
-    std::path::Path::new(path)
-        .file_name()
-        .map(|s| s.to_str())
-        .flatten()
-        .unwrap_or(default.as_str())
+    std::path::Path::new(path).file_name().map(|s| s.to_str()).flatten().unwrap_or(default.as_str())
 }
 
 /// Create a `FromArgs` type from the current process's `env::args`.

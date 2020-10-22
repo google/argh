@@ -265,7 +265,7 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 /// was unsuccessful or if information like `--help` was requested.
 pub fn cargo_from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
-    let cmd = cmd(&strings[0], &strings[1]);
+    let cmd = cmd(&strings[1], &strings[1]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
     T::from_args(&[cmd], &strs[2..]).unwrap_or_else(|early_exit| {
         println!("{}", early_exit.output);

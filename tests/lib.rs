@@ -864,12 +864,4 @@ Error codes:
 "###,
         );
     }
-
-    #[test]
-    fn test_cmd_extraction() {
-        let expected = "test_cmd";
-        let path = format!("/tmp/{}", expected);
-        let cmd = argh::cmd(&path, &path);
-        assert_eq!(expected, cmd);
-    }
 }

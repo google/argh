@@ -231,7 +231,7 @@ impl From<String> for EarlyExit {
 }
 
 /// Extract the base cmd from a path
-pub fn cmd<'a>(default: &'a String, path: &'a String) -> &'a str {
+fn cmd<'a>(default: &'a String, path: &'a String) -> &'a str {
     std::path::Path::new(path).file_name().map(|s| s.to_str()).flatten().unwrap_or(default.as_str())
 }
 
@@ -559,5 +559,18 @@ impl MissingRequirements {
         output.push('\n');
 
         Err(output)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_cmd_extraction() {
+        let expected = "test_cmd";
+        let path = format!("/tmp/{}", expected);
+        let cmd = cmd(&path, &path);
+        assert_eq!(expected, cmd);
     }
 }

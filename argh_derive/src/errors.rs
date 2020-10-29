@@ -91,6 +91,7 @@ impl Errors {
         (expect_lit_str, LitStr, Str, "string"),
         (expect_lit_char, LitChar, Char, "character"),
         (expect_lit_int, LitInt, Int, "integer"),
+		(expect_lit_bool, LitBool, Bool, "boolean"),
     ];
 
     expect_meta_fn![

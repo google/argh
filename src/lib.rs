@@ -207,6 +207,17 @@ impl<T: SubCommand> SubCommands for T {
     const COMMANDS: &'static [&'static CommandInfo] = &[T::COMMAND];
 }
 
+/// A `HelpMessage` implementation that provides a help/usage message corresponding
+/// to the type's `FromArgs` implementation.
+pub trait HelpMessage: FromArgs {
+    /// The help/usage message.
+    ///
+    /// The first argument `command_name` is the identifier for the current
+    /// command, treating each segment as space-separated. This will be used
+    /// in the help message.
+    fn help_message(command_name: &[&str]) -> String;
+}
+
 /// Information to display to the user about why a `FromArgs` construction exited early.
 ///
 /// This can occur due to either failed parsing or a flag like `--help`.

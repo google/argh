@@ -17,6 +17,7 @@ pub struct FieldAttrs {
     pub field_type: Option<FieldType>,
     pub long: Option<syn::LitStr>,
     pub short: Option<syn::LitChar>,
+    pub omit_usage: bool,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -115,13 +116,15 @@ impl FieldAttrs {
                         FieldKind::Positional,
                         &mut this.field_type,
                     );
+                } else if name.is_ident("omit_usage") {
+                    this.omit_usage = true;
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
                             "Expected one of: `default`, `description`, `from_str_fn`, `long`, ",
-                            "`option`, `short`, `subcommand`, `switch`",
+                            "`option`, `short`, `subcommand`, `switch`, `omit_usage`",
                         ),
                     );
                 }

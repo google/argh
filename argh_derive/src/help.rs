@@ -28,7 +28,8 @@ pub(crate) fn help(
 ) -> TokenStream {
     let mut format_lit = "Usage: {command_name}".to_string();
 
-    let positional = fields.iter().filter(|f| f.kind == FieldKind::Positional);
+    let positional =
+        fields.iter().filter(|f| f.kind == FieldKind::Positional && !f.attrs.omit_usage);
     for arg in positional {
         format_lit.push(' ');
         positional_usage(&mut format_lit, arg);

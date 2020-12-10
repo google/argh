@@ -3,7 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-
 /// Implementation of the `FromArgs` and `argh(...)` derive attributes.
 ///
 /// For more thorough documentation, see the `argh` crate itself.

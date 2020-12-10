@@ -168,6 +168,26 @@
 //!     fooey: bool,
 //! }
 //! ```
+//!
+//! Programs that are run from an environment such as cargo may find it
+//! useful to have positional arguments present in the structure but
+//! omitted from the usage output. This can be accomplished by adding
+//! the `omit_usage` attribute to that argument:
+//!
+//! ```rust
+//! # use argh::FromArgs;
+//!
+//! #[derive(FromArgs)]
+//! ///
+//! struct CargoArgs {
+//!     // Cargo puts the command name invoked into the first argument,
+//!     // so we don't want this argument to show up in the usage text.
+//!     #[argh(positional, omit_usage)]
+//!     command: String,
+//!     #[argh(positional)]
+//!     real_first_arg: String,
+//! }
+//! ```
 
 #![deny(missing_docs)]
 

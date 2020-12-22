@@ -17,6 +17,7 @@ pub struct FieldAttrs {
     pub field_type: Option<FieldType>,
     pub long: Option<syn::LitStr>,
     pub short: Option<syn::LitChar>,
+    pub arg_name: Option<syn::LitStr>,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -77,7 +78,11 @@ impl FieldAttrs {
                 let meta = if let Some(m) = errors.expect_nested_meta(meta) { m } else { continue };
 
                 let name = meta.path();
-                if name.is_ident("default") {
+                if name.is_ident("arg_name") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        this.parse_attr_arg_name(errors, m);
+                    }
+                } else if name.is_ident("default") {
                     if let Some(m) = errors.expect_meta_name_value(&meta) {
                         this.parse_attr_default(errors, m);
                     }
@@ -120,7 +125,7 @@ impl FieldAttrs {
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
-                            "Expected one of: `default`, `description`, `from_str_fn`, `long`, ",
+                            "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `long`, ",
                             "`option`, `short`, `subcommand`, `switch`",
                         ),
                     );
@@ -152,6 +157,10 @@ impl FieldAttrs {
 
     fn parse_attr_default(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
         parse_attr_single_string(errors, m, "default", &mut self.default);
+    }
+
+    fn parse_attr_arg_name(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
+        parse_attr_single_string(errors, m, "arg_name", &mut self.arg_name);
     }
 
     fn parse_attr_long(&mut self, errors: &Errors, m: &syn::MetaNameValue) {

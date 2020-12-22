@@ -157,7 +157,14 @@ fn option_usage(out: &mut String, field: &StructField<'_>) {
         FieldKind::Switch => {}
         FieldKind::Option => {
             out.push_str(" <");
-            out.push_str(long_name.trim_start_matches("--"));
+            if let Some(arg_name) = &field.attrs.arg_name {
+                out.push_str(&arg_name.value());
+            } else {
+                out.push_str(long_name.trim_start_matches("--"));
+            }
+            if field.optionality == Optionality::Repeating {
+                out.push_str("...");
+            }
             out.push('>');
         }
     }

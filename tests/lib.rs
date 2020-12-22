@@ -226,6 +226,50 @@ mod options {
 "###,
         );
     }
+
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Repeating {
+        #[argh(option, short = 'n')]
+        /// fooey
+        n: Vec<String>,
+    }
+
+    #[test]
+    fn repeating() {
+        assert_help_string::<Repeating>(
+            r###"Usage: test_arg_0 [-n <n...>]
+
+Woot
+
+Options:
+  -n, --n           fooey
+  --help            display usage information
+"###,
+        );
+    }
+
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct WithArgName {
+        #[argh(option, arg_name = "name")]
+        /// fooey
+        option_name: Option<String>,
+    }
+
+    #[test]
+    fn with_arg_name() {
+        assert_help_string::<WithArgName>(
+            r###"Usage: test_arg_0 [--option-name <name>]
+
+Woot
+
+Options:
+  --option-name     fooey
+  --help            display usage information
+"###,
+        );
+    }
 }
 
 mod positional {

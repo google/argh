@@ -186,14 +186,6 @@ pub trait FromArgs: Sized {
     /// command, treating each segment as space-separated. This is to be
     /// used in the output of `--help`, `--version`, and similar flags.
     fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit>;
-
-    // Create a string containing all argument names passed.
-    // This is useful for recording analytics without collecting user values, e.g.
-    // arg_names_passed(["--cc","1234 5555 6565 4321"]) => "cc".
-    //
-    // The first argument `command_name` is the identifier for the current
-    // command, treating each segment as space-separated. This is to be
-    //fn arg_names_passed(command_name: &[&str], args: &[&str]) -> Result<String, EarlyExit>;
 }
 
 /// A top-level `FromArgs` implementation that is not a subcommand.

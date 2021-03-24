@@ -3,7 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-
 /// Implementation of the `FromArgs` and `argh(...)` derive attributes.
 ///
 /// For more thorough documentation, see the `argh` crate itself.
@@ -28,6 +27,7 @@ mod parse_attrs;
 #[proc_macro_derive(FromArgs, attributes(argh))]
 pub fn argh_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
+
     let gen = impl_from_args(&ast);
     gen.into()
 }
@@ -291,7 +291,18 @@ fn impl_from_args_struct(
                     } else {
                         __remaining_args
                     };
-                    #name = Some(<#ty as argh::FromArgs>::from_args(&__command, __remaining_args)?);
+                    if __dump_args {
+                        __args_dump.push(__subcommand.name.to_string());
+                        match <#ty as argh::FromArgs>::from_args(&__command, &[&["--dump_args_passed"], __remaining_args].concat()) {
+                            Ok(val) => #name = Some(val),
+                            Err(e) => {
+                                __args_dump.push(e.output);
+
+                            }
+                        }
+                    } else {
+                        #name = Some(<#ty as argh::FromArgs>::from_args(&__command, __remaining_args)?);
+                    }
                     // Unset `help`, since we handled it in the subcommand
                     __help = false;
                     break 'parse_args;
@@ -304,6 +315,7 @@ fn impl_from_args_struct(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
+
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let trait_impl = quote_spanned! { impl_span =>
@@ -324,6 +336,8 @@ fn impl_from_args_struct(
                 ];
 
                 let mut __help = false;
+                let mut __dump_args = false;
+                let mut __args_dump: Vec<String> = vec![];
                 let mut __remaining_args = __args;
                 let mut __positional_index = 0;
                 let mut __options_ended = false;
@@ -331,6 +345,11 @@ fn impl_from_args_struct(
                     __remaining_args = &__remaining_args[1..];
                     if __next_arg == "--help" || __next_arg == "help" {
                         __help = true;
+                        continue;
+                    }
+
+                    if __next_arg == "--dump_args_passed" || __next_arg == "dump_args_passed" {
+                        __dump_args = true;
                         continue;
                     }
 
@@ -353,6 +372,7 @@ fn impl_from_args_struct(
                             &mut __remaining_args,
                             __flag_output_table,
                             &[ #( #flag_str_to_output_table_map ,)* ],
+                            &mut __args_dump,
                         )?;
                         continue;
                     }
@@ -363,6 +383,7 @@ fn impl_from_args_struct(
                         argh::parse_positional(
                             __next_arg,
                             &mut __positional_output_table[__positional_index],
+                            &mut __args_dump,
                         )?;
 
                         // Don't increment position if we're at the last arg
@@ -385,6 +406,13 @@ fn impl_from_args_struct(
                 if __help {
                     return std::result::Result::Err(argh::EarlyExit {
                         output: #help,
+                        status: std::result::Result::Ok(()),
+                    });
+                }
+
+                if __dump_args {
+                    return std::result::Result::Err(argh::EarlyExit {
+                        output: __args_dump.join(" ").to_string(),
                         status: std::result::Result::Ok(()),
                     });
                 }
@@ -683,6 +711,7 @@ fn impl_from_args_enum(
                         return Ok(#name_repeating::#variant_names(
                             <#variant_ty_2 as argh::FromArgs>::from_args(command_name, args)?
                         ));
+
                     }
                 )*
                 unreachable!("no subcommand matched")

@@ -174,4 +174,9 @@ struct SubCommandTwo {
 }
 ```
 
+It is also possible to retrieve just the names of the arguments and switches 
+passed at runtime, by including the switch `--dump_args_passed` in the args, similarly
+to how `--help` can be passed. This elides any user values passed and creates an 
+output for safely collecting data for analytics.
+
 NOTE: This is not an officially supported Google product.

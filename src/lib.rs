@@ -186,6 +186,14 @@ pub trait FromArgs: Sized {
     /// command, treating each segment as space-separated. This is to be
     /// used in the output of `--help`, `--version`, and similar flags.
     fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit>;
+
+    // Create a string containing all argument names passed.
+    // This is useful for recording analytics without collecting user values, e.g.
+    // arg_names_passed(["--cc","1234 5555 6565 4321"]) => "cc".
+    //
+    // The first argument `command_name` is the identifier for the current
+    // command, treating each segment as space-separated. This is to be
+    //fn arg_names_passed(command_name: &[&str], args: &[&str]) -> Result<String, EarlyExit>;
 }
 
 /// A top-level `FromArgs` implementation that is not a subcommand.
@@ -415,6 +423,7 @@ pub fn parse_option(
     remaining_args: &mut &[&str],
     output_table: &mut [CmdOption<'_>],
     arg_to_output: &[(&str, usize)],
+    __args_dump: &mut Vec<String>,
 ) -> Result<(), String> {
     let pos = arg_to_output
         .iter()
@@ -426,7 +435,10 @@ pub fn parse_option(
     }
 
     match &mut output_table[pos] {
-        CmdOption::Flag(b) => b.set_flag(),
+        CmdOption::Flag(b) => {
+            b.set_flag();
+            &__args_dump.push(arg.to_string());
+        }
         CmdOption::Value(pvs) => {
             let value = remaining_args
                 .get(0)
@@ -435,6 +447,7 @@ pub fn parse_option(
             pvs.fill_slot(value).map_err(|s| {
                 ["Error parsing option '", arg, "' with value '", value, "': ", &s, "\n"].concat()
             })?;
+            &__args_dump.push(arg.to_string());
         }
     }
 
@@ -449,9 +462,12 @@ pub fn parse_option(
 pub fn parse_positional(
     arg: &str,
     positional: &mut (&mut dyn ParseValueSlot, &'static str),
+    __args_dump: &mut Vec<String>,
 ) -> Result<(), String> {
     let (slot, name) = positional;
+    &__args_dump.push(name.to_string());
     slot.fill_slot(arg).map_err(|s| {
+        &__args_dump.remove(&__args_dump.len() - 1);
         ["Error parsing positional argument '", name, "' with value '", arg, "': ", &s, "\n"]
             .concat()
     })

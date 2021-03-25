@@ -293,7 +293,7 @@ fn impl_from_args_struct(
                     };
                     if __dump_args {
                         __args_dump.push(__subcommand.name.to_string());
-                        match <#ty as argh::FromArgs>::from_args(&__command, &[&["--dump_args_passed"], __remaining_args].concat()) {
+                        match <#ty as argh::FromArgs>::from_args(&__command, &[&["--dump-args-passed"], __remaining_args].concat()) {
                             Ok(val) => #name = Some(val),
                             Err(e) => {
                                 __args_dump.push(e.output);
@@ -348,7 +348,7 @@ fn impl_from_args_struct(
                         continue;
                     }
 
-                    if __next_arg == "--dump_args_passed" || __next_arg == "dump_args_passed" {
+                    if __next_arg == "--dump-args-passed" || __next_arg == "dump-args-passed" {
                         __dump_args = true;
                         continue;
                     }

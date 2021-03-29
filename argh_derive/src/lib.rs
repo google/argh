@@ -329,7 +329,7 @@ fn impl_from_args_struct(
                 let mut __options_ended = false;
                 'parse_args: while let Some(&__next_arg) = __remaining_args.get(0) {
                     __remaining_args = &__remaining_args[1..];
-                    if __next_arg == "--help" || __next_arg == "help" {
+                    if (__next_arg == "--help" || __next_arg == "help") && !__options_ended {
                         __help = true;
                         continue;
                     }

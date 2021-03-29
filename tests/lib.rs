@@ -568,6 +568,11 @@ mod fuchsia_commandline_tools_rubric {
             &["--flag", "--", "-a", "b"],
             StringList { strs: vec!["-a".into(), "b".into()], flag: true },
         );
+        assert_output(&["--", "--help"], StringList { strs: vec!["--help".into()], flag: false });
+        assert_output(
+            &["--", "-a", "--help"],
+            StringList { strs: vec!["-a".into(), "--help".into()], flag: false },
+        );
     }
 
     /// Double-dash can be parsed into an optional field using a provided

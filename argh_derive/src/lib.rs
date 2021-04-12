@@ -292,7 +292,7 @@ fn impl_from_args_struct(
                         __remaining_args
                     };
                     if __dump_args {
-                        __args_dump.push(__subcommand.name.to_string());
+                        __args_dump.push(__subcommand.name.to_string().replace(" ", "\\ "));
                         match <#ty as argh::FromArgs>::from_args(&__command, &[&["--dump-args-passed"], __remaining_args].concat()) {
                             Ok(val) => #name = Some(val),
                             Err(e) => {
@@ -411,6 +411,8 @@ fn impl_from_args_struct(
                 }
 
                 if __dump_args {
+                    //let escaped_list: [<&str>] = __args_dump.iter().map(|arg| arg.replace(" ", "\\ ")).collect();
+                    //let escaped_args:String = escaped_list.join(" ").to_string();
                     return std::result::Result::Err(argh::EarlyExit {
                         output: __args_dump.join(" ").to_string(),
                         status: std::result::Result::Ok(()),

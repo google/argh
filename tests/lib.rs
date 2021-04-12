@@ -1136,3 +1136,45 @@ fn arg_names_passed_subcommand() {
             .expect_err("Should have returned dump of args");
     assert_eq!("speed walking --music", actual.output);
 }
+
+#[test]
+fn arg_names_passed_subcommand_with_space_in_name() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+
+        #[argh(subcommand)]
+        /// means of transportation
+        means: MeansSubcommand,
+    }
+
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    #[argh(subcommand)]
+    enum MeansSubcommand {
+        Walking(WalkingSubcommand),
+        Biking(BikingSubcommand),
+    }
+
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "has space")]
+    /// Short description
+    struct WalkingSubcommand {
+        #[argh(option)]
+        /// a song to listen to
+        music: String,
+    }
+
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "biking")]
+    /// Short description
+    struct BikingSubcommand {}
+
+    let actual =
+        Cmd::from_args(&["cmdname"], &["--dump-args-passed", "5", "has space", "--music", "Bach"])
+            .expect_err("Should have returned dump of args");
+    assert_eq!("speed has\\ space --music", actual.output);
+}

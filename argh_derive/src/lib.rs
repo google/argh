@@ -411,8 +411,6 @@ fn impl_from_args_struct(
                 }
 
                 if __dump_args {
-                    //let escaped_list: [<&str>] = __args_dump.iter().map(|arg| arg.replace(" ", "\\ ")).collect();
-                    //let escaped_args:String = escaped_list.join(" ").to_string();
                     return std::result::Result::Err(argh::EarlyExit {
                         output: __args_dump.join(" ").to_string(),
                         status: std::result::Result::Ok(()),
@@ -429,7 +427,19 @@ fn impl_from_args_struct(
                     #( #unwrap_fields, )*
                 })
             }
+
+            fn to_args(__cmd_name: &[&str], __args: &[&str])
+                -> String
+            {
+                let result = Self::from_args(__cmd_name, &[&["--dump-args-passed"], __args].concat());
+                match result {
+                    Err(e) => e.output,
+                    _ => "Could not produce args list".to_string()
+                }
+            }
+
         }
+
 
         #top_or_sub_cmd_impl
     };
@@ -717,6 +727,11 @@ fn impl_from_args_enum(
                     }
                 )*
                 unreachable!("no subcommand matched")
+            }
+
+            // Note: This can never get called because enums are only SubCommand containers
+            fn to_args(command_name: &[&str], args: &[&str]) -> String {
+                "".to_string()
             }
         }
 

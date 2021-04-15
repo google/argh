@@ -26,9 +26,8 @@ fn basic_example() {
     let up = GoUp::from_args(&["cmdname"], &["--height", "5"]).expect("failed go_up");
     assert_eq!(up, GoUp { jump: false, height: 5, pilot_nickname: None });
 
-    let actual = GoUp::from_args(&["cmdname"], &["--dump-args-passed", "--height", "5"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("--height", actual.output);
+    let actual = GoUp::to_args(&["cmdname"], &["--height", "5"]);
+    assert_eq!("--height", actual);
 }
 
 #[test]
@@ -48,9 +47,8 @@ fn custom_from_str_example() {
     let f = FiveStruct::from_args(&["cmdname"], &["--five", "woot"]).expect("failed to five");
     assert_eq!(f.five, 5);
 
-    let actual = FiveStruct::from_args(&["cmdname"], &["--dump-args-passed", "--five", "woot"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("--five", actual.output);
+    let actual = FiveStruct::to_args(&["cmdname"], &["--five", "woot"]);
+    assert_eq!("--five", actual);
 }
 
 #[test]
@@ -93,9 +91,8 @@ fn subcommand_example() {
     let two = TopLevel::from_args(&["cmdname"], &["two", "--fooey"]).expect("sc 2");
     assert_eq!(two, TopLevel { nested: MySubCommandEnum::Two(SubCommandTwo { fooey: true }) },);
 
-    let actual = TopLevel::from_args(&["cmdname"], &["--dump-args-passed", "two", "--fooey"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("two --fooey", actual.output);
+    let actual = TopLevel::to_args(&["cmdname"], &["two", "--fooey"]);
+    assert_eq!("two --fooey", actual);
 }
 
 #[test]
@@ -180,9 +177,8 @@ fn default_function() {
     let cmd = Cmd::from_args(&["cmdname"], &[]).unwrap();
     assert_eq!(cmd.msg, MSG);
 
-    let actual = Cmd::from_args(&["cmdname"], &["--dump-args-passed"])
-        .expect_err("Should have returned args passed");
-    assert_eq!("", actual.output);
+    let actual = Cmd::to_args(&["cmdname"], &[]);
+    assert_eq!("", actual);
 }
 
 #[test]
@@ -829,13 +825,11 @@ Options:
             },
         );
 
-        let result = HelpExample::from_args(
+        let result = HelpExample::to_args(
             &["<<<arg0>>>"],
-            &["--dump-args-passed", "-f", "--scribble", "fooey", "blow-up", "--safely"],
-        )
-        .expect_err("Should have returned args passed");
-        assert_eq!(Ok(()), result.status);
-        assert_eq!("-f --scribble blow-up --safely".to_string(), result.output);
+            &["-f", "--scribble", "fooey", "blow-up", "--safely"],
+        );
+        assert_eq!("-f --scribble blow-up --safely".to_string(), result);
     }
 
     #[test]
@@ -901,9 +895,8 @@ fn arg_names_passed_no_args() {
     }
 
     let expected: &str = "";
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed"])
-        .expect_err("Should have returned dump of args passed");
-    assert_eq!(expected, actual.output);
+    let actual = Cmd::to_args(&["unused"], &[]);
+    assert_eq!(expected, actual);
 }
 
 #[test]
@@ -916,9 +909,8 @@ fn arg_names_passed_optional_arg() {
         msg: Option<String>,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "--msg", "hello"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("--msg", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["--msg", "hello"]);
+    assert_eq!("--msg", actual);
 }
 
 #[test]
@@ -935,12 +927,8 @@ fn arg_names_passed_two_option_args() {
         delivery: String,
     }
 
-    let actual = Cmd::from_args(
-        &["unused"],
-        &["--dump-args-passed", "--msg", "hello", "--delivery", "next day"],
-    )
-    .expect_err("Should have returned dump of args");
-    assert_eq!("--msg --delivery", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["--msg", "hello", "--delivery", "next day"]);
+    assert_eq!("--msg --delivery", actual);
 }
 
 #[test]
@@ -957,16 +945,11 @@ fn arg_names_passed_option_one_optional_args() {
         delivery: Option<String>,
     }
 
-    let actual = Cmd::from_args(
-        &["unused"],
-        &["--dump-args-passed", "--msg", "hello", "--delivery", "next day"],
-    )
-    .expect_err("Should have returned dump of args");
-    assert_eq!("--msg --delivery", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["--msg", "hello", "--delivery", "next day"]);
+    assert_eq!("--msg --delivery", actual);
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "--msg", "hello"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("--msg", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["--msg", "hello"]);
+    assert_eq!("--msg", actual);
 }
 
 #[test]
@@ -979,13 +962,11 @@ fn arg_names_passed_switch() {
         faster: bool,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "--faster"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("--faster", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["--faster"]);
+    assert_eq!("--faster", actual);
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "-f"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("-f", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["-f"]);
+    assert_eq!("-f", actual);
 }
 
 #[test]
@@ -998,9 +979,8 @@ fn arg_names_passed_positional() {
         speed: u8,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "5"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("speed", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["5"]);
+    assert_eq!("speed", actual);
 }
 
 #[test]
@@ -1013,9 +993,8 @@ fn arg_names_passed_positional_repeating() {
         speed: Vec<u8>,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "5", "6"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("speed speed", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["5", "6"]);
+    assert_eq!("speed speed", actual);
 }
 
 #[test]
@@ -1028,9 +1007,8 @@ fn arg_names_passed_positional_err() {
         speed: u8,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("", actual.output);
+    let actual = Cmd::to_args(&["unused"], &[]);
+    assert_eq!("", actual);
 }
 
 #[test]
@@ -1047,9 +1025,8 @@ fn arg_names_passed_two_positional() {
         direction: String,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "5", "north"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("speed direction", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["5", "north"]);
+    assert_eq!("speed direction", actual);
 }
 
 #[test]
@@ -1066,9 +1043,8 @@ fn arg_names_passed_positional_option() {
         direction: String,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "5", "--direction", "north"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("speed --direction", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["5", "--direction", "north"]);
+    assert_eq!("speed --direction", actual);
 }
 
 #[test]
@@ -1085,9 +1061,8 @@ fn arg_names_passed_positional_optional_option() {
         direction: Option<String>,
     }
 
-    let actual = Cmd::from_args(&["unused"], &["--dump-args-passed", "5"])
-        .expect_err("Should have returned dump of args");
-    assert_eq!("speed", actual.output);
+    let actual = Cmd::to_args(&["unused"], &["5"]);
+    assert_eq!("speed", actual);
 }
 
 #[test]
@@ -1131,10 +1106,8 @@ fn arg_names_passed_subcommand() {
     /// short description
     struct DrivingSubcommand {}
 
-    let actual =
-        Cmd::from_args(&["cmdname"], &["--dump-args-passed", "5", "walking", "--music", "Bach"])
-            .expect_err("Should have returned dump of args");
-    assert_eq!("speed walking --music", actual.output);
+    let actual = Cmd::to_args(&["cmdname"], &["5", "walking", "--music", "Bach"]);
+    assert_eq!("speed walking --music", actual);
 }
 
 #[test]
@@ -1173,8 +1146,6 @@ fn arg_names_passed_subcommand_with_space_in_name() {
     /// Short description
     struct BikingSubcommand {}
 
-    let actual =
-        Cmd::from_args(&["cmdname"], &["--dump-args-passed", "5", "has space", "--music", "Bach"])
-            .expect_err("Should have returned dump of args");
-    assert_eq!("speed has\\ space --music", actual.output);
+    let to_arg_output = Cmd::to_args(&["cmdname"], &["5", "has space", "--music", "Bach"]);
+    assert_eq!("speed has\\ space --music", to_arg_output);
 }

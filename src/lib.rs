@@ -238,16 +238,22 @@ fn cmd<'a>(default: &'a String, path: &'a String) -> &'a str {
 /// Create a `FromArgs` type from the current process's `env::args`.
 ///
 /// This function will exit early from the current process if argument parsing
-/// was unsuccessful or if information like `--help` was requested.
+/// was unsuccessful or if information like `--help` was requested. Error messages will be printed
+/// to stderr, and `--help` output to stdout.
 pub fn from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
     let cmd = cmd(&strings[0], &strings[0]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
     T::from_args(&[cmd], &strs[1..]).unwrap_or_else(|early_exit| {
-        println!("{}", early_exit.output);
         std::process::exit(match early_exit.status {
-            Ok(()) => 0,
-            Err(()) => 1,
+            Ok(()) => {
+                println!("{}", early_exit.output);
+                0
+            }
+            Err(()) => {
+                eprintln!("{}", early_exit.output);
+                1
+            }
         })
     })
 }
@@ -258,16 +264,22 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 /// driving the build. We skip the second env variable.
 ///
 /// This function will exit early from the current process if argument parsing
-/// was unsuccessful or if information like `--help` was requested.
+/// was unsuccessful or if information like `--help` was requested. Error messages will be printed
+/// to stderr, and `--help` output to stdout.
 pub fn cargo_from_env<T: TopLevelCommand>() -> T {
     let strings: Vec<String> = std::env::args().collect();
     let cmd = cmd(&strings[1], &strings[1]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
     T::from_args(&[cmd], &strs[2..]).unwrap_or_else(|early_exit| {
-        println!("{}", early_exit.output);
         std::process::exit(match early_exit.status {
-            Ok(()) => 0,
-            Err(()) => 1,
+            Ok(()) => {
+                println!("{}", early_exit.output);
+                0
+            }
+            Err(()) => {
+                eprintln!("{}", early_exit.output);
+                1
+            }
         })
     })
 }

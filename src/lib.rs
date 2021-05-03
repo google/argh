@@ -358,6 +358,7 @@ pub trait Flag {
     fn default() -> Self
     where
         Self: Sized;
+
     /// Sets the flag. This function is called when the flag is provided.
     fn set_flag(&mut self);
 }
@@ -388,9 +389,117 @@ macro_rules! impl_flag_for_integers {
 
 impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 
+/// This function implements argument parsing for structs.
+///
+/// `cmd_name`: The identifier for the current command.
+/// `args`: The command line arguments.
+/// `parse_options`: Helper to parse optional arguments.
+/// `parse_positionals`: Helper to parse positional arguments.
+/// `parse_subcommand`: Helper to parse a subcommand.
+/// `help_func`: Generate a help message.
+#[doc(hidden)]
+pub fn parse_struct_args(
+    cmd_name: &[&str],
+    args: &[&str],
+    mut parse_options: ParseStructOptions<'_>,
+    mut parse_positionals: ParseStructPositionals<'_>,
+    mut parse_subcommand: Option<ParseStructSubCommand<'_>>,
+    help_func: &dyn Fn() -> String,
+) -> Result<(), EarlyExit> {
+    let mut help = false;
+    let mut remaining_args = args;
+    let mut positional_index = 0;
+    let mut options_ended = false;
+
+    'parse_args: while let Some(&next_arg) = remaining_args.get(0) {
+        remaining_args = &remaining_args[1..];
+        if (next_arg == "--help" || next_arg == "help") && !options_ended {
+            help = true;
+            continue;
+        }
+
+        if next_arg.starts_with("-") && !options_ended {
+            if next_arg == "--" {
+                options_ended = true;
+                continue;
+            }
+
+            if help {
+                return Err("Trailing arguments are not allowed after `help`.".to_string().into());
+            }
+
+            parse_options.parse(next_arg, &mut remaining_args)?;
+            continue;
+        }
+
+        if let Some(ref mut parse_subcommand) = parse_subcommand {
+            if parse_subcommand.parse(help, cmd_name, next_arg, remaining_args)? {
+                // Unset `help`, since we handled it in the subcommand
+                help = false;
+                break 'parse_args;
+            }
+        }
+
+        parse_positionals.parse(&mut positional_index, next_arg)?;
+    }
+
+    if help {
+        Err(EarlyExit { output: help_func(), status: Ok(()) })
+    } else {
+        Ok(())
+    }
+}
+
+#[doc(hidden)]
+pub struct ParseStructOptions<'a> {
+    /// A mapping from option string literals to the entry
+    /// in the output table. This may contain multiple entries mapping to
+    /// the same location in the table if both a short and long version
+    /// of the option exist (`-z` and `--zoo`).
+    pub arg_to_slot: &'static [(&'static str, usize)],
+
+    /// The storage for argument output data.
+    pub slots: &'a mut [ParseStructOption<'a>],
+}
+
+impl<'a> ParseStructOptions<'a> {
+    /// Parse a commandline option.
+    ///
+    /// `arg`: the current option argument being parsed (e.g. `--foo`).
+    /// `remaining_args`: the remaining command line arguments. This slice
+    /// will be advanced forwards if the option takes a value argument.
+    fn parse(&mut self, arg: &str, remaining_args: &mut &[&str]) -> Result<(), String> {
+        let pos = self
+            .arg_to_slot
+            .iter()
+            .find_map(|&(name, pos)| if name == arg { Some(pos) } else { None })
+            .ok_or_else(|| unrecognized_argument(arg))?;
+
+        match self.slots[pos] {
+            ParseStructOption::Flag(ref mut b) => b.set_flag(),
+            ParseStructOption::Value(ref mut pvs) => {
+                let value = remaining_args
+                    .get(0)
+                    .ok_or_else(|| ["No value provided for option '", arg, "'.\n"].concat())?;
+                *remaining_args = &remaining_args[1..];
+                pvs.fill_slot(value).map_err(|s| {
+                    ["Error parsing option '", arg, "' with value '", value, "': ", &s, "\n"]
+                        .concat()
+                })?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn unrecognized_argument(x: &str) -> String {
+    ["Unrecognized argument: ", x, "\n"].concat()
+}
+
 // `--` or `-` options, including a mutable reference to their value.
 #[doc(hidden)]
-pub enum CmdOption<'a> {
+pub enum ParseStructOption<'a> {
     // A flag which is set to `true` when provided.
     Flag(&'a mut dyn Flag),
     // A value which is parsed from the string following the `--` argument,
@@ -399,68 +508,110 @@ pub enum CmdOption<'a> {
 }
 
 #[doc(hidden)]
-pub fn unrecognized_argument(x: &str) -> String {
-    ["Unrecognized argument: ", x, "\n"].concat()
+pub struct ParseStructPositionals<'a> {
+    pub positionals: &'a mut [ParseStructPositional<'a>],
+    pub last_is_repeating: bool,
 }
 
-/// Parse a commandline option.
-///
-/// `arg`: the current option argument being parsed (e.g. `--foo`).
-/// `remaining_args`: the remaining command line arguments. This slice
-/// will be advanced forwards if the option takes a value argument.
-/// `output_table`: the storage for output data.
-/// `arg_to_input`: a mapping from option string literals to the entry
-/// in the output table. This may contain multiple entries mapping to
-/// the same location in the table if both a short and long version
-/// of the option exist (`-z` and `--zoo`).
-#[doc(hidden)]
-pub fn parse_option(
-    arg: &str,
-    remaining_args: &mut &[&str],
-    output_table: &mut [CmdOption<'_>],
-    arg_to_output: &[(&str, usize)],
-) -> Result<(), String> {
-    let pos = arg_to_output
-        .iter()
-        .find_map(|&(name, pos)| if name == arg { Some(pos) } else { None })
-        .ok_or_else(|| unrecognized_argument(arg))?;
+impl<'a> ParseStructPositionals<'a> {
+    /// Parse the next positional argument.
+    ///
+    /// `arg`: the argument supplied by the user.
+    fn parse(&mut self, index: &mut usize, arg: &str) -> Result<(), EarlyExit> {
+        if *index < self.positionals.len() {
+            self.positionals[*index].parse(arg)?;
 
-    match &mut output_table[pos] {
-        CmdOption::Flag(b) => b.set_flag(),
-        CmdOption::Value(pvs) => {
-            let value = remaining_args
-                .get(0)
-                .ok_or_else(|| ["No value provided for option '", arg, "'.\n"].concat())?;
-            *remaining_args = &remaining_args[1..];
-            pvs.fill_slot(value).map_err(|s| {
-                ["Error parsing option '", arg, "' with value '", value, "': ", &s, "\n"].concat()
-            })?;
+            // Don't increment position if we're at the last arg
+            // *and* the last arg is repeating.
+            let skip_increment = self.last_is_repeating && *index == self.positionals.len() - 1;
+
+            if !skip_increment {
+                *index += 1;
+            }
+
+            Ok(())
+        } else {
+            Err(EarlyExit { output: unrecognized_arg(arg), status: Err(()) })
         }
     }
-
-    Ok(())
 }
 
-/// Parse a positional argument.
-///
-/// arg: the argument supplied by the user
-/// positional: a tuple containing slot to parse into and the name of the argument
 #[doc(hidden)]
-pub fn parse_positional(
-    arg: &str,
-    positional: &mut (&mut dyn ParseValueSlot, &'static str),
-) -> Result<(), String> {
-    let (slot, name) = positional;
-    slot.fill_slot(arg).map_err(|s| {
-        ["Error parsing positional argument '", name, "' with value '", arg, "': ", &s, "\n"]
+pub struct ParseStructPositional<'a> {
+    // The positional's name
+    pub name: &'static str,
+
+    // The function to parse the positional.
+    pub slot: &'a mut dyn ParseValueSlot,
+}
+
+impl<'a> ParseStructPositional<'a> {
+    /// Parse a positional argument.
+    ///
+    /// `arg`: the argument supplied by the user.
+    fn parse(&mut self, arg: &str) -> Result<(), EarlyExit> {
+        self.slot.fill_slot(arg).map_err(|s| {
+            [
+                "Error parsing positional argument '",
+                self.name,
+                "' with value '",
+                arg,
+                "': ",
+                &s,
+                "\n",
+            ]
             .concat()
-    })
+            .into()
+        })
+    }
+}
+
+// A type to simplify parsing struct subcommands.
+//
+// This indirection is necessary to allow abstracting over `FromArgs` instances with different
+// generic parameters.
+#[doc(hidden)]
+pub struct ParseStructSubCommand<'a> {
+    // The subcommand commands
+    pub subcommands: &'static [&'static CommandInfo],
+
+    // The function to parse the subcommand arguments.
+    pub parse_func: &'a mut dyn FnMut(&[&str], &[&str]) -> Result<(), EarlyExit>,
+}
+
+impl<'a> ParseStructSubCommand<'a> {
+    fn parse(
+        &mut self,
+        help: bool,
+        cmd_name: &[&str],
+        arg: &str,
+        remaining_args: &[&str],
+    ) -> Result<bool, EarlyExit> {
+        for subcommand in self.subcommands {
+            if subcommand.name == arg {
+                let mut command = cmd_name.to_owned();
+                command.push(subcommand.name);
+                let prepended_help;
+                let remaining_args = if help {
+                    prepended_help = prepend_help(remaining_args);
+                    &prepended_help
+                } else {
+                    remaining_args
+                };
+
+                (self.parse_func)(&command, remaining_args)?;
+
+                return Ok(true);
+            }
+        }
+
+        return Ok(false);
+    }
 }
 
 // Prepend `help` to a list of arguments.
 // This is used to pass the `help` argument on to subcommands.
-#[doc(hidden)]
-pub fn prepend_help<'a>(args: &[&'a str]) -> Vec<&'a str> {
+fn prepend_help<'a>(args: &[&'a str]) -> Vec<&'a str> {
     [&["help"], args].concat()
 }
 
@@ -473,13 +624,7 @@ pub fn print_subcommands(commands: &[&CommandInfo]) -> String {
     out
 }
 
-#[doc(hidden)]
-pub fn expected_subcommand(commands: &[&str]) -> String {
-    ["Expected one of the following subcommands: ", &commands.join(", "), "\n"].concat()
-}
-
-#[doc(hidden)]
-pub fn unrecognized_arg(arg: &str) -> String {
+fn unrecognized_arg(arg: &str) -> String {
     ["Unrecognized argument: ", arg, "\n"].concat()
 }
 

@@ -403,14 +403,6 @@ pub fn unrecognized_argument(x: &str) -> String {
     ["Unrecognized argument: ", x, "\n"].concat()
 }
 
-// A sentinel value that indicates that there is no
-// output table mapping for the given flag.
-// This is used for arguments like `--verbose` and `--quiet`
-// that must be silently accepted if the `argh` user hasn't
-// specified their behavior explicitly.
-#[doc(hidden)]
-pub const OUTPUT_TABLE_NONE: usize = std::usize::MAX;
-
 /// Parse a commandline option.
 ///
 /// `arg`: the current option argument being parsed (e.g. `--foo`).
@@ -432,10 +424,6 @@ pub fn parse_option(
         .iter()
         .find_map(|&(name, pos)| if name == arg { Some(pos) } else { None })
         .ok_or_else(|| unrecognized_argument(arg))?;
-
-    if pos == OUTPUT_TABLE_NONE {
-        return Ok(());
-    }
 
     match &mut output_table[pos] {
         CmdOption::Flag(b) => b.set_flag(),

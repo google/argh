@@ -752,44 +752,6 @@ Options:
         e.status.expect_err("should be an error");
     }
 
-    // Commandline tools are expected to support common switches:
-    // --help
-    // --quiet
-    // --verbose
-    // --version
-
-    // help_is_supported (see above help_* tests)
-
-    #[test]
-    fn quiet_is_supported() {
-        // TODO support quiet
-    }
-
-    #[test]
-    fn verbose_is_supported() {
-        // TODO support verbose
-    }
-
-    #[test]
-    fn version_is_supported() {
-        // TODO support version
-    }
-
-    #[test]
-    fn quiet_is_not_supported_in_subcommands() {
-        // TODO support quiet
-    }
-
-    #[test]
-    fn verbose_is_not_supported_in_subcommands() {
-        // TODO support verbose
-    }
-
-    #[test]
-    fn version_is_not_supported_in_subcommands() {
-        // TODO support version
-    }
-
     #[derive(FromArgs, PartialEq, Debug)]
     #[argh(
         description = "Destroy the contents of <file>.",

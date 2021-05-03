@@ -238,9 +238,35 @@ fn impl_from_args_struct(
         .collect();
 
     ensure_only_last_positional_is_optional(errors, &fields);
+
+    let impl_span = Span::call_site();
+
+    let from_args_method = impl_from_args_struct_from_args(
+        errors,
+        type_attrs,
+        &fields,
+    );
+
     let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
-    let init_fields = declare_local_storage_for_fields(&fields);
-    let unwrap_fields = unwrap_fields(&fields);
+
+    let trait_impl = quote_spanned! { impl_span =>
+        impl argh::FromArgs for #name {
+            #from_args_method
+        }
+
+        #top_or_sub_cmd_impl
+    };
+
+    trait_impl.into()
+}
+
+fn impl_from_args_struct_from_args<'a>(
+    errors: &Errors,
+    type_attrs: &TypeAttrs,
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let init_fields = declare_local_storage_for_from_args_fields(&fields);
+    let unwrap_fields = unwrap_from_args_fields(&fields);
     let positional_fields: Vec<&StructField<'_>> =
         fields.iter().filter(|field| field.kind == FieldKind::Positional).collect();
     let positional_field_idents = positional_fields.iter().map(|field| &field.field.ident);
@@ -253,8 +279,8 @@ fn impl_from_args_struct(
     let flag_output_table = fields.iter().filter_map(|field| {
         let field_name = &field.field.ident;
         match field.kind {
-            FieldKind::Option => Some(quote! { argh::CmdOption::Value(&mut #field_name) }),
-            FieldKind::Switch => Some(quote! { argh::CmdOption::Flag(&mut #field_name) }),
+            FieldKind::Option => Some(quote! { argh::ParseStructOption::Value(&mut #field_name) }),
+            FieldKind::Switch => Some(quote! { argh::ParseStructOption::Flag(&mut #field_name) }),
             FieldKind::SubCommand | FieldKind::Positional => None,
         }
     });
@@ -276,135 +302,67 @@ fn impl_from_args_struct(
     let append_missing_requirements =
         append_missing_requirements(&missing_requirements_ident, &fields);
 
-    let check_subcommands = if let Some(subcommand) = subcommand {
+    let parse_subcommands = if let Some(subcommand) = subcommand {
         let name = subcommand.name;
         let ty = subcommand.ty_without_wrapper;
         quote_spanned! { impl_span =>
-            for __subcommand in <#ty as argh::SubCommands>::COMMANDS {
-                if __subcommand.name == __next_arg {
-                    let mut __command = __cmd_name.to_owned();
-                    __command.push(__subcommand.name);
-                    let __prepended_help;
-                    let __remaining_args = if __help {
-                        __prepended_help = argh::prepend_help(__remaining_args);
-                        &__prepended_help
-                    } else {
-                        __remaining_args
-                    };
-                    #name = Some(<#ty as argh::FromArgs>::from_args(&__command, __remaining_args)?);
-                    // Unset `help`, since we handled it in the subcommand
-                    __help = false;
-                    break 'parse_args;
-                }
-            }
+            Some(argh::ParseStructSubCommand {
+                subcommands: <#ty as argh::SubCommands>::COMMANDS,
+                parse_func: &mut |__command, __remaining_args| {
+                    #name = Some(<#ty as argh::FromArgs>::from_args(__command, __remaining_args)?);
+                    Ok(())
+                },
+            })
         }
     } else {
-        TokenStream::new()
+        quote_spanned! { impl_span => None }
     };
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
-    let trait_impl = quote_spanned! { impl_span =>
-        impl argh::FromArgs for #name {
-            fn from_args(__cmd_name: &[&str], __args: &[&str])
-                -> std::result::Result<Self, argh::EarlyExit>
-            {
-                #( #init_fields )*
-                let __flag_output_table = &mut [
-                    #( #flag_output_table, )*
-                ];
+    let method_impl = quote_spanned! { impl_span =>
+        fn from_args(__cmd_name: &[&str], __args: &[&str])
+            -> std::result::Result<Self, argh::EarlyExit>
+        {
+            #( #init_fields )*
 
-                let __positional_output_table = &mut [
-                    #( (
-                        &mut #positional_field_idents as &mut argh::ParseValueSlot,
-                        #positional_field_names
-                    ), )*
-                ];
+            argh::parse_struct_args(
+                __cmd_name,
+                __args,
+                argh::ParseStructOptions {
+                    arg_to_slot: &[ #( #flag_str_to_output_table_map ,)* ],
+                    slots: &mut [ #( #flag_output_table, )* ],
+                },
+                argh::ParseStructPositionals {
+                    positionals: &mut [
+                        #(
+                            argh::ParseStructPositional {
+                                name: #positional_field_names,
+                                slot: &mut #positional_field_idents as &mut argh::ParseValueSlot,
+                            },
+                        )*
+                    ],
+                    last_is_repeating: #last_positional_is_repeating,
+                },
+                #parse_subcommands,
+                &|| #help,
+            )?;
 
-                let mut __help = false;
-                let mut __remaining_args = __args;
-                let mut __positional_index = 0;
-                let mut __options_ended = false;
-                'parse_args: while let Some(&__next_arg) = __remaining_args.get(0) {
-                    __remaining_args = &__remaining_args[1..];
-                    if (__next_arg == "--help" || __next_arg == "help") && !__options_ended {
-                        __help = true;
-                        continue;
-                    }
+            let mut #missing_requirements_ident = argh::MissingRequirements::default();
+            #(
+                #append_missing_requirements
+            )*
+            #missing_requirements_ident.err_on_any()?;
 
-                    if __next_arg.starts_with("-") && !__options_ended {
-                        if __next_arg == "--" {
-                            __options_ended = true;
-                            continue;
-                        }
-
-                        if __help {
-                            return Err(
-                                "Trailing arguments are not allowed after `help`."
-                                    .to_string()
-                                    .into()
-                            );
-                        }
-
-                        argh::parse_option(
-                            __next_arg,
-                            &mut __remaining_args,
-                            __flag_output_table,
-                            &[ #( #flag_str_to_output_table_map ,)* ],
-                        )?;
-                        continue;
-                    }
-
-                    #check_subcommands
-
-                    if __positional_index < __positional_output_table.len() {
-                        argh::parse_positional(
-                            __next_arg,
-                            &mut __positional_output_table[__positional_index],
-                        )?;
-
-                        // Don't increment position if we're at the last arg
-                        // *and* the last arg is repeating.
-                        let __skip_increment =
-                            #last_positional_is_repeating &&
-                             __positional_index == __positional_output_table.len() - 1;
-
-                        if !__skip_increment {
-                            __positional_index += 1;
-                        }
-                    } else {
-                        return std::result::Result::Err(argh::EarlyExit {
-                            output: argh::unrecognized_arg(__next_arg),
-                            status: std::result::Result::Err(()),
-                        });
-                    }
-                }
-
-                if __help {
-                    return std::result::Result::Err(argh::EarlyExit {
-                        output: #help,
-                        status: std::result::Result::Ok(()),
-                    });
-                }
-
-                let mut #missing_requirements_ident = argh::MissingRequirements::default();
-                #(
-                    #append_missing_requirements
-                )*
-                #missing_requirements_ident.err_on_any()?;
-
-                Ok(Self {
-                    #( #unwrap_fields, )*
-                })
-            }
+            Ok(Self {
+                #( #unwrap_fields, )*
+            })
         }
-
-        #top_or_sub_cmd_impl
     };
 
-    trait_impl.into()
+    method_impl.into()
 }
 
 /// Ensures that only the last positional arg is non-required.
@@ -458,7 +416,7 @@ fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttr
 /// Most fields are stored in `Option<FieldType>` locals.
 /// `argh(option)` fields are stored in a `ParseValueSlotTy` along with a
 /// function that knows how to decode the appropriate value.
-fn declare_local_storage_for_fields<'a>(
+fn declare_local_storage_for_from_args_fields<'a>(
     fields: &'a [StructField<'a>],
 ) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
@@ -503,7 +461,7 @@ fn declare_local_storage_for_fields<'a>(
 }
 
 /// Unwrap non-optional fields and take options out of their tuple slots.
-fn unwrap_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
+fn unwrap_from_args_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
         let field_name = field.name;
         match field.kind {

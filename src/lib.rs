@@ -318,6 +318,28 @@ where
 // The following items are all used by the generated code, and should not be considered part
 // of this library's public API surface.
 
+#[doc(hidden)]
+pub trait ParseFlag {
+    fn set_flag(&mut self, arg: &str);
+}
+
+impl<T: Flag> ParseFlag for T {
+    fn set_flag(&mut self, _arg: &str) {
+        <T as Flag>::set_flag(self);
+    }
+}
+
+#[doc(hidden)]
+pub struct RedactFlag {
+    pub slot: Option<String>,
+}
+
+impl ParseFlag for RedactFlag {
+    fn set_flag(&mut self, arg: &str) {
+        self.slot = Some(arg.to_string());
+    }
+}
+
 // A trait for for slots that reserve space for a value and know how to parse that value
 // from a command-line `&str` argument.
 //
@@ -326,7 +348,7 @@ where
 // generic parameters.
 #[doc(hidden)]
 pub trait ParseValueSlot {
-    fn fill_slot(&mut self, value: &str) -> Result<(), String>;
+    fn fill_slot(&mut self, arg: &str, value: &str) -> Result<(), String>;
 }
 
 // The concrete type implementing the `ParseValueSlot` trait.
@@ -338,25 +360,25 @@ pub struct ParseValueSlotTy<Slot, T> {
     // The slot for a parsed value.
     pub slot: Slot,
     // The function to parse the value from a string
-    pub parse_func: fn(&str) -> Result<T, String>,
+    pub parse_func: fn(&str, &str) -> Result<T, String>,
 }
 
 // `ParseValueSlotTy<Option<T>, T>` is used as the slot for all non-repeating
 // arguments, both optional and required.
 impl<T> ParseValueSlot for ParseValueSlotTy<Option<T>, T> {
-    fn fill_slot(&mut self, value: &str) -> Result<(), String> {
+    fn fill_slot(&mut self, arg: &str, value: &str) -> Result<(), String> {
         if self.slot.is_some() {
             return Err("duplicate values provided".to_string());
         }
-        self.slot = Some((self.parse_func)(value)?);
+        self.slot = Some((self.parse_func)(arg, value)?);
         Ok(())
     }
 }
 
 // `ParseValueSlotTy<Vec<T>, T>` is used as the slot for repeating arguments.
 impl<T> ParseValueSlot for ParseValueSlotTy<Vec<T>, T> {
-    fn fill_slot(&mut self, value: &str) -> Result<(), String> {
-        self.slot.push((self.parse_func)(value)?);
+    fn fill_slot(&mut self, arg: &str, value: &str) -> Result<(), String> {
+        self.slot.push((self.parse_func)(arg, value)?);
         Ok(())
     }
 }
@@ -485,13 +507,13 @@ impl<'a> ParseStructOptions<'a> {
             .ok_or_else(|| unrecognized_argument(arg))?;
 
         match self.slots[pos] {
-            ParseStructOption::Flag(ref mut b) => b.set_flag(),
+            ParseStructOption::Flag(ref mut b) => b.set_flag(arg),
             ParseStructOption::Value(ref mut pvs) => {
                 let value = remaining_args
                     .get(0)
                     .ok_or_else(|| ["No value provided for option '", arg, "'.\n"].concat())?;
                 *remaining_args = &remaining_args[1..];
-                pvs.fill_slot(value).map_err(|s| {
+                pvs.fill_slot(arg, value).map_err(|s| {
                     ["Error parsing option '", arg, "' with value '", value, "': ", &s, "\n"]
                         .concat()
                 })?;
@@ -510,7 +532,7 @@ fn unrecognized_argument(x: &str) -> String {
 #[doc(hidden)]
 pub enum ParseStructOption<'a> {
     // A flag which is set to `true` when provided.
-    Flag(&'a mut dyn Flag),
+    Flag(&'a mut dyn ParseFlag),
     // A value which is parsed from the string following the `--` argument,
     // e.g. `--foo bar`.
     Value(&'a mut dyn ParseValueSlot),
@@ -559,7 +581,7 @@ impl<'a> ParseStructPositional<'a> {
     ///
     /// `arg`: the argument supplied by the user.
     fn parse(&mut self, arg: &str) -> Result<(), EarlyExit> {
-        self.slot.fill_slot(arg).map_err(|s| {
+        self.slot.fill_slot("", arg).map_err(|s| {
             [
                 "Error parsing positional argument '",
                 self.name,

@@ -960,7 +960,7 @@ fn redact_switch() {
     assert_eq!(actual, &["<<<arg0>>>", "--faster"]);
 
     let actual = Cmd::redact(&["<<<arg0>>>"], &["-f"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "--faster"]);
+    assert_eq!(actual, &["<<<arg0>>>", "-f"]);
 }
 
 #[test]

@@ -876,3 +876,304 @@ Error codes:
         );
     }
 }
+
+#[test]
+fn redact_no_args() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option)]
+        /// a msg param
+        msg: Option<String>,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &[]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>"]);
+}
+
+#[test]
+fn redact_optional_arg() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option)]
+        /// a msg param
+        msg: Option<String>,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "--msg"]);
+}
+
+#[test]
+fn redact_two_option_args() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option)]
+        /// a msg param
+        msg: String,
+
+        #[argh(option)]
+        /// a delivery param
+        delivery: String,
+    }
+
+    let actual =
+        Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "--msg", "--delivery"]);
+}
+
+#[test]
+fn redact_option_one_optional_args() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option)]
+        /// a msg param
+        msg: String,
+
+        #[argh(option)]
+        /// a delivery param
+        delivery: Option<String>,
+    }
+
+    let actual =
+        Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "--msg", "--delivery"]);
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "--msg"]);
+}
+
+#[test]
+fn redact_switch() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(switch, short = 'f')]
+        /// speed of cmd
+        faster: bool,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["--faster"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "--faster"]);
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["-f"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "--faster"]);
+}
+
+#[test]
+fn redact_positional() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed"]);
+}
+
+#[test]
+fn redact_positional_repeating() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: Vec<u8>,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "6"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed", "speed"]);
+}
+
+#[test]
+fn redact_positional_err() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &[]).unwrap_err();
+    assert_eq!(
+        actual,
+        argh::EarlyExit {
+            output: "Required positional arguments not provided:\n    speed\n".into(),
+            status: Err(()),
+        }
+    );
+}
+
+#[test]
+fn redact_two_positional() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+
+        #[argh(positional)]
+        /// direction
+        direction: String,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "north"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed", "direction"]);
+}
+
+#[test]
+fn redact_positional_option() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+
+        #[argh(option)]
+        /// direction
+        direction: String,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "--direction", "north"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed", "--direction"]);
+}
+
+#[test]
+fn redact_positional_optional_option() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+
+        #[argh(option)]
+        /// direction
+        direction: Option<String>,
+    }
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed"]);
+}
+
+#[test]
+fn redact_subcommand() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+
+        #[argh(subcommand)]
+        /// means of transportation
+        means: MeansSubcommand,
+    }
+
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    #[argh(subcommand)]
+    enum MeansSubcommand {
+        Walking(WalkingSubcommand),
+        Biking(BikingSubcommand),
+        Driving(DrivingSubcommand),
+    }
+
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "walking")]
+    /// Short description
+    struct WalkingSubcommand {
+        #[argh(option)]
+        /// a song to listen to
+        music: String,
+    }
+
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "biking")]
+    /// Short description
+    struct BikingSubcommand {}
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "driving")]
+    /// short description
+    struct DrivingSubcommand {}
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "walking", "--music", "Bach"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed", "walking", "--music"]);
+}
+
+#[test]
+fn redact_subcommand_with_space_in_name() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+
+        #[argh(subcommand)]
+        /// means of transportation
+        means: MeansSubcommand,
+    }
+
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    #[argh(subcommand)]
+    enum MeansSubcommand {
+        Walking(WalkingSubcommand),
+        Biking(BikingSubcommand),
+    }
+
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "has space")]
+    /// Short description
+    struct WalkingSubcommand {
+        #[argh(option)]
+        /// a song to listen to
+        music: String,
+    }
+
+    #[derive(FromArgs, Debug)]
+    #[argh(subcommand, name = "biking")]
+    /// Short description
+    struct BikingSubcommand {}
+
+    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "has space", "--music", "Bach"]).unwrap();
+    assert_eq!(actual, &["<<<arg0>>>", "speed", "has space", "--music"]);
+}
+
+#[test]
+fn redact_produces_help() {
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Repeating {
+        #[argh(option, short = 'n')]
+        /// fooey
+        n: Vec<String>,
+    }
+
+    match Repeating::redact(&["test_arg_0"], &["--help"]) {
+        Ok(_) => panic!("help was parsed as args"),
+        Err(e) => {
+            assert_eq!(
+                e.output,
+                r###"Usage: test_arg_0 [-n <n...>]
+
+Woot
+
+Options:
+  -n, --n           fooey
+  --help            display usage information
+"###,
+            );
+        }
+    }
+}

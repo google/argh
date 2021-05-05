@@ -568,7 +568,7 @@ fn declare_local_storage_for_from_args_fields<'a>(
                     let mut #field_name: argh::ParseValueSlotTy<#field_slot_type, #field_type>
                         = argh::ParseValueSlotTy {
                             slot: std::default::Default::default(),
-                            parse_func: #from_str_fn,
+                            parse_func: |_, value| { #from_str_fn(value) },
                         };
                 }
             }
@@ -622,15 +622,17 @@ fn declare_local_storage_for_redact_fields<'a>(
         match field.kind {
             FieldKind::Switch => {
                 quote! {
-                    let mut #field_name = false;
+                    let mut #field_name = argh::RedactFlag {
+                        slot: None,
+                    };
                 }
             }
             FieldKind::Option => {
                 quote! {
-                    let mut #field_name: argh::ParseValueSlotTy::<Option<()>, ()> =
+                    let mut #field_name: argh::ParseValueSlotTy::<Option<String>, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
-                        parse_func: |_| { Ok(()) },
+                        parse_func: |arg, _| { Ok(arg.to_string()) },
                     };
                 }
             }
@@ -649,7 +651,7 @@ fn declare_local_storage_for_redact_fields<'a>(
                     let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
-                        parse_func: |_| { Ok(#long_name.to_string()) },
+                        parse_func: |_, _| { Ok(#long_name.to_string()) },
                     };
                 }
 
@@ -667,19 +669,10 @@ fn unwrap_redact_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item
         let field_name = field.name;
 
         match field.kind {
-            FieldKind::Switch => {
-                let long_name = field.long_name.as_ref().expect("switch should have long name");
+            FieldKind::Switch | FieldKind::Option => {
                 quote! {
-                    if #field_name {
-                        __redacted.push(#long_name.to_string());
-                    }
-                }
-            }
-            FieldKind::Option => {
-                let long_name = field.long_name.as_ref().expect("option should have long name");
-                quote! {
-                    if #field_name.slot.is_some() {
-                        __redacted.push(#long_name.to_string());
+                    if let Some(__field_name) = #field_name.slot {
+                        __redacted.push(__field_name);
                     }
                 }
             }

@@ -1,11 +1,11 @@
 [package]
-name = "argh"
+name = "cargho"
 version = "0.1.4"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
 keywords = ["args", "arguments", "derive", "cli"]
 license = "BSD-3-Clause"
-description = "Derive-based argument parser optimized for code size"
+description = "Derive-based argument parser optimized for code size, but now up to date in Cargo!"
 repository = "https://github.com/google/argh"
 
 [dependencies]

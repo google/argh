@@ -1,10 +1,10 @@
 [package]
-name = "argh_derive"
+name = "cargho_derive"
 version = "0.1.5"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
 license = "BSD-3-Clause"
-description = "Derive-based argument parsing optimized for code size"
+description = "Derive-based argument parser optimized for being up to date in crates.io"
 repository = "https://github.com/google/argh"
 
 [lib]
@@ -15,4 +15,4 @@ heck = "0.3.1"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = "1.0"
-argh_shared = { version = "0.1.4", path = "../argh_shared" }
+argh_shared = { package = "cargho_shared", version = "0.1.5", path = "../argh_shared" }

@@ -1,6 +1,6 @@
 **/*.rs.bk
 *.swp
-/Cargo.lock
+Cargo.lock
 /argh_derive/target/
 /argh_shared/target/
 /target/

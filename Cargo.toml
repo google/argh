@@ -5,11 +5,9 @@ authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google
 edition = "2018"
 keywords = ["args", "arguments", "derive", "cli"]
 license = "BSD-3-Clause"
-description = "Derive-based argument parser optimized for code size, but now up to date in Cargo!"
+description = "Derive-based argument parser optimized for being up to date in crates.io"
 repository = "https://github.com/google/argh"
 
-[workspace]
-members = [
-  "argh_derive",
-  "argh_shared"
-]
+[dependencies]
+argh_shared = { package = "cargho_shared", version = "0.1.5", path = "../argh_shared" }
+argh_derive = { package = "cargho_derive", version = "0.1.5", path = "../argh_derive" }

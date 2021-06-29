@@ -247,7 +247,7 @@ fn impl_from_args_struct(
         &fields,
     );
 
-    let redact_method = impl_from_args_struct_redact(
+    let redact_arg_values_method = impl_from_args_struct_redact_arg_values(
         errors,
         type_attrs,
         &fields,
@@ -259,7 +259,7 @@ fn impl_from_args_struct(
         impl argh::FromArgs for #name {
             #from_args_method
 
-            #redact_method
+            #redact_arg_values_method
         }
 
         #top_or_sub_cmd_impl
@@ -373,13 +373,13 @@ fn impl_from_args_struct_from_args<'a>(
     method_impl.into()
 }
 
-fn impl_from_args_struct_redact<'a>(
+fn impl_from_args_struct_redact_arg_values<'a>(
     errors: &Errors,
     type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
 ) -> TokenStream {
-    let init_fields = declare_local_storage_for_redact_fields(&fields);
-    let unwrap_fields = unwrap_redact_fields(&fields);
+    let init_fields = declare_local_storage_for_redact_arg_values_fields(&fields);
+    let unwrap_fields = unwrap_redact_arg_values_fields(&fields);
 
     let positional_fields: Vec<&StructField<'_>> =
         fields.iter().filter(|field| field.kind == FieldKind::Positional).collect();
@@ -423,7 +423,7 @@ fn impl_from_args_struct_redact<'a>(
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
                 parse_func: &mut |__command, __remaining_args| {
-                    #name = Some(<#ty as argh::FromArgs>::redact(__command, __remaining_args)?);
+                    #name = Some(<#ty as argh::FromArgs>::redact_arg_values(__command, __remaining_args)?);
                     Ok(())
                 },
             })
@@ -443,7 +443,7 @@ fn impl_from_args_struct_redact<'a>(
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
-        fn redact(__cmd_name: &[&str], __args: &[&str]) -> Result<Vec<String>, argh::EarlyExit> {
+        fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> Result<Vec<String>, argh::EarlyExit> {
             #( #init_fields )*
 
             argh::parse_struct_args(
@@ -613,7 +613,7 @@ fn unwrap_from_args_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<I
 /// Most fields are stored in `Option<FieldType>` locals.
 /// `argh(option)` fields are stored in a `ParseValueSlotTy` along with a
 /// function that knows how to decode the appropriate value.
-fn declare_local_storage_for_redact_fields<'a>(
+fn declare_local_storage_for_redact_arg_values_fields<'a>(
     fields: &'a [StructField<'a>],
 ) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
@@ -664,7 +664,7 @@ fn declare_local_storage_for_redact_fields<'a>(
 }
 
 /// Unwrap non-optional fields and take options out of their tuple slots.
-fn unwrap_redact_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
+fn unwrap_redact_arg_values_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
         let field_name = field.name;
 
@@ -850,11 +850,11 @@ fn impl_from_args_enum(
                 unreachable!("no subcommand matched")
             }
 
-            fn redact(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
+            fn redact_arg_values(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
                 let subcommand_name = *command_name.last().expect("no subcommand name");
                 #(
                     if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
-                        return <#variant_ty as argh::FromArgs>::redact(command_name, args);
+                        return <#variant_ty as argh::FromArgs>::redact_arg_values(command_name, args);
                     }
                 )*
                 unreachable!("no subcommand matched")

@@ -247,7 +247,7 @@ pub trait FromArgs: Sized {
     ///     students: Vec<String>,
     /// }
     ///
-    /// let args = ClassroomCmd::redact(
+    /// let args = ClassroomCmd::redact_arg_values(
     ///         &["classroom"],
     ///         &["list"],
     /// ).unwrap();
@@ -259,7 +259,7 @@ pub trait FromArgs: Sized {
     ///     ],
     /// );
     ///
-    /// let args = ClassroomCmd::redact(
+    /// let args = ClassroomCmd::redact_arg_values(
     ///     &["classroom"],
     ///     &["list", "--teacher-name", "Smith"],
     /// ).unwrap();
@@ -272,7 +272,7 @@ pub trait FromArgs: Sized {
     ///     ],
     /// );
     ///
-    /// let args = ClassroomCmd::redact(
+    /// let args = ClassroomCmd::redact_arg_values(
     ///     &["classroom"],
     ///     &["add", "--teacher-name", "Smith", "--started", "Math", "Abe", "Sung"],
     /// ).unwrap();
@@ -289,16 +289,16 @@ pub trait FromArgs: Sized {
     ///     ],
     /// );
     ///
-    /// // `ClassroomCmd::redact` will error out if passed invalid arguments.
+    /// // `ClassroomCmd::redact_arg_values` will error out if passed invalid arguments.
     /// assert_eq!(
-    ///     ClassroomCmd::redact(&["classroom"], &["add", "--teacher-name"]),
+    ///     ClassroomCmd::redact_arg_values(&["classroom"], &["add", "--teacher-name"]),
     ///     Err(argh::EarlyExit {
     ///         output: "No value provided for option '--teacher-name'.\n".into(),
     ///         status: Err(()),
     ///     }),
     /// );
     /// ```
-    fn redact(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
+    fn redact_arg_values(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
         Ok(vec!["<<REDACTED>>".into()])
     }
 }

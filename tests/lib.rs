@@ -887,8 +887,8 @@ fn redact_no_args() {
         msg: Option<String>,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &[]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>"]);
+    let actual = Cmd::redact(&["program-name"], &[]).unwrap();
+    assert_eq!(actual, &["program-name"]);
 }
 
 #[test]
@@ -901,8 +901,8 @@ fn redact_optional_arg() {
         msg: Option<String>,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "--msg"]);
+    let actual = Cmd::redact(&["program-name"], &["--msg", "hello"]).unwrap();
+    assert_eq!(actual, &["program-name", "--msg"]);
 }
 
 #[test]
@@ -920,8 +920,8 @@ fn redact_two_option_args() {
     }
 
     let actual =
-        Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "--msg", "--delivery"]);
+        Cmd::redact(&["program-name"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
+    assert_eq!(actual, &["program-name", "--msg", "--delivery"]);
 }
 
 #[test]
@@ -939,11 +939,11 @@ fn redact_option_one_optional_args() {
     }
 
     let actual =
-        Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "--msg", "--delivery"]);
+        Cmd::redact(&["program-name"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
+    assert_eq!(actual, &["program-name", "--msg", "--delivery"]);
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["--msg", "hello"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "--msg"]);
+    let actual = Cmd::redact(&["program-name"], &["--msg", "hello"]).unwrap();
+    assert_eq!(actual, &["program-name", "--msg"]);
 }
 
 #[test]
@@ -956,11 +956,11 @@ fn redact_switch() {
         faster: bool,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["--faster"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "--faster"]);
+    let actual = Cmd::redact(&["program-name"], &["--faster"]).unwrap();
+    assert_eq!(actual, &["program-name", "--faster"]);
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["-f"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "-f"]);
+    let actual = Cmd::redact(&["program-name"], &["-f"]).unwrap();
+    assert_eq!(actual, &["program-name", "-f"]);
 }
 
 #[test]
@@ -973,8 +973,8 @@ fn redact_positional() {
         speed: u8,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed"]);
+    let actual = Cmd::redact(&["program-name"], &["5"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed"]);
 }
 
 #[test]
@@ -987,8 +987,8 @@ fn redact_positional_repeating() {
         speed: Vec<u8>,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "6"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed", "speed"]);
+    let actual = Cmd::redact(&["program-name"], &["5", "6"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed", "speed"]);
 }
 
 #[test]
@@ -1001,7 +1001,7 @@ fn redact_positional_err() {
         speed: u8,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &[]).unwrap_err();
+    let actual = Cmd::redact(&["program-name"], &[]).unwrap_err();
     assert_eq!(
         actual,
         argh::EarlyExit {
@@ -1025,8 +1025,8 @@ fn redact_two_positional() {
         direction: String,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "north"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed", "direction"]);
+    let actual = Cmd::redact(&["program-name"], &["5", "north"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed", "direction"]);
 }
 
 #[test]
@@ -1043,8 +1043,8 @@ fn redact_positional_option() {
         direction: String,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "--direction", "north"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed", "--direction"]);
+    let actual = Cmd::redact(&["program-name"], &["5", "--direction", "north"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed", "--direction"]);
 }
 
 #[test]
@@ -1061,8 +1061,8 @@ fn redact_positional_optional_option() {
         direction: Option<String>,
     }
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed"]);
+    let actual = Cmd::redact(&["program-name"], &["5"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed"]);
 }
 
 #[test]
@@ -1106,8 +1106,8 @@ fn redact_subcommand() {
     /// short description
     struct DrivingSubcommand {}
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "walking", "--music", "Bach"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed", "walking", "--music"]);
+    let actual = Cmd::redact(&["program-name"], &["5", "walking", "--music", "Bach"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed", "walking", "--music"]);
 }
 
 #[test]
@@ -1146,8 +1146,8 @@ fn redact_subcommand_with_space_in_name() {
     /// Short description
     struct BikingSubcommand {}
 
-    let actual = Cmd::redact(&["<<<arg0>>>"], &["5", "has space", "--music", "Bach"]).unwrap();
-    assert_eq!(actual, &["<<<arg0>>>", "speed", "has space", "--music"]);
+    let actual = Cmd::redact(&["program-name"], &["5", "has space", "--music", "Bach"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed", "has space", "--music"]);
 }
 
 #[test]
@@ -1160,20 +1160,38 @@ fn redact_produces_help() {
         n: Vec<String>,
     }
 
-    match Repeating::redact(&["test_arg_0"], &["--help"]) {
-        Ok(_) => panic!("help was parsed as args"),
-        Err(e) => {
-            assert_eq!(
-                e.output,
-                r###"Usage: test_arg_0 [-n <n...>]
+    assert_eq!(
+        Repeating::redact(&["program-name"], &["--help"]),
+        Err(argh::EarlyExit {
+            output: r###"Usage: program-name [-n <n...>]
 
 Woot
 
 Options:
   -n, --n           fooey
   --help            display usage information
-"###,
-            );
-        }
+"###
+            .to_string(),
+            status: Ok(()),
+        }),
+    );
+}
+
+#[test]
+fn redact_produces_errors_with_bad_arguments() {
+    #[derive(argh::FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Cmd {
+        #[argh(option, short = 'n')]
+        /// fooey
+        n: String,
     }
+
+    assert_eq!(
+        Cmd::redact(&["program-name"], &["--n"]),
+        Err(argh::EarlyExit {
+            output: "No value provided for option '--n'.\n".to_string(),
+            status: Err(()),
+        }),
+    );
 }

@@ -182,16 +182,122 @@ pub type CommandInfo = argh_shared::CommandInfo<'static>;
 pub trait FromArgs: Sized {
     /// Construct the type from an input set of arguments.
     ///
-    /// The first argument `command_name` is the identifier for the current
-    /// command, treating each segment as space-separated. This is to be
-    /// used in the output of `--help`, `--version`, and similar flags.
+    /// The first argument `command_name` is the identifier for the current command, treating each
+    /// segment as a separate item. This is used by in the output of `--help` in order to print out
+    /// how to run the command or a nested subcommand.
+    ///
+    /// The second argument `args` is the rest of the command line arguments.
     fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit>;
 
-    /// Get a String with just the argument names, e.g., options, flags, subcommands, etc.
+    /// Get a String with just the argument names, e.g., options, flags, subcommands, etc, but
+    /// without the values of the options and arguments. This can be useful as a means to capture
+    /// anonymous usage statistics without revealing the content entered by the end user.
     ///
-    /// The first argument `command_name` is the identifier for the current
-    /// command, treating each segment as space-separated. The second argument,
-    /// args, is the rest of the command line arguments.
+    /// The first argument `command_name` is the identifier for the current command, treating each
+    /// segment as a separate item. This is used in the error string if the arguments fail to parse.
+    ///
+    /// The second argument `args` is the rest of the command line arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use argh::FromArgs;
+    ///
+    /// /// Command to manage a classroom.
+    /// #[derive(FromArgs)]
+    /// struct ClassroomCmd {
+    ///     #[argh(subcommand)]
+    ///     subcommands: Subcommands,
+    /// }
+    ///
+    /// #[derive(FromArgs)]
+    /// #[argh(subcommand)]
+    /// enum Subcommands {
+    ///     List(ListCmd),
+    ///     Add(AddCmd),
+    /// }
+    ///
+    /// /// list all the classes.
+    /// #[derive(FromArgs)]
+    /// #[argh(subcommand, name = "list")]
+    /// struct ListCmd {
+    ///     /// list classes for only this teacher.
+    ///     #[argh(option)]
+    ///     teacher_name: Option<String>,
+    /// }
+    ///
+    /// /// add students to a class.
+    /// #[derive(FromArgs)]
+    /// #[argh(subcommand, name = "add")]
+    /// struct AddCmd {
+    ///     /// the name of the class's teacher.
+    ///     #[argh(option)]
+    ///     teacher_name: String,
+    ///
+    ///     /// has the class started yet?
+    ///     #[argh(switch)]
+    ///     started: bool,
+    ///
+    ///     /// the name of the class.
+    ///     #[argh(positional)]
+    ///     class_name: String,
+    ///
+    ///     /// the student names.
+    ///     #[argh(positional)]
+    ///     students: Vec<String>,
+    /// }
+    ///
+    /// let args = ClassroomCmd::redact(
+    ///         &["classroom"],
+    ///         &["list"],
+    /// ).unwrap();
+    /// assert_eq!(
+    ///     args,
+    ///     &[
+    ///         "classroom",
+    ///         "list",
+    ///     ],
+    /// );
+    ///
+    /// let args = ClassroomCmd::redact(
+    ///     &["classroom"],
+    ///     &["list", "--teacher-name", "Smith"],
+    /// ).unwrap();
+    /// assert_eq!(
+    ///    args,
+    ///    &[
+    ///         "classroom",
+    ///         "list",
+    ///         "--teacher-name",
+    ///     ],
+    /// );
+    ///
+    /// let args = ClassroomCmd::redact(
+    ///     &["classroom"],
+    ///     &["add", "--teacher-name", "Smith", "--started", "Math", "Abe", "Sung"],
+    /// ).unwrap();
+    /// assert_eq!(
+    ///     args,
+    ///     &[
+    ///         "classroom",
+    ///         "add",
+    ///         "--teacher-name",
+    ///         "--started",
+    ///         "class_name",
+    ///         "students",
+    ///         "students",
+    ///     ],
+    /// );
+    ///
+    /// // `ClassroomCmd::redact` will error out if passed invalid arguments.
+    /// assert_eq!(
+    ///     ClassroomCmd::redact(&["classroom"], &["add", "--teacher-name"]),
+    ///     Err(argh::EarlyExit {
+    ///         output: "No value provided for option '--teacher-name'.\n".into(),
+    ///         status: Err(()),
+    ///     }),
+    /// );
+    /// ```
     fn redact(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
         Ok(vec!["<<REDACTED>>".into()])
     }

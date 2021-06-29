@@ -920,7 +920,8 @@ fn redact_arg_values_two_option_args() {
     }
 
     let actual =
-        Cmd::redact_arg_values(&["program-name"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
+        Cmd::redact_arg_values(&["program-name"], &["--msg", "hello", "--delivery", "next day"])
+            .unwrap();
     assert_eq!(actual, &["program-name", "--msg", "--delivery"]);
 }
 
@@ -939,7 +940,8 @@ fn redact_arg_values_option_one_optional_args() {
     }
 
     let actual =
-        Cmd::redact_arg_values(&["program-name"], &["--msg", "hello", "--delivery", "next day"]).unwrap();
+        Cmd::redact_arg_values(&["program-name"], &["--msg", "hello", "--delivery", "next day"])
+            .unwrap();
     assert_eq!(actual, &["program-name", "--msg", "--delivery"]);
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["--msg", "hello"]).unwrap();
@@ -1106,7 +1108,8 @@ fn redact_arg_values_subcommand() {
     /// short description
     struct DrivingSubcommand {}
 
-    let actual = Cmd::redact_arg_values(&["program-name"], &["5", "walking", "--music", "Bach"]).unwrap();
+    let actual =
+        Cmd::redact_arg_values(&["program-name"], &["5", "walking", "--music", "Bach"]).unwrap();
     assert_eq!(actual, &["program-name", "speed", "walking", "--music"]);
 }
 
@@ -1146,7 +1149,8 @@ fn redact_arg_values_subcommand_with_space_in_name() {
     /// Short description
     struct BikingSubcommand {}
 
-    let actual = Cmd::redact_arg_values(&["program-name"], &["5", "has space", "--music", "Bach"]).unwrap();
+    let actual =
+        Cmd::redact_arg_values(&["program-name"], &["5", "has space", "--music", "Bach"]).unwrap();
     assert_eq!(actual, &["program-name", "speed", "has space", "--music"]);
 }
 

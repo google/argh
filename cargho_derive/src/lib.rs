@@ -4,9 +4,9 @@
 // license that can be found in the LICENSE file.
 
 
-/// Implementation of the `FromArgs` and `argh(...)` derive attributes.
+/// Implementation of the `FromArgs` and `cargho(...)` derive attributes.
 ///
-/// For more thorough documentation, see the `argh` crate itself.
+/// For more thorough documentation, see the `cargho` crate itself.
 extern crate proc_macro;
 
 use {
@@ -25,8 +25,8 @@ mod help;
 mod parse_attrs;
 
 /// Entrypoint for `#[derive(FromArgs)]`.
-#[proc_macro_derive(FromArgs, attributes(argh))]
-pub fn argh_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(FromArgs, attributes(cargho))]
+pub fn cargho_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
     let gen = impl_from_args(&ast);
     gen.into()
@@ -125,7 +125,7 @@ impl<'a> StructField<'a> {
             errors.err(
                 field,
                 concat!(
-                    "Missing `argh` field kind attribute.\n",
+                    "Missing `cargho` field kind attribute.\n",
                     "Expected one of: `switch`, `option`, `subcommand`, `positional`",
                 ),
             );
@@ -185,7 +185,7 @@ impl<'a> StructField<'a> {
         }
 
         // Determine the "long" name of options and switches.
-        // Defaults to the kebab-case'd field name if `#[argh(long = "...")]` is omitted.
+        // Defaults to the kebab-case'd field name if `#[cargho(long = "...")]` is omitted.
         let long_name = match kind {
             FieldKind::Switch | FieldKind::Option => {
                 let long_name = attrs
@@ -253,8 +253,8 @@ fn impl_from_args_struct(
     let flag_output_table = fields.iter().filter_map(|field| {
         let field_name = &field.field.ident;
         match field.kind {
-            FieldKind::Option => Some(quote! { argh::CmdOption::Value(&mut #field_name) }),
-            FieldKind::Switch => Some(quote! { argh::CmdOption::Flag(&mut #field_name) }),
+            FieldKind::Option => Some(quote! { cargho::CmdOption::Value(&mut #field_name) }),
+            FieldKind::Switch => Some(quote! { cargho::CmdOption::Flag(&mut #field_name) }),
             FieldKind::SubCommand | FieldKind::Positional => None,
         }
     });
@@ -280,18 +280,18 @@ fn impl_from_args_struct(
         let name = subcommand.name;
         let ty = subcommand.ty_without_wrapper;
         quote_spanned! { impl_span =>
-            for __subcommand in <#ty as argh::SubCommands>::COMMANDS {
+            for __subcommand in <#ty as cargho::SubCommands>::COMMANDS {
                 if __subcommand.name == __next_arg {
                     let mut __command = __cmd_name.to_owned();
                     __command.push(__subcommand.name);
                     let __prepended_help;
                     let __remaining_args = if __help {
-                        __prepended_help = argh::prepend_help(__remaining_args);
+                        __prepended_help = cargho::prepend_help(__remaining_args);
                         &__prepended_help
                     } else {
                         __remaining_args
                     };
-                    #name = Some(<#ty as argh::FromArgs>::from_args(&__command, __remaining_args)?);
+                    #name = Some(<#ty as cargho::FromArgs>::from_args(&__command, __remaining_args)?);
                     // Unset `help`, since we handled it in the subcommand
                     __help = false;
                     break 'parse_args;
@@ -307,9 +307,9 @@ fn impl_from_args_struct(
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let trait_impl = quote_spanned! { impl_span =>
-        impl argh::FromArgs for #name {
+        impl cargho::FromArgs for #name {
             fn from_args(__cmd_name: &[&str], __args: &[&str])
-                -> std::result::Result<Self, argh::EarlyExit>
+                -> std::result::Result<Self, cargho::EarlyExit>
             {
                 #( #init_fields )*
                 let __flag_output_table = &mut [
@@ -318,7 +318,7 @@ fn impl_from_args_struct(
 
                 let __positional_output_table = &mut [
                     #( (
-                        &mut #positional_field_idents as &mut argh::ParseValueSlot,
+                        &mut #positional_field_idents as &mut cargho::ParseValueSlot,
                         #positional_field_names
                     ), )*
                 ];
@@ -348,7 +348,7 @@ fn impl_from_args_struct(
                             );
                         }
 
-                        argh::parse_option(
+                        cargho::parse_option(
                             __next_arg,
                             &mut __remaining_args,
                             __flag_output_table,
@@ -360,7 +360,7 @@ fn impl_from_args_struct(
                     #check_subcommands
 
                     if __positional_index < __positional_output_table.len() {
-                        argh::parse_positional(
+                        cargho::parse_positional(
                             __next_arg,
                             &mut __positional_output_table[__positional_index],
                         )?;
@@ -375,21 +375,21 @@ fn impl_from_args_struct(
                             __positional_index += 1;
                         }
                     } else {
-                        return std::result::Result::Err(argh::EarlyExit {
-                            output: argh::unrecognized_arg(__next_arg),
+                        return std::result::Result::Err(cargho::EarlyExit {
+                            output: cargho::unrecognized_arg(__next_arg),
                             status: std::result::Result::Err(()),
                         });
                     }
                 }
 
                 if __help {
-                    return std::result::Result::Err(argh::EarlyExit {
+                    return std::result::Result::Err(cargho::EarlyExit {
                         output: #help,
                         status: std::result::Result::Ok(()),
                     });
                 }
 
-                let mut #missing_requirements_ident = argh::MissingRequirements::default();
+                let mut #missing_requirements_ident = cargho::MissingRequirements::default();
                 #(
                     #append_missing_requirements
                 )*
@@ -427,24 +427,24 @@ fn ensure_only_last_positional_is_optional(errors: &Errors, fields: &[StructFiel
     }
 }
 
-/// Implement `argh::TopLevelCommand` or `argh::SubCommand` as appropriate.
+/// Implement `cargho::TopLevelCommand` or `cargho::SubCommand` as appropriate.
 fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttrs) -> TokenStream {
     let description =
         help::require_description(errors, name.span(), &type_attrs.description, "type");
     if type_attrs.is_subcommand.is_none() {
         // Not a subcommand
         quote! {
-            impl argh::TopLevelCommand for #name {}
+            impl cargho::TopLevelCommand for #name {}
         }
     } else {
         let empty_str = syn::LitStr::new("", Span::call_site());
         let subcommand_name = type_attrs.name.as_ref().unwrap_or_else(|| {
-            errors.err(name, "`#[argh(name = \"...\")]` attribute is required for subcommands");
+            errors.err(name, "`#[cargho(name = \"...\")]` attribute is required for subcommands");
             &empty_str
         });
         quote! {
-            impl argh::SubCommand for #name {
-                const COMMAND: &'static argh::CommandInfo = &argh::CommandInfo {
+            impl cargho::SubCommand for #name {
+                const COMMAND: &'static cargho::CommandInfo = &cargho::CommandInfo {
                     name: #subcommand_name,
                     description: #description,
                 };
@@ -456,7 +456,7 @@ fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttr
 /// Declare a local slots to store each field in during parsing.
 ///
 /// Most fields are stored in `Option<FieldType>` locals.
-/// `argh(option)` fields are stored in a `ParseValueSlotTy` along with a
+/// `cargho(option)` fields are stored in a `ParseValueSlotTy` along with a
 /// function that knows how to decode the appropriate value.
 fn declare_local_storage_for_fields<'a>(
     fields: &'a [StructField<'a>],
@@ -479,14 +479,14 @@ fn declare_local_storage_for_fields<'a>(
                     Some(from_str_fn) => from_str_fn.into_token_stream(),
                     None => {
                         quote! {
-                            <#field_type as argh::FromArgValue>::from_arg_value
+                            <#field_type as cargho::FromArgValue>::from_arg_value
                         }
                     }
                 };
 
                 quote! {
-                    let mut #field_name: argh::ParseValueSlotTy<#field_slot_type, #field_type>
-                        = argh::ParseValueSlotTy {
+                    let mut #field_name: cargho::ParseValueSlotTy<#field_slot_type, #field_type>
+                        = cargho::ParseValueSlotTy {
                             slot: std::default::Default::default(),
                             parse_func: #from_str_fn,
                         };
@@ -496,7 +496,7 @@ fn declare_local_storage_for_fields<'a>(
                 quote! { let mut #field_name: #field_slot_type = None; }
             }
             FieldKind::Switch => {
-                quote! { let mut #field_name: #field_slot_type = argh::Flag::default(); }
+                quote! { let mut #field_name: #field_slot_type = cargho::Flag::default(); }
             }
         }
     })
@@ -547,7 +547,7 @@ fn flag_str_to_output_table_map_entries<'a>(fields: &'a [StructField<'a>]) -> Ve
     flag_str_to_output_table_map
 }
 
-/// For each non-optional field, add an entry to the `argh::MissingRequirements`.
+/// For each non-optional field, add an entry to the `cargho::MissingRequirements`.
 fn append_missing_requirements<'a>(
     // missing_requirements_ident
     mri: &syn::Ident,
@@ -579,7 +579,7 @@ fn append_missing_requirements<'a>(
                 quote! {
                     if #field_name.is_none() {
                         #mri.missing_subcommands(
-                            <#ty as argh::SubCommands>::COMMANDS,
+                            <#ty as cargho::SubCommands>::COMMANDS,
                         )
                     }
                 }
@@ -673,15 +673,15 @@ fn impl_from_args_enum(
     let variant_names = variants.iter().map(|x| x.name);
 
     quote! {
-        impl argh::FromArgs for #name {
+        impl cargho::FromArgs for #name {
             fn from_args(command_name: &[&str], args: &[&str])
-                -> std::result::Result<Self, argh::EarlyExit>
+                -> std::result::Result<Self, cargho::EarlyExit>
             {
                 let subcommand_name = *command_name.last().expect("no subcommand name");
                 #(
-                    if subcommand_name == <#variant_ty_1 as argh::SubCommand>::COMMAND.name {
+                    if subcommand_name == <#variant_ty_1 as cargho::SubCommand>::COMMAND.name {
                         return Ok(#name_repeating::#variant_names(
-                            <#variant_ty_2 as argh::FromArgs>::from_args(command_name, args)?
+                            <#variant_ty_2 as cargho::FromArgs>::from_args(command_name, args)?
                         ));
                     }
                 )*
@@ -689,9 +689,9 @@ fn impl_from_args_enum(
             }
         }
 
-        impl argh::SubCommands for #name {
-            const COMMANDS: &'static [&'static argh::CommandInfo] = &[#(
-                <#variant_ty_3 as argh::SubCommand>::COMMAND,
+        impl cargho::SubCommands for #name {
+            const COMMANDS: &'static [&'static cargho::CommandInfo] = &[#(
+                <#variant_ty_3 as cargho::SubCommand>::COMMAND,
             )*];
         }
     }

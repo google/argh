@@ -6,8 +6,8 @@ edition = "2018"
 keywords = ["args", "arguments", "derive", "cli"]
 license = "BSD-3-Clause"
 description = "Derive-based argument parser optimized for being up to date in crates.io"
-repository = "https://github.com/google/argh"
+repository = "https://github.com/google/cargho"
 
 [dependencies]
-argh_shared = { package = "cargho_shared", version = "0.1.5", path = "./argh_shared" }
-argh_derive = { package = "cargho_derive", version = "0.1.5", path = "./argh_derive" }
+cargho_shared = { version = "0.1.5", path = "./cargho_shared" }
+cargho_derive = { version = "0.1.5", path = "./cargho_derive" }

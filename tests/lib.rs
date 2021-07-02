@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-use {argh::FromArgs, cargho as argh, std::fmt::Debug};
+use {cargho::FromArgs, std::fmt::Debug};
 
 #[test]
 fn basic_example() {
@@ -11,15 +11,15 @@ fn basic_example() {
     /// Reach new heights.
     struct GoUp {
         /// whether or not to jump
-        #[argh(switch, short = 'j')]
+        #[cargho(switch, short = 'j')]
         jump: bool,
 
         /// how high to go
-        #[argh(option)]
+        #[cargho(option)]
         height: usize,
 
         /// an optional nickname for the pilot
-        #[argh(option)]
+        #[cargho(option)]
         pilot_nickname: Option<String>,
     }
 
@@ -33,7 +33,7 @@ fn custom_from_str_example() {
     /// Goofy thing.
     struct FiveStruct {
         /// always five
-        #[argh(option, from_str_fn(always_five))]
+        #[cargho(option, from_str_fn(always_five))]
         five: usize,
     }
 
@@ -50,12 +50,12 @@ fn subcommand_example() {
     #[derive(FromArgs, PartialEq, Debug)]
     /// Top-level command.
     struct TopLevel {
-        #[argh(subcommand)]
+        #[cargho(subcommand)]
         nested: MySubCommandEnum,
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand)]
+    #[cargho(subcommand)]
     enum MySubCommandEnum {
         One(SubCommandOne),
         Two(SubCommandTwo),
@@ -63,18 +63,18 @@ fn subcommand_example() {
 
     #[derive(FromArgs, PartialEq, Debug)]
     /// First subcommand.
-    #[argh(subcommand, name = "one")]
+    #[cargho(subcommand, name = "one")]
     struct SubCommandOne {
-        #[argh(option)]
+        #[cargho(option)]
         /// how many x
         x: usize,
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
     /// Second subcommand.
-    #[argh(subcommand, name = "two")]
+    #[cargho(subcommand, name = "two")]
     struct SubCommandTwo {
-        #[argh(switch)]
+        #[cargho(switch)]
         /// whether to fooey
         fooey: bool,
     }
@@ -91,7 +91,7 @@ fn multiline_doc_comment_description() {
     #[derive(FromArgs)]
     /// Short description
     struct Cmd {
-        #[argh(switch)]
+        #[cargho(switch)]
         /// a switch with a description
         /// that is spread across
         /// a number of
@@ -117,7 +117,7 @@ fn explicit_long_value_for_option() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(option, long = "foo")]
+        #[cargho(option, long = "foo")]
         /// bar bar
         x: u8,
     }
@@ -132,7 +132,7 @@ fn explicit_long_value_for_option() {
 #[allow(unused)]
 struct DescriptionStartsWithInitialism {
     /// URL fooey
-    #[argh(option)]
+    #[cargho(option)]
     x: u8,
 }
 
@@ -141,7 +141,7 @@ fn default_number() {
     #[derive(FromArgs)]
     /// Short description
     struct Cmd {
-        #[argh(option, default = "5")]
+        #[cargho(option, default = "5")]
         /// fooey
         x: u8,
     }
@@ -160,7 +160,7 @@ fn default_function() {
     #[derive(FromArgs)]
     /// Short description
     struct Cmd {
-        #[argh(option, default = "call_me_maybe()")]
+        #[cargho(option, default = "call_me_maybe()")]
         /// fooey
         msg: String,
     }
@@ -174,7 +174,7 @@ fn missing_option_value() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(option)]
+        #[cargho(option)]
         /// fooey
         msg: String,
     }
@@ -209,10 +209,10 @@ fn assert_error<T: FromArgs + Debug>(args: &[&str], err_msg: &str) {
 mod options {
     use super::*;
 
-    #[derive(argh::FromArgs, Debug, PartialEq)]
+    #[derive(cargho::FromArgs, Debug, PartialEq)]
     /// Woot
     struct Parsed {
-        #[argh(option, short = 'n')]
+        #[cargho(option, short = 'n')]
         /// fooey
         n: usize,
     }
@@ -227,10 +227,10 @@ mod options {
         );
     }
 
-    #[derive(argh::FromArgs, Debug, PartialEq)]
+    #[derive(cargho::FromArgs, Debug, PartialEq)]
     /// Woot
     struct Repeating {
-        #[argh(option, short = 'n')]
+        #[cargho(option, short = 'n')]
         /// fooey
         n: Vec<String>,
     }
@@ -249,10 +249,10 @@ Options:
         );
     }
 
-    #[derive(argh::FromArgs, Debug, PartialEq)]
+    #[derive(cargho::FromArgs, Debug, PartialEq)]
     /// Woot
     struct WithArgName {
-        #[argh(option, arg_name = "name")]
+        #[cargho(option, arg_name = "name")]
         /// fooey
         option_name: Option<String>,
     }
@@ -278,10 +278,10 @@ mod positional {
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
     struct LastRepeating {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: u32,
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         b: Vec<String>,
     }
@@ -308,10 +308,10 @@ Options:
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
     struct LastOptional {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: u32,
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         b: Option<String>,
     }
@@ -326,10 +326,10 @@ Options:
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
     struct LastDefaulted {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: u32,
-        #[argh(positional, default = "5")]
+        #[cargho(positional, default = "5")]
         /// fooey
         b: u32,
     }
@@ -344,10 +344,10 @@ Options:
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
     struct LastRequired {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: u32,
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         b: u32,
     }
@@ -370,10 +370,10 @@ Options:
         );
     }
 
-    #[derive(argh::FromArgs, Debug, PartialEq)]
+    #[derive(cargho::FromArgs, Debug, PartialEq)]
     /// Woot
     struct Parsed {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         n: usize,
     }
@@ -391,10 +391,10 @@ Options:
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
     struct WithOption {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: String,
-        #[argh(option)]
+        #[cargho(option)]
         /// fooey
         b: String,
     }
@@ -416,25 +416,25 @@ Required options not provided:
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
     struct WithSubcommand {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: String,
-        #[argh(subcommand)]
+        #[cargho(subcommand)]
         /// fooey
         b: Subcommand,
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         c: Vec<String>,
     }
 
     #[derive(FromArgs, Debug, PartialEq)]
-    #[argh(subcommand, name = "a")]
+    #[cargho(subcommand, name = "a")]
     /// Subcommand of positional::WithSubcommand.
     struct Subcommand {
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         a: String,
-        #[argh(positional)]
+        #[cargho(positional)]
         /// fooey
         b: Vec<String>,
     }
@@ -514,7 +514,7 @@ mod fuchsia_commandline_tools_rubric {
     #[derive(FromArgs)]
     /// One switch.
     struct OneSwitch {
-        #[argh(switch, short = 's')]
+        #[cargho(switch, short = 's')]
         /// just a switch
         switchy: bool,
     }
@@ -533,10 +533,10 @@ mod fuchsia_commandline_tools_rubric {
     #[derive(FromArgs, Debug)]
     /// Two Switches
     struct TwoSwitches {
-        #[argh(switch, short = 'a')]
+        #[cargho(switch, short = 'a')]
         /// a
         a: bool,
-        #[argh(switch, short = 'b')]
+        #[cargho(switch, short = 'b')]
         /// b
         b: bool,
     }
@@ -552,7 +552,7 @@ mod fuchsia_commandline_tools_rubric {
     #[derive(FromArgs, Debug)]
     /// One keyed option
     struct OneOption {
-        #[argh(option)]
+        #[cargho(option)]
         /// some description
         foo: String,
     }
@@ -595,11 +595,11 @@ mod fuchsia_commandline_tools_rubric {
         #[derive(FromArgs, Debug, PartialEq)]
         /// Positional arguments list
         struct StringList {
-            #[argh(positional)]
+            #[cargho(positional)]
             /// a list of strings
             strs: Vec<String>,
 
-            #[argh(switch)]
+            #[cargho(switch)]
             /// some flag
             flag: bool,
         }
@@ -631,7 +631,7 @@ mod fuchsia_commandline_tools_rubric {
         #[derive(FromArgs, Debug)]
         /// A type for testing repeating `-v`
         struct CountVerbose {
-            #[argh(switch, short = 'v')]
+            #[cargho(switch, short = 'v')]
             /// increase the verbosity of the command.
             verbose: i128,
         }
@@ -661,20 +661,20 @@ mod fuchsia_commandline_tools_rubric {
     #[derive(FromArgs, Debug)]
     /// A type for testing `--help`/`help`
     struct HelpTopLevel {
-        #[argh(subcommand)]
+        #[cargho(subcommand)]
         sub: HelpFirstSub,
     }
 
     #[derive(FromArgs, Debug)]
-    #[argh(subcommand, name = "first")]
+    #[cargho(subcommand, name = "first")]
     /// First subcommmand for testing `help`.
     struct HelpFirstSub {
-        #[argh(subcommand)]
+        #[cargho(subcommand)]
         sub: HelpSecondSub,
     }
 
     #[derive(FromArgs, Debug)]
-    #[argh(subcommand, name = "second")]
+    #[cargho(subcommand, name = "second")]
     /// Second subcommand for testing `help`.
     struct HelpSecondSub {}
 
@@ -753,7 +753,7 @@ Options:
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(
+    #[cargho(
         description = "Destroy the contents of <file>.",
         example = "Scribble 'abc' and then run |grind|.\n$ {command_name} -s 'abc' grind old.txt taxes.cp",
         note = "Use `{command_name} help <command>` for details on [<args>] for a subcommand.",
@@ -762,46 +762,46 @@ Options:
     )]
     struct HelpExample {
         /// force, ignore minor errors. This description is so long that it wraps to the next line.
-        #[argh(switch, short = 'f')]
+        #[cargho(switch, short = 'f')]
         force: bool,
 
         /// documentation
-        #[argh(switch)]
+        #[cargho(switch)]
         really_really_really_long_name_for_pat: bool,
 
         /// write <scribble> repeatedly
-        #[argh(option, short = 's')]
+        #[cargho(option, short = 's')]
         scribble: String,
 
         /// say more. Defaults to $BLAST_VERBOSE.
-        #[argh(switch, short = 'v')]
+        #[cargho(switch, short = 'v')]
         verbose: bool,
 
-        #[argh(subcommand)]
+        #[cargho(subcommand)]
         command: HelpExampleSubCommands,
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand)]
+    #[cargho(subcommand)]
     enum HelpExampleSubCommands {
         BlowUp(BlowUp),
         Grind(GrindCommand),
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand, name = "blow-up")]
+    #[cargho(subcommand, name = "blow-up")]
     /// explosively separate
     struct BlowUp {
         /// blow up bombs safely
-        #[argh(switch)]
+        #[cargho(switch)]
         safely: bool,
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand, name = "grind", description = "make smaller by many small cuts")]
+    #[cargho(subcommand, name = "grind", description = "make smaller by many small cuts")]
     struct GrindCommand {
         /// wear a visor while grinding
-        #[argh(switch)]
+        #[cargho(switch)]
         safely: bool,
     }
 

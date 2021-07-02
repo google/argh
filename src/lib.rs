@@ -13,27 +13,26 @@
 //! ## Basic Example
 //!
 //! ```rust,no_run
-//! use cargho as argh;
-//! use argh::FromArgs;
+//! use cargho::FromArgs;
 //!
 //! #[derive(FromArgs)]
 //! /// Reach new heights.
 //! struct GoUp {
 //!     /// whether or not to jump
-//!     #[argh(switch, short = 'j')]
+//!     #[cargho(switch, short = 'j')]
 //!     jump: bool,
 //!
 //!     /// how high to go
-//!     #[argh(option)]
+//!     #[cargho(option)]
 //!     height: usize,
 //!
 //!     /// an optional nickname for the pilot
-//!     #[argh(option)]
+//!     #[cargho(option)]
 //!     pilot_nickname: Option<String>,
 //! }
 //!
 //! fn main() {
-//!     let up: GoUp = argh::from_env();
+//!     let up: GoUp = cargho::from_env();
 //! }
 //! ```
 //!
@@ -61,12 +60,11 @@
 //! Options, like `height` and `pilot_nickname`, can be either required,
 //! optional, or repeating, depending on whether they are contained in an
 //! `Option` or a `Vec`. Default values can be provided using the
-//! `#[argh(default = "<your_code_here>")]` attribute, and in this case an
+//! `#[cargho(default = "<your_code_here>")]` attribute, and in this case an
 //! option is treated as optional.
 //!
 //! ```rust
-//! use cargho as argh;
-//! use argh::FromArgs;
+//! use cargho::FromArgs;
 //!
 //! fn default_height() -> usize {
 //!     5
@@ -76,20 +74,20 @@
 //! /// Reach new heights.
 //! struct GoUp {
 //!     /// an optional nickname for the pilot
-//!     #[argh(option)]
+//!     #[cargho(option)]
 //!     pilot_nickname: Option<String>,
 //!
 //!     /// an optional height
-//!     #[argh(option, default = "default_height()")]
+//!     #[cargho(option, default = "default_height()")]
 //!     height: usize,
 //!
 //!     /// an optional direction which is "up" by default
-//!     #[argh(option, default = "String::from(\"only up\")")]
+//!     #[cargho(option, default = "String::from(\"only up\")")]
 //!     direction: String,
 //! }
 //!
 //! fn main() {
-//!     let up: GoUp = argh::from_env();
+//!     let up: GoUp = cargho::from_env();
 //! }
 //! ```
 //!
@@ -99,14 +97,13 @@
 //! `fn(&str) -> Result<T, String>` using the `from_str_fn` attribute:
 //!
 //! ```
-//! use cargho as argh;
-//! # use argh::FromArgs;
+//! # use cargho::FromArgs;
 //!
 //! #[derive(FromArgs)]
 //! /// Goofy thing.
 //! struct FiveStruct {
 //!     /// always five
-//!     #[argh(option, from_str_fn(always_five))]
+//!     #[cargho(option, from_str_fn(always_five))]
 //!     five: usize,
 //! }
 //!
@@ -115,17 +112,16 @@
 //! }
 //! ```
 //!
-//! Positional arguments can be declared using `#[argh(positional)]`.
+//! Positional arguments can be declared using `#[cargho(positional)]`.
 //! These arguments will be parsed in order of their declaration in
 //! the structure:
 //!
 //! ```rust
-//! use cargho as argh;
-//! use argh::FromArgs;
+//! use cargho::FromArgs;
 //! #[derive(FromArgs, PartialEq, Debug)]
 //! /// A command with positional arguments.
 //! struct WithPositional {
-//!     #[argh(positional)]
+//!     #[cargho(positional)]
 //!     first: String,
 //! }
 //! ```
@@ -138,18 +134,17 @@
 //! over each command:
 //!
 //! ```rust
-//! use cargho as argh;
-//! # use argh::FromArgs;
+//! # use cargho::FromArgs;
 //!
 //! #[derive(FromArgs, PartialEq, Debug)]
 //! /// Top-level command.
 //! struct TopLevel {
-//!     #[argh(subcommand)]
+//!     #[cargho(subcommand)]
 //!     nested: MySubCommandEnum,
 //! }
 //!
 //! #[derive(FromArgs, PartialEq, Debug)]
-//! #[argh(subcommand)]
+//! #[cargho(subcommand)]
 //! enum MySubCommandEnum {
 //!     One(SubCommandOne),
 //!     Two(SubCommandTwo),
@@ -157,18 +152,18 @@
 //!
 //! #[derive(FromArgs, PartialEq, Debug)]
 //! /// First subcommand.
-//! #[argh(subcommand, name = "one")]
+//! #[cargho(subcommand, name = "one")]
 //! struct SubCommandOne {
-//!     #[argh(option)]
+//!     #[cargho(option)]
 //!     /// how many x
 //!     x: usize,
 //! }
 //!
 //! #[derive(FromArgs, PartialEq, Debug)]
 //! /// Second subcommand.
-//! #[argh(subcommand, name = "two")]
+//! #[cargho(subcommand, name = "two")]
 //! struct SubCommandTwo {
-//!     #[argh(switch)]
+//!     #[cargho(switch)]
 //!     /// whether to fooey
 //!     fooey: bool,
 //! }
@@ -178,10 +173,10 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::FromArgs;
+pub use cargho_derive::FromArgs;
 
 /// Information about a particular command used for output.
-pub type CommandInfo = argh_shared::CommandInfo<'static>;
+pub type CommandInfo = cargho_shared::CommandInfo<'static>;
 
 /// Types which can be constructed from a set of commandline arguments.
 pub trait FromArgs: Sized {
@@ -265,7 +260,7 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 
 /// Create a `FromArgs` type from the current process's `env::args`.
 ///
-/// This special cases usages where argh is being used in an environment where cargo is
+/// This special cases usages where cargho is being used in an environment where cargo is
 /// driving the build. We skip the second env variable.
 ///
 /// This function will exit early from the current process if argument parsing
@@ -473,7 +468,7 @@ pub fn prepend_help<'a>(args: &[&'a str]) -> Vec<&'a str> {
 pub fn print_subcommands(commands: &[&CommandInfo]) -> String {
     let mut out = String::new();
     for cmd in commands {
-        argh_shared::write_description(&mut out, cmd);
+        cargho_shared::write_description(&mut out, cmd);
     }
     out
 }

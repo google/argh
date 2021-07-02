@@ -8,7 +8,7 @@ use {
         parse_attrs::{Description, FieldKind, TypeAttrs},
         Optionality, StructField,
     },
-    argh_shared::INDENT,
+    cargho_shared::INDENT,
     proc_macro2::{Span, TokenStream},
     quote::quote,
 };
@@ -73,8 +73,8 @@ pub(crate) fn help(
         let subcommand_ty = subcommand.ty_without_wrapper;
         subcommand_format_arg = quote! { subcommands = subcommands };
         subcommand_calculation = quote! {
-            let subcommands = argh::print_subcommands(
-                <#subcommand_ty as argh::SubCommands>::COMMANDS
+            let subcommands = cargho::print_subcommands(
+                <#subcommand_ty as cargho::SubCommands>::COMMANDS
             );
         };
     } else {
@@ -187,7 +187,7 @@ pub fn require_description(
             err_span,
             &format!(
                 "#[derive(FromArgs)] {} with no description.
-Add a doc comment or an `#[argh(description = \"...\")]` attribute.",
+Add a doc comment or an `#[cargho(description = \"...\")]` attribute.",
                 kind
             ),
         );
@@ -221,6 +221,6 @@ fn option_description_format(
     }
     name.push_str(long_with_leading_dashes);
 
-    let info = argh_shared::CommandInfo { name: &*name, description };
-    argh_shared::write_description(out, &info);
+    let info = cargho_shared::CommandInfo { name: &*name, description };
+    cargho_shared::write_description(out, &info);
 }

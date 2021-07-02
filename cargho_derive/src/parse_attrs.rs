@@ -50,7 +50,7 @@ pub struct FieldType {
 
 /// A description of a `#![derive(FromArgs)]` struct.
 ///
-/// Defaults to the docstring if one is present, or `#[argh(description = "...")]`
+/// Defaults to the docstring if one is present, or `#[cargho(description = "...")]`
 /// if one is provided.
 pub struct Description {
     /// Whether the description was an explicit annotation or whether it was a doc string.
@@ -68,7 +68,7 @@ impl FieldAttrs {
                 continue;
             }
 
-            let ml = if let Some(ml) = argh_attr_to_meta_list(errors, attr) {
+            let ml = if let Some(ml) = cargho_attr_to_meta_list(errors, attr) {
                 ml
             } else {
                 continue;
@@ -124,7 +124,7 @@ impl FieldAttrs {
                     errors.err(
                         &meta,
                         concat!(
-                            "Invalid field-level `argh` attribute\n",
+                            "Invalid field-level `cargho` attribute\n",
                             "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `long`, ",
                             "`option`, `short`, `subcommand`, `switch`",
                         ),
@@ -138,8 +138,8 @@ impl FieldAttrs {
                 FieldKind::Option | FieldKind::Positional => {}
                 FieldKind::SubCommand | FieldKind::Switch => errors.err(
                     default,
-                    "`default` may only be specified on `#[argh(option)]` \
-                     or `#[argh(positional)]` fields",
+                    "`default` may only be specified on `#[cargho(option)]` \
+                     or `#[cargho(positional)]` fields",
                 ),
             }
         }
@@ -236,9 +236,9 @@ fn is_doc_attr(attr: &syn::Attribute) -> bool {
     is_matching_attr("doc", attr)
 }
 
-/// Checks for `#[argh ...]`
-fn is_argh_attr(attr: &syn::Attribute) -> bool {
-    is_matching_attr("argh", attr)
+/// Checks for `#[cargho ...]`
+fn is_cargho_attr(attr: &syn::Attribute) -> bool {
+    is_matching_attr("cargho", attr)
 }
 
 fn attr_to_meta_subtype<R: Clone>(
@@ -263,9 +263,9 @@ fn attr_to_meta_name_value(errors: &Errors, attr: &syn::Attribute) -> Option<syn
     attr_to_meta_subtype(errors, attr, |m| errors.expect_meta_name_value(m))
 }
 
-/// Filters out non-`#[argh(...)]` attributes and converts to `syn::MetaList`.
-fn argh_attr_to_meta_list(errors: &Errors, attr: &syn::Attribute) -> Option<syn::MetaList> {
-    if !is_argh_attr(attr) {
+/// Filters out non-`#[cargho(...)]` attributes and converts to `syn::MetaList`.
+fn cargho_attr_to_meta_list(errors: &Errors, attr: &syn::Attribute) -> Option<syn::MetaList> {
+    if !is_cargho_attr(attr) {
         return None;
     }
     attr_to_meta_list(errors, attr)
@@ -283,7 +283,7 @@ pub struct TypeAttrs {
 }
 
 impl TypeAttrs {
-    /// Parse top-level `#[argh(...)]` attributes
+    /// Parse top-level `#[cargho(...)]` attributes
     pub fn parse(errors: &Errors, derive_input: &syn::DeriveInput) -> Self {
         let mut this = TypeAttrs::default();
 
@@ -293,7 +293,7 @@ impl TypeAttrs {
                 continue;
             }
 
-            let ml = if let Some(ml) = argh_attr_to_meta_list(errors, attr) {
+            let ml = if let Some(ml) = cargho_attr_to_meta_list(errors, attr) {
                 ml
             } else {
                 continue;
@@ -332,7 +332,7 @@ impl TypeAttrs {
                     errors.err(
                         &meta,
                         concat!(
-                            "Invalid type-level `argh` attribute\n",
+                            "Invalid type-level `cargho` attribute\n",
                             "Expected one of: `description`, `error_code`, `example`, `name`, ",
                             "`note`, `subcommand`",
                         ),
@@ -490,18 +490,18 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
     *slot = Some(Description { explicit: true, content: lit_str.clone() });
 }
 
-/// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
-/// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
+/// Checks that a `#![derive(FromArgs)]` enum has an `#[cargho(subcommand)]`
+/// attribute and that it does not have any other type-level `#[cargho(...)]` attributes.
 pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
     let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes } = type_attrs;
 
-    // Ensure that `#[argh(subcommand)]` is present.
+    // Ensure that `#[cargho(subcommand)]` is present.
     if is_subcommand.is_none() {
         errors.err_span(
             type_span.clone(),
             concat!(
                 "`#![derive(FromArgs)]` on `enum`s can only be used to enumerate subcommands.\n",
-                "Consider adding `#[argh(subcommand)]` to the `enum` declaration.",
+                "Consider adding `#[cargho(subcommand)]` to the `enum` declaration.",
             ),
         );
     }
@@ -526,10 +526,10 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
 }
 
-/// Checks that an enum variant and its fields have no `#[argh(...)]` attributes.
+/// Checks that an enum variant and its fields have no `#[cargho(...)]` attributes.
 pub fn check_enum_variant_attrs(errors: &Errors, variant: &syn::Variant) {
     for attr in &variant.attrs {
-        if is_argh_attr(attr) {
+        if is_cargho_attr(attr) {
             err_unused_enum_attr(errors, attr);
         }
     }
@@ -542,7 +542,7 @@ pub fn check_enum_variant_attrs(errors: &Errors, variant: &syn::Variant) {
 
     for field in fields {
         for attr in &field.attrs {
-            if is_argh_attr(attr) {
+            if is_cargho_attr(attr) {
                 err_unused_enum_attr(errors, attr);
             }
         }
@@ -553,9 +553,9 @@ fn err_unused_enum_attr(errors: &Errors, location: &impl syn::spanned::Spanned) 
     errors.err(
         location,
         concat!(
-            "Unused `argh` attribute on `#![derive(FromArgs)]` enum. ",
+            "Unused `cargho` attribute on `#![derive(FromArgs)]` enum. ",
             "Such `enum`s can only be used to dispatch to subcommands, ",
-            "and should only contain the #[argh(subcommand)] attribute.",
+            "and should only contain the #[cargho(subcommand)] attribute.",
         ),
     );
 }

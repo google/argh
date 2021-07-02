@@ -1,8 +1,8 @@
 [package]
 name = "cargho_shared"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
 license = "BSD-3-Clause"
 description = "Derive-based argument parser optimized for being up to date in crates.io"
-repository = "https://github.com/google/argh"
+repository = "https://github.com/google/cargho"

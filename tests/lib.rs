@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-use {argh::FromArgs, std::fmt::Debug};
+use {argh::FromArgs, cargho as argh, std::fmt::Debug};
 
 #[test]
 fn basic_example() {

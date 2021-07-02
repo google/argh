@@ -13,6 +13,7 @@
 //! ## Basic Example
 //!
 //! ```rust,no_run
+//! use cargho as argh;
 //! use argh::FromArgs;
 //!
 //! #[derive(FromArgs)]
@@ -64,6 +65,7 @@
 //! option is treated as optional.
 //!
 //! ```rust
+//! use cargho as argh;
 //! use argh::FromArgs;
 //!
 //! fn default_height() -> usize {
@@ -97,6 +99,7 @@
 //! `fn(&str) -> Result<T, String>` using the `from_str_fn` attribute:
 //!
 //! ```
+//! use cargho as argh;
 //! # use argh::FromArgs;
 //!
 //! #[derive(FromArgs)]
@@ -117,6 +120,7 @@
 //! the structure:
 //!
 //! ```rust
+//! use cargho as argh;
 //! use argh::FromArgs;
 //! #[derive(FromArgs, PartialEq, Debug)]
 //! /// A command with positional arguments.
@@ -134,6 +138,7 @@
 //! over each command:
 //!
 //! ```rust
+//! use cargho as argh;
 //! # use argh::FromArgs;
 //!
 //! #[derive(FromArgs, PartialEq, Debug)]

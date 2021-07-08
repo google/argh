@@ -4,11 +4,10 @@ version = "0.1.5"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
 keywords = ["args", "arguments", "derive", "cli"]
-license = "BSD-3-Clause"
+license-file = "LICENSE"
 description = "Derive-based argument parser optimized for code size"
 repository = "https://github.com/google/argh"
 readme = "README.md"
-include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 
 [dependencies]
 argh_shared = { version = "0.1.5", path = "../argh_shared" }

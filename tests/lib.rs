@@ -808,7 +808,7 @@ Options:
     #[test]
     fn example_parses_correctly() {
         let help_example = HelpExample::from_args(
-            &["<<<arg0>>>"],
+            &["program-name"],
             &["-f", "--scribble", "fooey", "blow-up", "--safely"],
         )
         .unwrap();
@@ -827,7 +827,7 @@ Options:
 
     #[test]
     fn example_errors_on_missing_required_option_and_missing_required_subcommand() {
-        let exit = HelpExample::from_args(&["<<<arg0>>>"], &[]).unwrap_err();
+        let exit = HelpExample::from_args(&["program-name"], &[]).unwrap_err();
         exit.status.unwrap_err();
         assert_eq!(
             exit.output,

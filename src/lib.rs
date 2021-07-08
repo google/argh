@@ -182,19 +182,135 @@ pub type CommandInfo = argh_shared::CommandInfo<'static>;
 pub trait FromArgs: Sized {
     /// Construct the type from an input set of arguments.
     ///
-    /// The first argument `command_name` is the identifier for the current command, treating each
-    /// segment as a separate item. This is used by in the output of `--help` in order to print out
-    /// how to run the command or a nested subcommand.
+    /// The first argument `command_name` is the identifier for the current command. In most cases,
+    /// users should only pass in a single item for the command name, which typically comes from
+    /// the first item from `std::env::args()`. Implementations however should append the
+    /// subcommand name in when recursively calling [FromArgs::from_args] for subcommands. This
+    /// allows `argh` to generate correct subcommand help strings.
     ///
     /// The second argument `args` is the rest of the command line arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use argh::FromArgs;
+    ///
+    /// /// Command to manage a classroom.
+    /// #[derive(Debug, PartialEq, FromArgs)]
+    /// struct ClassroomCmd {
+    ///     #[argh(subcommand)]
+    ///     subcommands: Subcommands,
+    /// }
+    ///
+    /// #[derive(Debug, PartialEq, FromArgs)]
+    /// #[argh(subcommand)]
+    /// enum Subcommands {
+    ///     List(ListCmd),
+    ///     Add(AddCmd),
+    /// }
+    ///
+    /// /// list all the classes.
+    /// #[derive(Debug, PartialEq, FromArgs)]
+    /// #[argh(subcommand, name = "list")]
+    /// struct ListCmd {
+    ///     /// list classes for only this teacher.
+    ///     #[argh(option)]
+    ///     teacher_name: Option<String>,
+    /// }
+    ///
+    /// /// add students to a class.
+    /// #[derive(Debug, PartialEq, FromArgs)]
+    /// #[argh(subcommand, name = "add")]
+    /// struct AddCmd {
+    ///     /// the name of the class's teacher.
+    ///     #[argh(option)]
+    ///     teacher_name: String,
+    ///
+    ///     /// the name of the class.
+    ///     #[argh(positional)]
+    ///     class_name: String,
+    /// }
+    ///
+    /// let args = ClassroomCmd::from_args(
+    ///     &["classroom"],
+    ///     &["list", "--teacher-name", "Smith"],
+    /// ).unwrap();
+    /// assert_eq!(
+    ///    args,
+    ///     ClassroomCmd {
+    ///         subcommands: Subcommands::List(ListCmd {
+    ///             teacher_name: Some("Smith".to_string()),
+    ///         })
+    ///     },
+    /// );
+    ///
+    /// // Help returns an error, but internally returns an `Ok` status.
+    /// let early_exit = ClassroomCmd::from_args(
+    ///     &["classroom"],
+    ///     &["help"],
+    /// ).unwrap_err();
+    /// assert_eq!(
+    ///     early_exit,
+    ///     argh::EarlyExit {
+    ///        output: r#"Usage: classroom <command> [<args>]
+    ///
+    /// Command to manage a classroom.
+    ///
+    /// Options:
+    ///   --help            display usage information
+    ///
+    /// Commands:
+    ///   list              list all the classes.
+    ///   add               add students to a class.
+    /// "#.to_string(),
+    ///        status: Ok(()),
+    ///     },
+    /// );
+    ///
+    /// // Help works with subcommands.
+    /// let early_exit = ClassroomCmd::from_args(
+    ///     &["classroom"],
+    ///     &["list", "help"],
+    /// ).unwrap_err();
+    /// assert_eq!(
+    ///     early_exit,
+    ///     argh::EarlyExit {
+    ///        output: r#"Usage: classroom list [--teacher-name <teacher-name>]
+    ///
+    /// list all the classes.
+    ///
+    /// Options:
+    ///   --teacher-name    list classes for only this teacher.
+    ///   --help            display usage information
+    /// "#.to_string(),
+    ///        status: Ok(()),
+    ///     },
+    /// );
+    ///
+    /// // Incorrect arguments will error out.
+    /// let err = ClassroomCmd::from_args(
+    ///     &["classroom"],
+    ///     &["lisp"],
+    /// ).unwrap_err();
+    /// assert_eq!(
+    ///    err,
+    ///    argh::EarlyExit {
+    ///        output: "Unrecognized argument: lisp\n".to_string(),
+    ///        status: Err(()),
+    ///     },
+    /// );
+    /// ```
     fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit>;
 
     /// Get a String with just the argument names, e.g., options, flags, subcommands, etc, but
     /// without the values of the options and arguments. This can be useful as a means to capture
     /// anonymous usage statistics without revealing the content entered by the end user.
     ///
-    /// The first argument `command_name` is the identifier for the current command, treating each
-    /// segment as a separate item. This is used in the error string if the arguments fail to parse.
+    /// The first argument `command_name` is the identifier for the current command. In most cases,
+    /// users should only pass in a single item for the command name, which typically comes from
+    /// the first item from `std::env::args()`. Implementations however should append the
+    /// subcommand name in when recursively calling [FromArgs::from_args] for subcommands. This
+    /// allows `argh` to generate correct subcommand help strings.
     ///
     /// The second argument `args` is the rest of the command line arguments.
     ///
@@ -248,8 +364,8 @@ pub trait FromArgs: Sized {
     /// }
     ///
     /// let args = ClassroomCmd::redact_arg_values(
-    ///         &["classroom"],
-    ///         &["list"],
+    ///     &["classroom"],
+    ///     &["list"],
     /// ).unwrap();
     /// assert_eq!(
     ///     args,
@@ -295,6 +411,25 @@ pub trait FromArgs: Sized {
     ///     Err(argh::EarlyExit {
     ///         output: "No value provided for option '--teacher-name'.\n".into(),
     ///         status: Err(()),
+    ///     }),
+    /// );
+    ///
+    /// // `ClassroomCmd::redact_arg_values` will generate help messages.
+    /// assert_eq!(
+    ///     ClassroomCmd::redact_arg_values(&["classroom"], &["help"]),
+    ///     Err(argh::EarlyExit {
+    ///         output: r#"Usage: classroom <command> [<args>]
+    ///
+    /// Command to manage a classroom.
+    ///
+    /// Options:
+    ///   --help            display usage information
+    ///
+    /// Commands:
+    ///   list              list all the classes.
+    ///   add               add students to a class.
+    /// "#.to_string(),
+    ///         status: Ok(()),
     ///     }),
     /// );
     /// ```

@@ -3,7 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-
 /// Implementation of the `FromArgs` and `argh(...)` derive attributes.
 ///
 /// For more thorough documentation, see the `argh` crate itself.
@@ -241,17 +240,10 @@ fn impl_from_args_struct(
 
     let impl_span = Span::call_site();
 
-    let from_args_method = impl_from_args_struct_from_args(
-        errors,
-        type_attrs,
-        &fields,
-    );
+    let from_args_method = impl_from_args_struct_from_args(errors, type_attrs, &fields);
 
-    let redact_arg_values_method = impl_from_args_struct_redact_arg_values(
-        errors,
-        type_attrs,
-        &fields,
-    );
+    let redact_arg_values_method =
+        impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
 
     let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
 
@@ -583,7 +575,9 @@ fn declare_local_storage_for_from_args_fields<'a>(
 }
 
 /// Unwrap non-optional fields and take options out of their tuple slots.
-fn unwrap_from_args_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
+fn unwrap_from_args_fields<'a>(
+    fields: &'a [StructField<'a>],
+) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
         let field_name = field.name;
         match field.kind {
@@ -654,7 +648,6 @@ fn declare_local_storage_for_redacted_fields<'a>(
                         parse_func: |_, _| { Ok(#long_name.to_string()) },
                     };
                 }
-
             }
             FieldKind::SubCommand => {
                 quote! { let mut #field_name: std::option::Option<std::vec::Vec<String>> = None; }
@@ -664,7 +657,9 @@ fn declare_local_storage_for_redacted_fields<'a>(
 }
 
 /// Unwrap non-optional fields and take options out of their tuple slots.
-fn unwrap_redacted_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
+fn unwrap_redacted_fields<'a>(
+    fields: &'a [StructField<'a>],
+) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
         let field_name = field.name;
 

@@ -378,8 +378,8 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
 ) -> TokenStream {
-    let init_fields = declare_local_storage_for_redact_arg_values_fields(&fields);
-    let unwrap_fields = unwrap_redact_arg_values_fields(&fields);
+    let init_fields = declare_local_storage_for_redacted_fields(&fields);
+    let unwrap_fields = unwrap_redacted_fields(&fields);
 
     let positional_fields: Vec<&StructField<'_>> =
         fields.iter().filter(|field| field.kind == FieldKind::Positional).collect();
@@ -613,7 +613,7 @@ fn unwrap_from_args_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<I
 /// Most fields are stored in `Option<FieldType>` locals.
 /// `argh(option)` fields are stored in a `ParseValueSlotTy` along with a
 /// function that knows how to decode the appropriate value.
-fn declare_local_storage_for_redact_arg_values_fields<'a>(
+fn declare_local_storage_for_redacted_fields<'a>(
     fields: &'a [StructField<'a>],
 ) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
@@ -664,7 +664,7 @@ fn declare_local_storage_for_redact_arg_values_fields<'a>(
 }
 
 /// Unwrap non-optional fields and take options out of their tuple slots.
-fn unwrap_redact_arg_values_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
+fn unwrap_redacted_fields<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().map(|field| {
         let field_name = field.name;
 

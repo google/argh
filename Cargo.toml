@@ -1,13 +1,6 @@
-[package]
-name = "argh"
-version = "0.1.4"
-authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
-edition = "2018"
-keywords = ["args", "arguments", "derive", "cli"]
-license = "BSD-3-Clause"
-description = "Derive-based argument parser optimized for code size"
-repository = "https://github.com/google/argh"
-
-[dependencies]
-argh_shared = { version = "0.1.4", path = "./argh_shared" }
-argh_derive = { version = "0.1.4", path = "./argh_derive" }
+[workspace]
+members = [
+    "argh",
+    "argh_derive",
+    "argh_shared",
+]

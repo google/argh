@@ -435,7 +435,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
-        fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> Result<Vec<String>, argh::EarlyExit> {
+        fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
             #( #init_fields )*
 
             argh::parse_struct_args(

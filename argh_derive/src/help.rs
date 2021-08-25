@@ -11,6 +11,7 @@ use {
     argh_shared::INDENT,
     proc_macro2::{Span, TokenStream},
     quote::quote,
+    syn::LitStr,
 };
 
 const SECTION_SEPARATOR: &str = "\n\n";
@@ -126,7 +127,9 @@ fn positional_usage(out: &mut String, field: &StructField<'_>) {
         out.push('[');
     }
     out.push('<');
-    out.push_str(&field.name.to_string());
+    let name =
+        field.attrs.arg_name.as_ref().map(LitStr::value).unwrap_or_else(|| field.name.to_string());
+    out.push_str(&name);
     if field.optionality == Optionality::Repeating {
         out.push_str("...");
     }

@@ -875,6 +875,27 @@ Error codes:
 "###,
         );
     }
+
+    #[allow(dead_code)]
+    #[derive(argh::FromArgs)]
+    /// Destroy the contents of <file>.
+    struct WithArgName {
+        #[argh(positional, arg_name = "name")]
+        username: String,
+    }
+
+    #[test]
+    fn with_arg_name() {
+        assert_help_string::<WithArgName>(
+            r###"Usage: test_arg_0 <name>
+
+Destroy the contents of <file>.
+
+Options:
+  --help            display usage information
+"###,
+        );
+    }
 }
 
 #[test]

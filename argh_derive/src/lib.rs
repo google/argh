@@ -155,7 +155,7 @@ impl<'a> StructField<'a> {
                     let tokens: TokenStream = tokens
                         .into_iter()
                         .map(|mut tree| {
-                            tree.set_span(default.span().clone());
+                            tree.set_span(default.span());
                             tree
                         })
                         .collect();
@@ -297,7 +297,7 @@ fn impl_from_args_struct_from_args<'a>(
 
     let impl_span = Span::call_site();
 
-    let missing_requirements_ident = syn::Ident::new("__missing_requirements", impl_span.clone());
+    let missing_requirements_ident = syn::Ident::new("__missing_requirements", impl_span);
 
     let append_missing_requirements =
         append_missing_requirements(&missing_requirements_ident, &fields);
@@ -319,7 +319,7 @@ fn impl_from_args_struct_from_args<'a>(
     };
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
-    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
+    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
@@ -403,7 +403,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
 
     let impl_span = Span::call_site();
 
-    let missing_requirements_ident = syn::Ident::new("__missing_requirements", impl_span.clone());
+    let missing_requirements_ident = syn::Ident::new("__missing_requirements", impl_span);
 
     let append_missing_requirements =
         append_missing_requirements(&missing_requirements_ident, &fields);
@@ -431,7 +431,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     };
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
-    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span.clone());
+    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>

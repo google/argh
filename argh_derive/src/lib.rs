@@ -257,7 +257,7 @@ fn impl_from_args_struct(
         #top_or_sub_cmd_impl
     };
 
-    trait_impl.into()
+    trait_impl
 }
 
 fn impl_from_args_struct_from_args<'a>(
@@ -362,7 +362,7 @@ fn impl_from_args_struct_from_args<'a>(
         }
     };
 
-    method_impl.into()
+    method_impl
 }
 
 fn impl_from_args_struct_redact_arg_values<'a>(
@@ -476,7 +476,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
         }
     };
 
-    method_impl.into()
+    method_impl
 }
 
 /// Ensures that only the last positional arg is non-required.

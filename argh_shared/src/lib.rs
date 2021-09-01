@@ -23,6 +23,11 @@ pub fn write_description(out: &mut String, cmd: &CommandInfo<'_>) {
     let mut current_line = INDENT.to_string();
     current_line.push_str(cmd.name);
 
+    if cmd.description.is_empty() {
+        new_line(&mut current_line, out);
+        return;
+    }
+
     if !indent_description(&mut current_line) {
         // Start the description on a new line if the flag names already
         // add up to more than DESCRIPTION_INDENT.

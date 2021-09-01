@@ -299,6 +299,10 @@ mod positional {
 
 Woot
 
+Positional Arguments:
+  a                 fooey
+  b                 fooey
+
 Options:
   --help            display usage information
 "###,
@@ -890,6 +894,9 @@ Error codes:
             r###"Usage: test_arg_0 <name>
 
 Destroy the contents of <file>.
+
+Positional Arguments:
+  name
 
 Options:
   --help            display usage information

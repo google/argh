@@ -501,7 +501,7 @@ pub fn from_env<T: TopLevelCommand>() -> T {
                 0
             }
             Err(()) => {
-                eprintln!("{}", early_exit.output);
+                eprintln!("{}\nRun {} --help for more information.", early_exit.output, cmd);
                 1
             }
         })
@@ -527,7 +527,7 @@ pub fn cargo_from_env<T: TopLevelCommand>() -> T {
                 0
             }
             Err(()) => {
-                eprintln!("{}", early_exit.output);
+                eprintln!("{}\nRun --help for more information.", early_exit.output);
                 1
             }
         })

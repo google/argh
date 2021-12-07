@@ -626,8 +626,17 @@ fn declare_local_storage_for_redacted_fields<'a>(
                 }
             }
             FieldKind::Option => {
+                let field_slot_type = match field.optionality {
+                    Optionality::Repeating => {
+                        quote! { std::vec::Vec<String> }
+                    }
+                    Optionality::None | Optionality::Optional | Optionality::Defaulted(_) => {
+                        quote! { std::option::Option<String> }
+                    }
+                };
+
                 quote! {
-                    let mut #field_name: argh::ParseValueSlotTy::<Option<String>, String> =
+                    let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
                         parse_func: |arg, _| { Ok(arg.to_string()) },
@@ -668,13 +677,27 @@ fn unwrap_redacted_fields<'a>(
         let field_name = field.name;
 
         match field.kind {
-            FieldKind::Switch | FieldKind::Option => {
+            FieldKind::Switch => {
                 quote! {
                     if let Some(__field_name) = #field_name.slot {
                         __redacted.push(__field_name);
                     }
                 }
             }
+            FieldKind::Option => match field.optionality {
+                Optionality::Repeating => {
+                    quote! {
+                        __redacted.extend(#field_name.slot.into_iter());
+                    }
+                }
+                Optionality::None | Optionality::Optional | Optionality::Defaulted(_) => {
+                    quote! {
+                        if let Some(__field_name) = #field_name.slot {
+                            __redacted.push(__field_name);
+                        }
+                    }
+                }
+            },
             FieldKind::Positional => {
                 quote! {
                     __redacted.extend(#field_name.slot.into_iter());

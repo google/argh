@@ -1005,6 +1005,24 @@ fn redact_arg_values_option_one_optional_args() {
 }
 
 #[test]
+fn redact_arg_values_option_repeating() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option)]
+        /// fooey
+        _msg: Vec<String>,
+    }
+
+    let actual = Cmd::redact_arg_values(&["program-name"], &[]).unwrap();
+    assert_eq!(actual, &["program-name"]);
+
+    let actual =
+        Cmd::redact_arg_values(&["program-name"], &["--msg", "abc", "--msg", "xyz"]).unwrap();
+    assert_eq!(actual, &["program-name", "--msg", "--msg"]);
+}
+
+#[test]
 fn redact_arg_values_switch() {
     #[derive(FromArgs, Debug)]
     /// Short description

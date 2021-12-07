@@ -176,7 +176,7 @@ fn missing_option_value() {
     struct Cmd {
         #[argh(option)]
         /// fooey
-        msg: String,
+        _msg: String,
     }
 
     let e = Cmd::from_args(&["cmdname"], &["--msg"])
@@ -539,10 +539,10 @@ mod fuchsia_commandline_tools_rubric {
     struct TwoSwitches {
         #[argh(switch, short = 'a')]
         /// a
-        a: bool,
+        _a: bool,
         #[argh(switch, short = 'b')]
         /// b
-        b: bool,
+        _b: bool,
     }
 
     /// Running switches together is not allowed
@@ -558,7 +558,7 @@ mod fuchsia_commandline_tools_rubric {
     struct OneOption {
         #[argh(option)]
         /// some description
-        foo: String,
+        _foo: String,
     }
 
     /// Do not use an equals punctuation or similar to separate the key and value.
@@ -666,7 +666,7 @@ mod fuchsia_commandline_tools_rubric {
     /// A type for testing `--help`/`help`
     struct HelpTopLevel {
         #[argh(subcommand)]
-        sub: HelpFirstSub,
+        _sub: HelpFirstSub,
     }
 
     #[derive(FromArgs, Debug)]
@@ -674,7 +674,7 @@ mod fuchsia_commandline_tools_rubric {
     /// First subcommmand for testing `help`.
     struct HelpFirstSub {
         #[argh(subcommand)]
-        sub: HelpSecondSub,
+        _sub: HelpSecondSub,
     }
 
     #[derive(FromArgs, Debug)]
@@ -912,7 +912,7 @@ fn redact_arg_values_no_args() {
     struct Cmd {
         #[argh(option)]
         /// a msg param
-        msg: Option<String>,
+        _msg: Option<String>,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &[]).unwrap();
@@ -926,11 +926,39 @@ fn redact_arg_values_optional_arg() {
     struct Cmd {
         #[argh(option)]
         /// a msg param
-        msg: Option<String>,
+        _msg: Option<String>,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["--msg", "hello"]).unwrap();
     assert_eq!(actual, &["program-name", "--msg"]);
+}
+
+#[test]
+fn redact_arg_values_optional_arg_short() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option, short = 'm')]
+        /// a msg param
+        _msg: Option<String>,
+    }
+
+    let actual = Cmd::redact_arg_values(&["program-name"], &["-m", "hello"]).unwrap();
+    assert_eq!(actual, &["program-name", "-m"]);
+}
+
+#[test]
+fn redact_arg_values_optional_arg_long() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(option, long = "my-msg")]
+        /// a msg param
+        _msg: Option<String>,
+    }
+
+    let actual = Cmd::redact_arg_values(&["program-name"], &["--my-msg", "hello"]).unwrap();
+    assert_eq!(actual, &["program-name", "--my-msg"]);
 }
 
 #[test]
@@ -940,11 +968,11 @@ fn redact_arg_values_two_option_args() {
     struct Cmd {
         #[argh(option)]
         /// a msg param
-        msg: String,
+        _msg: String,
 
         #[argh(option)]
         /// a delivery param
-        delivery: String,
+        _delivery: String,
     }
 
     let actual =
@@ -960,11 +988,11 @@ fn redact_arg_values_option_one_optional_args() {
     struct Cmd {
         #[argh(option)]
         /// a msg param
-        msg: String,
+        _msg: String,
 
         #[argh(option)]
         /// a delivery param
-        delivery: Option<String>,
+        _delivery: Option<String>,
     }
 
     let actual =
@@ -983,7 +1011,7 @@ fn redact_arg_values_switch() {
     struct Cmd {
         #[argh(switch, short = 'f')]
         /// speed of cmd
-        faster: bool,
+        _faster: bool,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["--faster"]).unwrap();
@@ -998,9 +1026,24 @@ fn redact_arg_values_positional() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
+        #[allow(dead_code)]
         #[argh(positional)]
         /// speed of cmd
         speed: u8,
+    }
+
+    let actual = Cmd::redact_arg_values(&["program-name"], &["5"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed"]);
+}
+
+#[test]
+fn redact_arg_values_positional_arg_name() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional, arg_name = "speed")]
+        /// speed of cmd
+        _speed: u8,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["5"]).unwrap();
@@ -1012,9 +1055,9 @@ fn redact_arg_values_positional_repeating() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: Vec<u8>,
+        _speed: Vec<u8>,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["5", "6"]).unwrap();
@@ -1026,9 +1069,9 @@ fn redact_arg_values_positional_err() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: u8,
+        _speed: u8,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &[]).unwrap_err();
@@ -1046,13 +1089,13 @@ fn redact_arg_values_two_positional() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: u8,
+        _speed: u8,
 
-        #[argh(positional)]
+        #[argh(positional, arg_name = "direction")]
         /// direction
-        direction: String,
+        _direction: String,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["5", "north"]).unwrap();
@@ -1064,13 +1107,13 @@ fn redact_arg_values_positional_option() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: u8,
+        _speed: u8,
 
         #[argh(option)]
         /// direction
-        direction: String,
+        _direction: String,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["5", "--direction", "north"]).unwrap();
@@ -1082,13 +1125,13 @@ fn redact_arg_values_positional_optional_option() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: u8,
+        _speed: u8,
 
         #[argh(option)]
         /// direction
-        direction: Option<String>,
+        _direction: Option<String>,
     }
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["5"]).unwrap();
@@ -1100,13 +1143,13 @@ fn redact_arg_values_subcommand() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: u8,
+        _speed: u8,
 
         #[argh(subcommand)]
         /// means of transportation
-        means: MeansSubcommand,
+        _means: MeansSubcommand,
     }
 
     #[derive(FromArgs, Debug)]
@@ -1124,7 +1167,7 @@ fn redact_arg_values_subcommand() {
     struct WalkingSubcommand {
         #[argh(option)]
         /// a song to listen to
-        music: String,
+        _music: String,
     }
 
     #[derive(FromArgs, Debug)]
@@ -1146,13 +1189,13 @@ fn redact_arg_values_subcommand_with_space_in_name() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[argh(positional)]
+        #[argh(positional, arg_name = "speed")]
         /// speed of cmd
-        speed: u8,
+        _speed: u8,
 
         #[argh(subcommand)]
         /// means of transportation
-        means: MeansSubcommand,
+        _means: MeansSubcommand,
     }
 
     #[derive(FromArgs, Debug)]
@@ -1169,7 +1212,7 @@ fn redact_arg_values_subcommand_with_space_in_name() {
     struct WalkingSubcommand {
         #[argh(option)]
         /// a song to listen to
-        music: String,
+        _music: String,
     }
 
     #[derive(FromArgs, Debug)]

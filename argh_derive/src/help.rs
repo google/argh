@@ -11,7 +11,6 @@ use {
     argh_shared::INDENT,
     proc_macro2::{Span, TokenStream},
     quote::quote,
-    syn::LitStr,
 };
 
 const SECTION_SEPARATOR: &str = "\n\n";
@@ -131,22 +130,13 @@ fn lits_section(out: &mut String, heading: &str, lits: &[syn::LitStr]) {
     }
 }
 
-fn get_positional_name(field: &StructField<'_>) -> String {
-    return field
-        .attrs
-        .arg_name
-        .as_ref()
-        .map(LitStr::value)
-        .unwrap_or_else(|| field.name.to_string());
-}
-
 /// Add positional arguments like `[<foo>...]` to a help format string.
 fn positional_usage(out: &mut String, field: &StructField<'_>) {
     if !field.optionality.is_required() {
         out.push('[');
     }
     out.push('<');
-    let name = get_positional_name(field);
+    let name = field.arg_name();
     out.push_str(&name);
     if field.optionality == Optionality::Repeating {
         out.push_str("...");
@@ -219,7 +209,7 @@ Add a doc comment or an `#[argh(description = \"...\")]` attribute.",
 /// Describes a positional argument like this:
 ///  hello       positional argument description
 fn positional_description(out: &mut String, field: &StructField<'_>) {
-    let field_name = get_positional_name(field);
+    let field_name = field.arg_name();
 
     let mut description = String::from("");
     if let Some(desc) = &field.attrs.description {

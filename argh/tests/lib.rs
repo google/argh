@@ -1044,7 +1044,7 @@ fn redact_arg_values_positional() {
     #[derive(FromArgs, Debug)]
     /// Short description
     struct Cmd {
-        #[allow(dead_code)]
+        #[allow(unused)]
         #[argh(positional)]
         /// speed of cmd
         speed: u8,

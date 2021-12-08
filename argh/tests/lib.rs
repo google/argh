@@ -1288,3 +1288,21 @@ fn redact_arg_values_produces_errors_with_bad_arguments() {
         }),
     );
 }
+
+#[test]
+fn redact_arg_values_does_not_warn_if_used() {
+    #[forbid(unused)]
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(positional)]
+        /// speed of cmd
+        speed: u8,
+    }
+
+    let cmd = Cmd::from_args(&["program-name"], &["5"]).unwrap();
+    assert_eq!(cmd.speed, 5);
+
+    let actual = Cmd::redact_arg_values(&["program-name"], &["5"]).unwrap();
+    assert_eq!(actual, &["program-name", "speed"]);
+}

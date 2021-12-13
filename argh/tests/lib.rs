@@ -89,105 +89,6 @@ fn subcommand_example() {
 }
 
 #[test]
-fn help_json_test_subcommand() {
-    #[derive(FromArgs, PartialEq, Debug)]
-    /// Top-level command.
-    struct TopLevel {
-        #[argh(subcommand)]
-        nested: MySubCommandEnum,
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand)]
-    enum MySubCommandEnum {
-        One(SubCommandOne),
-        Two(SubCommandTwo),
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    /// First subcommand.
-    #[argh(subcommand, name = "one")]
-    struct SubCommandOne {
-        #[argh(option)]
-        /// how many x
-        x: usize,
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    /// Second subcommand.
-    #[argh(subcommand, name = "two")]
-    struct SubCommandTwo {
-        #[argh(switch)]
-        /// whether to fooey
-        fooey: bool,
-    }
-
-    assert_help_json_string::<TopLevel>(
-        vec!["--help-json"],
-        r###"{
-"usage": "test_arg_0 <command> [<args>]",
-"description": "Top-level command.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
-"positional": [],
-"examples": "",
-"notes": "",
-"error_codes": [],
-"subcommands": [{"name": "one", "description": "First subcommand."},
-    {"name": "two", "description": "Second subcommand."}]
-}
-"###,
-    );
-
-    assert_help_json_string::<TopLevel>(
-        vec!["one", "--help-json"],
-        r###"{
-"usage": "test_arg_0 one --x <x>",
-"description": "First subcommand.",
-"options": [{"short": "", "long": "--x", "description": "how many x"},
-    {"short": "", "long": "--help", "description": "display usage information"},
-    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
-"positional": [],
-"examples": "",
-"notes": "",
-"error_codes": [],
-"subcommands": []
-}
-"###,
-    );
-}
-
-#[test]
-fn help_json_test_multiline_doc_comment() {
-    #[derive(FromArgs)]
-    /// Short description
-    struct Cmd {
-        #[argh(switch)]
-        /// a switch with a description
-        /// that is spread across
-        /// a number of
-        /// lines of comments.
-        _s: bool,
-    }
-    assert_help_json_string::<Cmd>(
-        vec!["--help-json"],
-        r###"{
-"usage": "test_arg_0 [--s]",
-"description": "Short description",
-"options": [{"short": "", "long": "--s", "description": "a switch with a description that is spread across a number of lines of comments."},
-    {"short": "", "long": "--help", "description": "display usage information"},
-    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
-"positional": [],
-"examples": "",
-"notes": "",
-"error_codes": [],
-"subcommands": []
-}
-"###,
-    );
-}
-
-#[test]
 fn multiline_doc_comment_description() {
     #[derive(FromArgs)]
     /// Short description
@@ -293,16 +194,6 @@ fn assert_help_string<T: FromArgs>(help_str: &str) {
         Err(e) => {
             assert_eq!(help_str, e.output);
             e.status.expect("help returned an error");
-        }
-    }
-}
-
-fn assert_help_json_string<T: FromArgs>(args: Vec<&str>, help_str: &str) {
-    match T::from_args(&["test_arg_0"], &args) {
-        Ok(_) => panic!("help-json was parsed as args"),
-        Err(e) => {
-            assert_eq!(help_str, e.output);
-            e.status.expect("help-json returned an error");
         }
     }
 }
@@ -998,7 +889,7 @@ Error codes:
 "###,
         );
     }
-  
+
     #[allow(dead_code)]
     #[derive(argh::FromArgs)]
     /// Destroy the contents of <file>.

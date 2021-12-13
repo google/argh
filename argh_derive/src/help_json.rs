@@ -40,7 +40,7 @@ fn option_elements_json(options: &[OptionHelp]) -> String {
     let mut retval = String::from("");
     for opt in options {
         if !retval.is_empty() {
-          retval.push_str(",\n");
+            retval.push_str(",\n");
         }
         retval.push_str(&format!(
             "{{\"short\": \"{}\", \"long\": \"{}\", \"description\": \"{}\"}}",

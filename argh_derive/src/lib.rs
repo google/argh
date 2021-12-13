@@ -21,6 +21,7 @@ use {
 
 mod errors;
 mod help;
+mod help_json;
 mod parse_attrs;
 
 /// Entrypoint for `#[derive(FromArgs)]`.
@@ -324,7 +325,9 @@ fn impl_from_args_struct_from_args<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help = help::help(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help_json =
+        help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
@@ -352,6 +355,7 @@ fn impl_from_args_struct_from_args<'a>(
                 },
                 #parse_subcommands,
                 &|| #help,
+                &|| #help_json
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -436,7 +440,9 @@ fn impl_from_args_struct_redact_arg_values<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help = help::help(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help_json =
+        help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
         fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
@@ -462,6 +468,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                 },
                 #redact_subcommands,
                 &|| #help,
+                &|| #help_json
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();

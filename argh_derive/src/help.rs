@@ -15,51 +15,35 @@ use {
 
 const SECTION_SEPARATOR: &str = "\n\n";
 
+// Define constants for strings used for both help formats.
+pub(crate) const HELP_FLAG: &str = "--help";
+pub(crate) const HELP_DESCRIPTION: &str = "display usage information";
+pub(crate) const HELP_JSON_FLAG: &str = "--help-json";
+pub(crate) const HELP_JSON_DESCRIPTION: &str = "display usage information encoded in JSON";
+
 /// Returns a `TokenStream` generating a `String` help message.
 ///
 /// Note: `fields` entries with `is_subcommand.is_some()` will be ignored
 /// in favor of the `subcommand` argument.
 pub(crate) fn help(
     errors: &Errors,
-    cmd_name_str_array_ident: syn::Ident,
+    cmd_name_str_array_ident: &syn::Ident,
     ty_attrs: &TypeAttrs,
     fields: &[StructField<'_>],
     subcommand: Option<&StructField<'_>>,
 ) -> TokenStream {
     let mut format_lit = "Usage: {command_name}".to_string();
 
-    let positional = fields.iter().filter(|f| f.kind == FieldKind::Positional);
-    let mut has_positional = false;
-    for arg in positional.clone() {
-        has_positional = true;
-        format_lit.push(' ');
-        positional_usage(&mut format_lit, arg);
-    }
-
-    let options = fields.iter().filter(|f| f.long_name.is_some());
-    for option in options.clone() {
-        format_lit.push(' ');
-        option_usage(&mut format_lit, option);
-    }
-
-    if let Some(subcommand) = subcommand {
-        format_lit.push(' ');
-        if !subcommand.optionality.is_required() {
-            format_lit.push('[');
-        }
-        format_lit.push_str("<command>");
-        if !subcommand.optionality.is_required() {
-            format_lit.push(']');
-        }
-        format_lit.push_str(" [<args>]");
-    }
+    build_usage_command_line(&mut format_lit, fields, subcommand);
 
     format_lit.push_str(SECTION_SEPARATOR);
 
     let description = require_description(errors, Span::call_site(), &ty_attrs.description, "type");
     format_lit.push_str(&description);
 
-    if has_positional {
+    let mut positional = fields.iter().filter(|f| f.kind == FieldKind::Positional).peekable();
+
+    if positional.peek().is_some() {
         format_lit.push_str(SECTION_SEPARATOR);
         format_lit.push_str("Positional Arguments:");
         for arg in positional {
@@ -69,11 +53,13 @@ pub(crate) fn help(
 
     format_lit.push_str(SECTION_SEPARATOR);
     format_lit.push_str("Options:");
+    let options = fields.iter().filter(|f| f.long_name.is_some());
     for option in options {
         option_description(errors, &mut format_lit, option);
     }
-    // Also include "help"
-    option_description_format(&mut format_lit, None, "--help", "display usage information");
+    // Also include "help" and "help-json"
+    option_description_format(&mut format_lit, None, HELP_FLAG, HELP_DESCRIPTION);
+    option_description_format(&mut format_lit, None, HELP_JSON_FLAG, HELP_JSON_DESCRIPTION);
 
     let subcommand_calculation;
     let subcommand_format_arg;
@@ -96,7 +82,7 @@ pub(crate) fn help(
 
     lits_section(&mut format_lit, "Notes:", &ty_attrs.notes);
 
-    if ty_attrs.error_codes.len() != 0 {
+    if !ty_attrs.error_codes.is_empty() {
         format_lit.push_str(SECTION_SEPARATOR);
         format_lit.push_str("Error codes:");
         for (code, text) in &ty_attrs.error_codes {
@@ -106,7 +92,7 @@ pub(crate) fn help(
         }
     }
 
-    format_lit.push_str("\n");
+    format_lit.push('\n');
 
     quote! { {
         #subcommand_calculation
@@ -116,7 +102,7 @@ pub(crate) fn help(
 
 /// A section composed of exactly just the literals provided to the program.
 fn lits_section(out: &mut String, heading: &str, lits: &[syn::LitStr]) {
-    if lits.len() != 0 {
+    if !lits.is_empty() {
         out.push_str(SECTION_SEPARATOR);
         out.push_str(heading);
         for lit in lits {
@@ -251,4 +237,35 @@ fn option_description_format(
 
     let info = argh_shared::CommandInfo { name: &*name, description };
     argh_shared::write_description(out, &info);
+}
+
+/// Builds the usage description command line and appends it to "out".
+pub(crate) fn build_usage_command_line(
+    out: &mut String,
+    fields: &[StructField<'_>],
+    subcommand: Option<&StructField<'_>>,
+) {
+    let positional = fields.iter().filter(|f| f.kind == FieldKind::Positional);
+    for arg in positional.clone() {
+        out.push(' ');
+        positional_usage(out, arg);
+    }
+
+    let options = fields.iter().filter(|f| f.long_name.is_some());
+    for option in options.clone() {
+        out.push(' ');
+        option_usage(out, option);
+    }
+
+    if let Some(subcommand) = subcommand {
+        out.push(' ');
+        if !subcommand.optionality.is_required() {
+            out.push('[');
+        }
+        out.push_str("<command>");
+        if !subcommand.optionality.is_required() {
+            out.push(']');
+        }
+        out.push_str(" [<args>]");
+    }
 }

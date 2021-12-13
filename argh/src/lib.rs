@@ -258,6 +258,7 @@ pub trait FromArgs: Sized {
     ///
     /// Options:
     ///   --help            display usage information
+    ///   --help-json       display usage information encoded in JSON
     ///
     /// Commands:
     ///   list              list all the classes.
@@ -282,6 +283,7 @@ pub trait FromArgs: Sized {
     /// Options:
     ///   --teacher-name    list classes for only this teacher.
     ///   --help            display usage information
+    ///   --help-json       display usage information encoded in JSON
     /// "#.to_string(),
     ///        status: Ok(()),
     ///     },
@@ -424,6 +426,7 @@ pub trait FromArgs: Sized {
     ///
     /// Options:
     ///   --help            display usage information
+    ///   --help-json       display usage information encoded in JSON
     ///
     /// Commands:
     ///   list              list all the classes.
@@ -668,7 +671,8 @@ impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 /// `parse_options`: Helper to parse optional arguments.
 /// `parse_positionals`: Helper to parse positional arguments.
 /// `parse_subcommand`: Helper to parse a subcommand.
-/// `help_func`: Generate a help message.
+/// `help_func`: Generate a help message as plain text.
+/// `help_json_func`: Generate a help message serialized into JSON.
 #[doc(hidden)]
 pub fn parse_struct_args(
     cmd_name: &[&str],
@@ -677,16 +681,26 @@ pub fn parse_struct_args(
     mut parse_positionals: ParseStructPositionals<'_>,
     mut parse_subcommand: Option<ParseStructSubCommand<'_>>,
     help_func: &dyn Fn() -> String,
+    help_json_func: &dyn Fn() -> String,
 ) -> Result<(), EarlyExit> {
     let mut help = false;
+    let mut help_json = false;
     let mut remaining_args = args;
     let mut positional_index = 0;
     let mut options_ended = false;
 
     'parse_args: while let Some(&next_arg) = remaining_args.get(0) {
         remaining_args = &remaining_args[1..];
+
         if (next_arg == "--help" || next_arg == "help") && !options_ended {
             help = true;
+            continue;
+        }
+
+        // look for help-json for json formatted help output.
+        if (next_arg == "--help-json" || next_arg == "help-json") && !options_ended {
+            help = true;
+            help_json = true;
             continue;
         }
 
@@ -714,8 +728,9 @@ pub fn parse_struct_args(
 
         parse_positionals.parse(&mut positional_index, next_arg)?;
     }
-
-    if help {
+    if help_json {
+        Err(EarlyExit { output: help_json_func(), status: Ok(()) })
+    } else if help {
         Err(EarlyExit { output: help_func(), status: Ok(()) })
     } else {
         Ok(())

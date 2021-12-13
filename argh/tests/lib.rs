@@ -87,6 +87,105 @@ fn subcommand_example() {
 }
 
 #[test]
+fn help_json_test_subcommand() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand)]
+        nested: MySubCommandEnum,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    assert_help_json_string::<TopLevel>(
+        vec!["--help-json"],
+        r###"{
+"usage": "test_arg_0 <command> [<args>]",
+"description": "Top-level command.",
+"options": [{"short": "", "long": "--help", "description": "display usage information"},
+    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"positional": [],
+"examples": "",
+"notes": "",
+"error_codes": [],
+"subcommands": [{"name": "one", "description": "First subcommand."},
+    {"name": "two", "description": "Second subcommand."}]
+}
+"###,
+    );
+
+    assert_help_json_string::<TopLevel>(
+        vec!["one", "--help-json"],
+        r###"{
+"usage": "test_arg_0 one --x <x>",
+"description": "First subcommand.",
+"options": [{"short": "", "long": "--x", "description": "how many x"},
+    {"short": "", "long": "--help", "description": "display usage information"},
+    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"positional": [],
+"examples": "",
+"notes": "",
+"error_codes": [],
+"subcommands": []
+}
+"###,
+    );
+}
+
+#[test]
+fn help_json_test_multiline_doc_comment() {
+    #[derive(FromArgs)]
+    /// Short description
+    struct Cmd {
+        #[argh(switch)]
+        /// a switch with a description
+        /// that is spread across
+        /// a number of
+        /// lines of comments.
+        _s: bool,
+    }
+    assert_help_json_string::<Cmd>(
+        vec!["--help-json"],
+        r###"{
+"usage": "test_arg_0 [--s]",
+"description": "Short description",
+"options": [{"short": "", "long": "--s", "description": "a switch with a description that is spread across a number of lines of comments."},
+    {"short": "", "long": "--help", "description": "display usage information"},
+    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"positional": [],
+"examples": "",
+"notes": "",
+"error_codes": [],
+"subcommands": []
+}
+"###,
+    );
+}
+
+#[test]
 fn multiline_doc_comment_description() {
     #[derive(FromArgs)]
     /// Short description
@@ -108,6 +207,7 @@ Options:
   --s               a switch with a description that is spread across a number
                     of lines of comments.
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###,
     );
 }
@@ -195,6 +295,16 @@ fn assert_help_string<T: FromArgs>(help_str: &str) {
     }
 }
 
+fn assert_help_json_string<T: FromArgs>(args: Vec<&str>, help_str: &str) {
+    match T::from_args(&["test_arg_0"], &args) {
+        Ok(_) => panic!("help-json was parsed as args"),
+        Err(e) => {
+            assert_eq!(help_str, e.output);
+            e.status.expect("help-json returned an error");
+        }
+    }
+}
+
 fn assert_output<T: FromArgs + Debug + PartialEq>(args: &[&str], expected: T) {
     let t = T::from_args(&["cmd"], args).expect("failed to parse");
     assert_eq!(t, expected);
@@ -245,6 +355,7 @@ Woot
 Options:
   -n, --n           fooey
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -267,6 +378,7 @@ Woot
 Options:
   --option-name     fooey
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -305,6 +417,7 @@ Positional Arguments:
 
 Options:
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -694,6 +807,7 @@ A type for testing `--help`/`help`
 
 Options:
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 
 Commands:
   first             First subcommmand for testing `help`.
@@ -705,6 +819,7 @@ First subcommmand for testing `help`.
 
 Options:
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 
 Commands:
   second            Second subcommand for testing `help`.
@@ -716,6 +831,7 @@ Second subcommand for testing `help`.
 
 Options:
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###;
 
     #[test]
@@ -758,7 +874,7 @@ Options:
 
     #[derive(FromArgs, PartialEq, Debug)]
     #[argh(
-        description = "Destroy the contents of <file>.",
+        description = "Destroy the contents of <file> with a specific \"method of destruction\".",
         example = "Scribble 'abc' and then run |grind|.\n$ {command_name} -s 'abc' grind old.txt taxes.cp",
         note = "Use `{command_name} help <command>` for details on [<args>] for a subcommand.",
         error_code(2, "The blade is too dull."),
@@ -851,7 +967,7 @@ Options:
         assert_help_string::<HelpExample>(
             r###"Usage: test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]
 
-Destroy the contents of <file>.
+Destroy the contents of <file> with a specific "method of destruction".
 
 Options:
   -f, --force       force, ignore minor errors. This description is so long that
@@ -861,6 +977,7 @@ Options:
   -s, --scribble    write <scribble> repeatedly
   -v, --verbose     say more. Defaults to $BLAST_VERBOSE.
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 
 Commands:
   blow-up           explosively separate
@@ -876,6 +993,31 @@ Notes:
 Error codes:
   2 The blade is too dull.
   3 Out of fuel.
+"###,
+        );
+    }
+
+    #[test]
+    fn help_json_example() {
+        assert_help_json_string::<HelpExample>(
+            vec!["--help-json"],
+            r###"{
+"usage": "test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]",
+"description": "Destroy the contents of <file> with a specific \"method of destruction\".",
+"options": [{"short": "f", "long": "--force", "description": "force, ignore minor errors. This description is so long that it wraps to the next line."},
+    {"short": "", "long": "--really-really-really-long-name-for-pat", "description": "documentation"},
+    {"short": "s", "long": "--scribble", "description": "write <scribble> repeatedly"},
+    {"short": "v", "long": "--verbose", "description": "say more. Defaults to $BLAST_VERBOSE."},
+    {"short": "", "long": "--help", "description": "display usage information"},
+    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"positional": [],
+"examples": "Scribble 'abc' and then run |grind|.\n$ test_arg_0 -s 'abc' grind old.txt taxes.cp",
+"notes": "Use `test_arg_0 help <command>` for details on [<args>] for a subcommand.",
+"error_codes": [{"name": "2", "description": "The blade is too dull."},
+    {"name": "3", "description": "Out of fuel."}],
+"subcommands": [{"name": "blow-up", "description": "explosively separate"},
+    {"name": "grind", "description": "make smaller by many small cuts"}]
+}
 "###,
         );
     }
@@ -900,6 +1042,7 @@ Positional Arguments:
 
 Options:
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -1263,6 +1406,7 @@ Woot
 Options:
   -n, --n           fooey
   --help            display usage information
+  --help-json       display usage information encoded in JSON
 "###
             .to_string(),
             status: Ok(()),

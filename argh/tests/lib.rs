@@ -5,6 +5,8 @@
 
 use {argh::FromArgs, std::fmt::Debug};
 
+mod help_json_tests;
+
 #[test]
 fn basic_example() {
     #[derive(FromArgs, PartialEq, Debug)]
@@ -996,32 +998,7 @@ Error codes:
 "###,
         );
     }
-
-    #[test]
-    fn help_json_example() {
-        assert_help_json_string::<HelpExample>(
-            vec!["--help-json"],
-            r###"{
-"usage": "test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]",
-"description": "Destroy the contents of <file> with a specific \"method of destruction\".",
-"options": [{"short": "f", "long": "--force", "description": "force, ignore minor errors. This description is so long that it wraps to the next line."},
-    {"short": "", "long": "--really-really-really-long-name-for-pat", "description": "documentation"},
-    {"short": "s", "long": "--scribble", "description": "write <scribble> repeatedly"},
-    {"short": "v", "long": "--verbose", "description": "say more. Defaults to $BLAST_VERBOSE."},
-    {"short": "", "long": "--help", "description": "display usage information"},
-    {"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
-"positional": [],
-"examples": "Scribble 'abc' and then run |grind|.\n$ test_arg_0 -s 'abc' grind old.txt taxes.cp",
-"notes": "Use `test_arg_0 help <command>` for details on [<args>] for a subcommand.",
-"error_codes": [{"name": "2", "description": "The blade is too dull."},
-    {"name": "3", "description": "Out of fuel."}],
-"subcommands": [{"name": "blow-up", "description": "explosively separate"},
-    {"name": "grind", "description": "make smaller by many small cuts"}]
-}
-"###,
-        );
-    }
-
+  
     #[allow(dead_code)]
     #[derive(argh::FromArgs)]
     /// Destroy the contents of <file>.

@@ -40,7 +40,7 @@ fn option_elements_json(options: &[OptionHelp]) -> String {
     let mut retval = String::from("");
     for opt in options {
         if !retval.is_empty() {
-            retval.push_str(",\n    ");
+          retval.push_str(",\n");
         }
         retval.push_str(&format!(
             "{{\"short\": \"{}\", \"long\": \"{}\", \"description\": \"{}\"}}",
@@ -55,7 +55,7 @@ fn help_elements_json(elements: &[PositionalHelp]) -> String {
     let mut retval = String::from("");
     for pos in elements {
         if !retval.is_empty() {
-            retval.push_str(",\n    ");
+            retval.push_str(",\n");
         }
         retval.push_str(&format!(
             "{{\"name\": \"{}\", \"description\": \"{}\"}}",
@@ -136,7 +136,7 @@ pub(crate) fn help_json(
             let mut subcommands = String::from("");
             for cmd in  <#subcommand_ty as argh::SubCommands>::COMMANDS {
                 if !subcommands.is_empty() {
-                    subcommands.push_str(",\n    ");
+                    subcommands.push_str(",\n");
                 }
                 subcommands.push_str(&format!("{{\"name\": \"{}\", \"description\": \"{}\"}}",
             cmd.name, cmd.description));
@@ -169,7 +169,7 @@ pub(crate) fn help_json(
         for (code, text) in &ty_attrs.error_codes {
             help_obj.error_codes.push(PositionalHelp {
                 name: code.to_string(),
-                description: escape_json(&text.value().to_string()),
+                description: text.value().to_string(),
             });
         }
     }

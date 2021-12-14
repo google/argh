@@ -174,4 +174,48 @@ struct SubCommandTwo {
 }
 ```
 
+## Attribute Summary
+### Type attributes for `argh`
+
+The attributes used to configure the argh information for a type are defined in
+[parse_attrs::TypeAttrs](argh_derive/src/parse_attrs.rs).
+
+* `subcommand` - a subcommand type. This attribute must appear on both enumeration and each struct that
+    is a variant for the enumerated subcommand.
+* `error_code(code, description)` - an error code for the command. This attribute can appear zero
+    or more times.
+* `examples=` - Formatted text containing examples of how to use this command. This
+   is an optional attribute.
+* `name=` - (required for subcommand variant) the name of the subcommand.
+* `notes=` - Formatted text containing usage notes for this command. This
+   is an optional attribute.
+    pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
+
+### Field attributes for `argh`
+
+The attributes used to configure the argh information for a field are
+defined in [parse_attrs.rs](argh_derive/src/parse_attrs.rs).
+
+* Field kind. This is the first attribute. Valid kinds are:
+   * `switch` - a boolean flag, its presence on the command sets the field to `true`.
+   * `option` - a value. This can be a simple type like String, or usize, and enumeration.
+       This can be a scalar or Vec<>  for repeated values.
+   * `subcommand` - a subcommand. The type of this field is an enumeration with a value for each
+       subcommand. This attribute must appear on both the "top level" field and each struct that
+       is a variant for the enumerated subcommand.
+   * `positional` - a positional argument. This can be scalar or Vec<>. Only the last positional
+       argument can be Option<>, Vec<>, or defaulted.
+* `arg_name=` - the name to use for a positional argument in the help or the value of a `option`.
+    If not given, the default is the name of the field.
+* `default=` - the default value for the `option` or `positional` fields.
+* `description=` - the description of the flag or argument. The default value is the doc comment
+    for the field.
+* `from_str_fn` is the name of a custom deserialization function for this field with the signature:
+    `fn(&str) -> Result<T, String>`.
+* `long=` - the long format of the option or switch name. If `long` is not present, the
+    flag name defaults to the field name.
+* `short=` - the single character for this flag. If `short` is not present, there is no
+    short equivalent flag.
+
+
 NOTE: This is not an officially supported Google product.

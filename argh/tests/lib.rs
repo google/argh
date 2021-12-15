@@ -1314,3 +1314,58 @@ fn redact_arg_values_does_not_warn_if_used() {
     let actual = Cmd::redact_arg_values(&["program-name"], &["5"]).unwrap();
     assert_eq!(actual, &["program-name", "speed"]);
 }
+
+#[test]
+fn subcommand_does_not_panic() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum SubCommandEnum {
+        Cmd(SubCommand),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommand {
+        #[argh(positional)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    // Passing no subcommand name to an emum
+    assert_eq!(
+        SubCommandEnum::from_args(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
+    assert_eq!(
+        SubCommandEnum::redact_arg_values(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
+    // Passing unknown subcommand name to an emum
+    assert_eq!(
+        SubCommandEnum::from_args(&["fooey"], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+    );
+
+    assert_eq!(
+        SubCommandEnum::redact_arg_values(&["fooey"], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+    );
+
+    // Passing unknown subcommand name to a struct
+    assert_eq!(
+        SubCommand::redact_arg_values(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+}

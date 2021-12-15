@@ -31,9 +31,7 @@
 //!     pilot_nickname: Option<String>,
 //! }
 //!
-//! fn main() {
-//!     let up: GoUp = argh::from_env();
-//! }
+//! let up: GoUp = argh::from_env();
 //! ```
 //!
 //! `./some_bin --help` will then output the following:
@@ -481,8 +479,8 @@ impl From<String> for EarlyExit {
 }
 
 /// Extract the base cmd from a path
-fn cmd<'a>(default: &'a String, path: &'a String) -> &'a str {
-    std::path::Path::new(path).file_name().map(|s| s.to_str()).flatten().unwrap_or(default.as_str())
+fn cmd<'a>(default: &'a str, path: &'a str) -> &'a str {
+    std::path::Path::new(path).file_name().map(|s| s.to_str()).flatten().unwrap_or(default)
 }
 
 /// Create a `FromArgs` type from the current process's `env::args`.
@@ -690,7 +688,7 @@ pub fn parse_struct_args(
             continue;
         }
 
-        if next_arg.starts_with("-") && !options_ended {
+        if next_arg.starts_with('-') && !options_ended {
             if next_arg == "--" {
                 options_ended = true;
                 continue;
@@ -877,7 +875,7 @@ impl<'a> ParseStructSubCommand<'a> {
             }
         }
 
-        return Ok(false);
+        Ok(false)
     }
 }
 
@@ -951,7 +949,7 @@ impl MissingRequirements {
 
         if !self.options.is_empty() {
             if !self.positional_args.is_empty() {
-                output.push_str("\n");
+                output.push('\n');
             }
             output.push_str("Required options not provided:");
             for option in &self.options {
@@ -962,7 +960,7 @@ impl MissingRequirements {
 
         if let Some(missing_subcommands) = self.subcommands {
             if !self.options.is_empty() {
-                output.push_str("\n");
+                output.push('\n');
             }
             output.push_str("One of the following subcommands must be present:");
             output.push_str(NEWLINE_INDENT);

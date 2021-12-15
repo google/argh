@@ -96,7 +96,7 @@ pub(crate) fn help(
 
     lits_section(&mut format_lit, "Notes:", &ty_attrs.notes);
 
-    if ty_attrs.error_codes.len() != 0 {
+    if !ty_attrs.error_codes.is_empty() {
         format_lit.push_str(SECTION_SEPARATOR);
         format_lit.push_str("Error codes:");
         for (code, text) in &ty_attrs.error_codes {
@@ -106,7 +106,7 @@ pub(crate) fn help(
         }
     }
 
-    format_lit.push_str("\n");
+    format_lit.push('\n');
 
     quote! { {
         #subcommand_calculation
@@ -116,7 +116,7 @@ pub(crate) fn help(
 
 /// A section composed of exactly just the literals provided to the program.
 fn lits_section(out: &mut String, heading: &str, lits: &[syn::LitStr]) {
-    if lits.len() != 0 {
+    if !lits.is_empty() {
         out.push_str(SECTION_SEPARATOR);
         out.push_str(heading);
         for lit in lits {

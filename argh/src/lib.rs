@@ -683,7 +683,7 @@ impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 /// `parse_options`: Helper to parse optional arguments.
 /// `parse_positionals`: Helper to parse positional arguments.
 /// `parse_subcommand`: Helper to parse a subcommand.
-/// `help_func`: Generate a help message as plain text.
+/// `help_func`: Generate a help message.
 #[doc(hidden)]
 pub fn parse_struct_args(
     cmd_name: &[&str],
@@ -700,13 +700,12 @@ pub fn parse_struct_args(
 
     'parse_args: while let Some(&next_arg) = remaining_args.get(0) {
         remaining_args = &remaining_args[1..];
-
         if (next_arg == "--help" || next_arg == "help") && !options_ended {
             help = true;
             continue;
         }
 
-        if next_arg.starts_with("-") && !options_ended {
+        if next_arg.starts_with('-') && !options_ended {
             if next_arg == "--" {
                 options_ended = true;
                 continue;

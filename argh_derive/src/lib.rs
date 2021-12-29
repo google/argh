@@ -323,7 +323,7 @@ fn impl_from_args_struct_from_args<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
@@ -351,7 +351,7 @@ fn impl_from_args_struct_from_args<'a>(
                     last_is_repeating: #last_positional_is_repeating,
                 },
                 #parse_subcommands,
-                &|| #help
+                &|| #help,
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -436,7 +436,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
         fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
@@ -461,7 +461,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                     last_is_repeating: #last_positional_is_repeating,
                 },
                 #redact_subcommands,
-                &|| #help
+                &|| #help,
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();

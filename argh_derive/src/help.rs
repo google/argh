@@ -25,7 +25,7 @@ pub(crate) const HELP_DESCRIPTION: &str = "display usage information";
 /// in favor of the `subcommand` argument.
 pub(crate) fn help(
     errors: &Errors,
-    cmd_name_str_array_ident: &syn::Ident,
+    cmd_name_str_array_ident: syn::Ident,
     ty_attrs: &TypeAttrs,
     fields: &[StructField<'_>],
     subcommand: Option<&StructField<'_>>,
@@ -55,7 +55,7 @@ pub(crate) fn help(
     for option in options {
         option_description(errors, &mut format_lit, option);
     }
-    // Also include "help" and "help-json"
+    // Also include "help"
     option_description_format(&mut format_lit, None, HELP_FLAG, HELP_DESCRIPTION);
 
     let subcommand_calculation;

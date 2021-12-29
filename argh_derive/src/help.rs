@@ -18,8 +18,6 @@ const SECTION_SEPARATOR: &str = "\n\n";
 // Define constants for strings used for both help formats.
 pub(crate) const HELP_FLAG: &str = "--help";
 pub(crate) const HELP_DESCRIPTION: &str = "display usage information";
-pub(crate) const HELP_JSON_FLAG: &str = "--help-json";
-pub(crate) const HELP_JSON_DESCRIPTION: &str = "display usage information encoded in JSON";
 
 /// Returns a `TokenStream` generating a `String` help message.
 ///
@@ -59,7 +57,6 @@ pub(crate) fn help(
     }
     // Also include "help" and "help-json"
     option_description_format(&mut format_lit, None, HELP_FLAG, HELP_DESCRIPTION);
-    option_description_format(&mut format_lit, None, HELP_JSON_FLAG, HELP_JSON_DESCRIPTION);
 
     let subcommand_calculation;
     let subcommand_format_arg;

@@ -5,10 +5,7 @@
 use {
     crate::{
         errors::Errors,
-        help::{
-            build_usage_command_line, require_description, HELP_DESCRIPTION, HELP_FLAG,
-            HELP_JSON_DESCRIPTION, HELP_JSON_FLAG,
-        },
+        help::{build_usage_command_line, require_description, HELP_DESCRIPTION, HELP_FLAG},
         parse_attrs::{FieldKind, TypeAttrs},
         StructField,
     },
@@ -122,11 +119,6 @@ pub(crate) fn help_json(
         short: String::from(""),
         long: String::from(HELP_FLAG),
         description: String::from(HELP_DESCRIPTION),
-    });
-    help_obj.options.push(OptionHelp {
-        short: String::from(""),
-        long: String::from(HELP_JSON_FLAG),
-        description: String::from(HELP_JSON_DESCRIPTION),
     });
 
     let subcommand_calculation;

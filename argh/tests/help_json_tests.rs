@@ -41,12 +41,11 @@ fn help_json_test_subcommand() {
     }
 
     assert_help_json_string::<TopLevel>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 <command> [<args>]",
 "description": "Top-level command.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -58,13 +57,12 @@ fn help_json_test_subcommand() {
     );
 
     assert_help_json_string::<TopLevel>(
-        vec!["one", "--help-json"],
+        vec!["one"],
         r###"{
 "usage": "test_arg_0 one --x <x>",
 "description": "First subcommand.",
 "options": [{"short": "", "long": "--x", "description": "how many x"},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -88,13 +86,12 @@ fn help_json_test_multiline_doc_comment() {
         _s: bool,
     }
     assert_help_json_string::<Cmd>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 [--s]",
 "description": "Short description",
 "options": [{"short": "", "long": "--s", "description": "a switch with a description that is spread across a number of lines of comments."},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -128,7 +125,7 @@ fn help_json_test_basic_args() {
         link: Vec<String>,
     }
     assert_help_json_string::<Basic>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 [--power] --required <required> [-s <speed>] [--link <url...>]",
 "description": "Basic command args demonstrating multiple types and cardinality. \"With quotes\"",
@@ -136,8 +133,7 @@ fn help_json_test_basic_args() {
 {"short": "", "long": "--required", "description": "option that is required because of no default and not Option<>."},
 {"short": "s", "long": "--speed", "description": "optional speed if not specified it is None."},
 {"short": "", "long": "--link", "description": "repeatable option."},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -167,12 +163,11 @@ fn help_json_test_positional_args() {
         leaves: Vec<String>,
     }
     assert_help_json_string::<Positional>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 <root> <trunk> [<leaves...>]",
 "description": "Command with positional args demonstrating. \"With quotes\"",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [{"name": "root", "description": "the \"root\" position."},
 {"name": "trunk", "description": "trunk value"},
 {"name": "leaves", "description": "leaves. There can be many leaves."}],
@@ -204,12 +199,11 @@ fn help_json_test_optional_positional_args() {
         leaves: Option<String>,
     }
     assert_help_json_string::<Positional>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 <root> <trunk> [<leaves>]",
 "description": "Command with positional args demonstrating last value is optional",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [{"name": "root", "description": "the \"root\" position."},
 {"name": "trunk", "description": "trunk value"},
 {"name": "leaves", "description": "leaves. There can be many leaves."}],
@@ -241,12 +235,11 @@ fn help_json_test_default_positional_args() {
         leaves: String,
     }
     assert_help_json_string::<Positional>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 <root> <trunk> [<leaves>]",
 "description": "Command with positional args demonstrating last value is defaulted.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [{"name": "root", "description": "the \"root\" position."},
 {"name": "trunk", "description": "trunk value"},
 {"name": "leaves", "description": "leaves. There can be many leaves."}],
@@ -295,12 +288,11 @@ fn help_json_test_notes_examples_errors() {
         fields: Vec<PathBuf>,
     }
     assert_help_json_string::<NotesExamplesErrors>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 [<files...>]",
 "description": "Command with Examples and usage Notes, including error codes.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [{"name": "files", "description": "the \"root\" position."}],
 "examples": "\n    Use the command with 1 file:\n\n    `test_arg_0 /path/to/file`\n\n    Use it with a \"wildcard\":\n\n    `test_arg_0 /path/to/*`\n\n     a blank line\n    \n    and one last line with \"quoted text\".",
 "notes": "\n    These usage notes appear for test_arg_0 and how to best use it.\n    The formatting should be preserved.\n    one\n    two\n    three then a blank\n    \n    and one last line with \"quoted text\".",
@@ -381,13 +373,12 @@ fn help_json_test_subcommands() {
     struct Command3Args {}
 
     assert_help_json_string::<TopLevel>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 [--verbose] <command> [<args>]",
 "description": "Top level command with \"subcommands\".",
 "options": [{"short": "", "long": "--verbose", "description": "show verbose output"},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -400,12 +391,11 @@ fn help_json_test_subcommands() {
     );
 
     assert_help_json_string::<TopLevel>(
-        vec!["one", "--help-json"],
+        vec!["one"],
         r###"{
 "usage": "test_arg_0 one <root> <trunk> [<leaves>]",
 "description": "Command1 args are used for Command1.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [{"name": "root", "description": "the \"root\" position."},
 {"name": "trunk", "description": "trunk value"},
 {"name": "leaves", "description": "leaves. There can be many leaves."}],
@@ -418,7 +408,7 @@ fn help_json_test_subcommands() {
     );
 
     assert_help_json_string::<TopLevel>(
-        vec!["two", "--help-json"],
+        vec!["two"],
         r###"{
 "usage": "test_arg_0 two [--power] --required <required> [-s <speed>] [--link <url...>]",
 "description": "Command2 args are used for Command2.",
@@ -426,8 +416,7 @@ fn help_json_test_subcommands() {
 {"short": "", "long": "--required", "description": "option that is required because of no default and not Option<>."},
 {"short": "s", "long": "--speed", "description": "optional speed if not specified it is None."},
 {"short": "", "long": "--link", "description": "repeatable option."},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -438,12 +427,11 @@ fn help_json_test_subcommands() {
     );
 
     assert_help_json_string::<TopLevel>(
-        vec!["three", "--help-json"],
+        vec!["three"],
         r###"{
 "usage": "test_arg_0 three",
 "description": "Command3 args are used for Command3 which has no options or arguments.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "",
 "notes": "",
@@ -506,13 +494,12 @@ fn help_json_test_subcommand_notes_examples() {
     }
 
     assert_help_json_string::<TopLevel>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 [--verbose] <command> [<args>]",
 "description": "Top level command with \"subcommands\".",
 "options": [{"short": "", "long": "--verbose", "description": "show verbose output"},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "Top level example",
 "notes": "Top level note",
@@ -523,12 +510,11 @@ fn help_json_test_subcommand_notes_examples() {
     );
 
     assert_help_json_string::<TopLevel>(
-        vec!["one", "--help-json"],
+        vec!["one"],
         r###"{
 "usage": "test_arg_0 one <root> <trunk> [<leaves>]",
 "description": "Command1 args are used for subcommand one.",
-"options": [{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+"options": [{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [{"name": "root", "description": "the \"root\" position."},
 {"name": "trunk", "description": "trunk value"},
 {"name": "leaves", "description": "leaves. There can be many leaves."}],
@@ -607,7 +593,7 @@ fn help_json_test_example() {
     }
 
     assert_help_json_string::<HelpExample>(
-        vec!["--help-json"],
+        vec![],
         r###"{
 "usage": "test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]",
 "description": "Destroy the contents of <file> with a specific \"method of destruction\".",
@@ -615,8 +601,7 @@ fn help_json_test_example() {
 {"short": "", "long": "--really-really-really-long-name-for-pat", "description": "documentation"},
 {"short": "s", "long": "--scribble", "description": "write <scribble> repeatedly"},
 {"short": "v", "long": "--verbose", "description": "say more. Defaults to $BLAST_VERBOSE."},
-{"short": "", "long": "--help", "description": "display usage information"},
-{"short": "", "long": "--help-json", "description": "display usage information encoded in JSON"}],
+{"short": "", "long": "--help", "description": "display usage information"}],
 "positional": [],
 "examples": "Scribble 'abc' and then run |grind|.\n$ test_arg_0 -s 'abc' grind old.txt taxes.cp",
 "notes": "Use `test_arg_0 help <command>` for details on [<args>] for a subcommand.",
@@ -630,11 +615,7 @@ fn help_json_test_example() {
 }
 
 fn assert_help_json_string<T: FromArgs>(args: Vec<&str>, help_str: &str) {
-    match T::from_args(&["test_arg_0"], &args) {
-        Ok(_) => panic!("help-json was parsed as args"),
-        Err(e) => {
-            assert_eq!(help_str, e.output);
-            e.status.expect("help-json returned an error");
-        }
-    }
+    let actual_value = T::help_json_from_args(&["test_arg_0"], &args)
+        .expect("unexpected error getting help_json_from_args");
+    assert_eq!(help_str, actual_value)
 }

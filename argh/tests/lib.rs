@@ -118,7 +118,6 @@ Options:
   --s               a switch with a description that is spread across a number
                     of lines of comments.
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###,
     );
 }
@@ -256,7 +255,6 @@ Woot
 Options:
   -n, --n           fooey
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -279,7 +277,6 @@ Woot
 Options:
   --option-name     fooey
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -318,7 +315,6 @@ Positional Arguments:
 
 Options:
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -708,7 +704,6 @@ A type for testing `--help`/`help`
 
 Options:
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 
 Commands:
   first             First subcommmand for testing `help`.
@@ -720,7 +715,6 @@ First subcommmand for testing `help`.
 
 Options:
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 
 Commands:
   second            Second subcommand for testing `help`.
@@ -732,7 +726,6 @@ Second subcommand for testing `help`.
 
 Options:
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###;
 
     #[test]
@@ -878,7 +871,6 @@ Options:
   -s, --scribble    write <scribble> repeatedly
   -v, --verbose     say more. Defaults to $BLAST_VERBOSE.
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 
 Commands:
   blow-up           explosively separate
@@ -918,7 +910,6 @@ Positional Arguments:
 
 Options:
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###,
         );
     }
@@ -1282,7 +1273,6 @@ Woot
 Options:
   -n, --n           fooey
   --help            display usage information
-  --help-json       display usage information encoded in JSON
 "###
             .to_owned(),
             status: Ok(()),
@@ -1364,6 +1354,11 @@ fn subcommand_does_not_panic() {
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
     );
 
+    assert_eq!(
+        SubCommandEnum::help_json_from_args(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
     // Passing unknown subcommand name to an emum
     assert_eq!(
         SubCommandEnum::from_args(&["fooey"], &["5"]).unwrap_err(),
@@ -1375,7 +1370,14 @@ fn subcommand_does_not_panic() {
         argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
     );
 
+    assert_eq!(
+        SubCommandEnum::help_json_from_args(&["fooey"], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+    );
+
     // Passing unknown subcommand name to a struct
+    // Not testing from_args since it will assign 5 to x as a positional.
+    // Also not testing help_json_from_args since it is a valid to get help.
     assert_eq!(
         SubCommand::redact_arg_values(&[], &["5"]).unwrap_err(),
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },

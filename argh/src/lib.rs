@@ -256,7 +256,6 @@ pub trait FromArgs: Sized {
     ///
     /// Options:
     ///   --help            display usage information
-    ///   --help-json       display usage information encoded in JSON
     ///
     /// Commands:
     ///   list              list all the classes.
@@ -281,7 +280,6 @@ pub trait FromArgs: Sized {
     /// Options:
     ///   --teacher-name    list classes for only this teacher.
     ///   --help            display usage information
-    ///   --help-json       display usage information encoded in JSON
     /// "#.to_string(),
     ///        status: Ok(()),
     ///     },
@@ -424,7 +422,7 @@ pub trait FromArgs: Sized {
     ///
     /// Options:
     ///   --help            display usage information
-    ///   --help-json       display usage information encoded in JSON
+
     ///
     /// Commands:
     ///   list              list all the classes.
@@ -436,6 +434,22 @@ pub trait FromArgs: Sized {
     /// ```
     fn redact_arg_values(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
         Ok(vec!["<<REDACTED>>".into()])
+    }
+
+    /// Returns a JSON encoded string of the usage information. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+    fn help_json_from_args(command_name: &[&str], args: &[&str]) -> Result<String, EarlyExit>;
+
+    /// Returns a JSON encoded string of the usage information based on the command line
+    /// found in argv, identical to `::from_env()`. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+    fn help_json() -> Result<String, EarlyExit> {
+        let strings: Vec<String> = std::env::args().collect();
+        let cmd = cmd(&strings[0], &strings[0]);
+        let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
+        Self::help_json_from_args(&[cmd], &strs[1..])
     }
 }
 
@@ -670,7 +684,6 @@ impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 /// `parse_positionals`: Helper to parse positional arguments.
 /// `parse_subcommand`: Helper to parse a subcommand.
 /// `help_func`: Generate a help message as plain text.
-/// `help_json_func`: Generate a help message serialized into JSON.
 #[doc(hidden)]
 pub fn parse_struct_args(
     cmd_name: &[&str],
@@ -679,10 +692,8 @@ pub fn parse_struct_args(
     mut parse_positionals: ParseStructPositionals<'_>,
     mut parse_subcommand: Option<ParseStructSubCommand<'_>>,
     help_func: &dyn Fn() -> String,
-    help_json_func: &dyn Fn() -> String,
 ) -> Result<(), EarlyExit> {
     let mut help = false;
-    let mut help_json = false;
     let mut remaining_args = args;
     let mut positional_index = 0;
     let mut options_ended = false;
@@ -692,13 +703,6 @@ pub fn parse_struct_args(
 
         if (next_arg == "--help" || next_arg == "help") && !options_ended {
             help = true;
-            continue;
-        }
-
-        // look for help-json for json formatted help output.
-        if (next_arg == "--help-json" || next_arg == "help-json") && !options_ended {
-            help = true;
-            help_json = true;
             continue;
         }
 
@@ -726,9 +730,7 @@ pub fn parse_struct_args(
 
         parse_positionals.parse(&mut positional_index, next_arg)?;
     }
-    if help_json {
-        Err(EarlyExit { output: help_json_func(), status: Ok(()) })
-    } else if help {
+    if help {
         Err(EarlyExit { output: help_func(), status: Ok(()) })
     } else {
         Ok(())

@@ -1355,24 +1355,24 @@ fn subcommand_does_not_panic() {
     );
 
     assert_eq!(
-        SubCommandEnum::help_json_from_args(&[], &["5"]).unwrap_err(),
+        SubCommandEnum::help_json_from_args(&[]).unwrap_err(),
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
     );
 
     // Passing unknown subcommand name to an emum
     assert_eq!(
         SubCommandEnum::from_args(&["fooey"], &["5"]).unwrap_err(),
-        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+        argh::EarlyExit { output: "no subcommand matched fooey".into(), status: Err(()) },
     );
 
     assert_eq!(
         SubCommandEnum::redact_arg_values(&["fooey"], &["5"]).unwrap_err(),
-        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+        argh::EarlyExit { output: "no subcommand matched fooey".into(), status: Err(()) },
     );
 
     assert_eq!(
-        SubCommandEnum::help_json_from_args(&["fooey"], &["5"]).unwrap_err(),
-        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+        SubCommandEnum::help_json_from_args(&["fooey"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched fooey".into(), status: Err(()) },
     );
 
     // Passing unknown subcommand name to a struct

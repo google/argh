@@ -278,7 +278,6 @@ fn impl_from_args_struct_from_args<'a>(
         .last()
         .map(|field| field.optionality == Optionality::Repeating)
         .unwrap_or(false);
-
     let flag_output_table = fields.iter().filter_map(|field| {
         let field_name = &field.field.ident;
         match field.kind {
@@ -492,89 +491,17 @@ fn impl_help_json<'a>(
     type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
 ) -> TokenStream {
-    let init_fields = declare_local_storage_for_help_json_fields(&fields);
-
-    let positional_fields: Vec<&StructField<'_>> =
-        fields.iter().filter(|field| field.kind == FieldKind::Positional).collect();
-    let positional_field_idents = positional_fields.iter().map(|field| &field.field.ident);
-    let positional_field_names = positional_fields.iter().map(|field| field.name.to_string());
-    let last_positional_is_repeating = positional_fields
-        .last()
-        .map(|field| field.optionality == Optionality::Repeating)
-        .unwrap_or(false);
-
-    let flag_output_table = fields.iter().filter_map(|field| {
-        let field_name = &field.field.ident;
-        match field.kind {
-            FieldKind::Option => Some(quote! { argh::ParseStructOption::Value(&mut #field_name) }),
-            FieldKind::Switch => Some(quote! { argh::ParseStructOption::Flag(&mut #field_name) }),
-            FieldKind::SubCommand | FieldKind::Positional => None,
-        }
-    });
-
-    let flag_str_to_output_table_map = flag_str_to_output_table_map_entries(&fields);
-
-    let mut subcommands_iter =
-        fields.iter().filter(|field| field.kind == FieldKind::SubCommand).fuse();
-
-    let subcommand: Option<&StructField<'_>> = subcommands_iter.next();
-    for dup_subcommand in subcommands_iter {
-        errors.duplicate_attrs("subcommand", subcommand.unwrap().field, dup_subcommand.field);
-    }
-
     let impl_span = Span::call_site();
-
-    let parse_subcommands = if let Some(subcommand) = subcommand {
-        let ty = subcommand.ty_without_wrapper;
-        quote_spanned! { impl_span =>
-            Some(argh::ParseStructSubCommand {
-                subcommands: <#ty as argh::SubCommands>::COMMANDS,
-                parse_func: &mut |__command, __remaining_args| {
-                    help_string = <#ty as argh::FromArgs>::help_json_from_args(__command, __remaining_args)?;
-                    Ok(())
-                },
-            })
-        }
-    } else {
-        quote_spanned! { impl_span => None }
-    };
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help_json =
-        help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, &fields, subcommand);
+    let help_json = help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, &fields);
 
     let method_impl = quote_spanned! { impl_span =>
-        fn help_json_from_args(__cmd_name: &[&str], __args: &[&str])
+        fn help_json_from_args(__cmd_name: &[&str])
             -> Result<String, argh::EarlyExit>
         {
-            let mut help_string : String = #help_json;
-
-            #( #init_fields )*
-
-            argh::parse_struct_args(
-                __cmd_name,
-                __args,
-                argh::ParseStructOptions {
-                    arg_to_slot: &[ #( #flag_str_to_output_table_map ,)* ],
-                    slots: &mut [ #( #flag_output_table, )* ],
-                },
-                argh::ParseStructPositionals {
-                    positionals: &mut [
-                        #(
-                            argh::ParseStructPositional {
-                                name: #positional_field_names,
-                                slot: &mut #positional_field_idents as &mut argh::ParseValueSlot,
-                            },
-                        )*
-                    ],
-                    last_is_repeating: #last_positional_is_repeating,
-                },
-                #parse_subcommands,
-                &|| String::from(""),
-            )?;
-
-           Ok(help_string)
+           Ok(String::from(#help_json))
         }
     };
 
@@ -816,55 +743,6 @@ fn unwrap_redacted_fields<'a>(
     })
 }
 
-/// Declare a local slots to store each field in during parsing.
-///
-/// Most fields are stored in `Option<FieldType>` locals.
-/// `argh(option)` fields are stored in a `ParseValueSlotTy` along with a
-/// function that knows how to decode the appropriate value.
-fn declare_local_storage_for_help_json_fields<'a>(
-    fields: &'a [StructField<'a>],
-) -> impl Iterator<Item = TokenStream> + 'a {
-    fields.iter().map(|field| {
-        let field_name = &field.field.ident;
-        let field_type = &field.ty_without_wrapper;
-
-        // Wrap field types in `Option` if they aren't already `Option` or `Vec`-wrapped.
-        let field_slot_type = match field.optionality {
-            Optionality::Optional | Optionality::Repeating => (&field.field.ty).into_token_stream(),
-            Optionality::None | Optionality::Defaulted(_) => {
-                quote! { std::option::Option<#field_type> }
-            }
-        };
-
-        match field.kind {
-            FieldKind::Option | FieldKind::Positional => {
-                let from_str_fn = match &field.attrs.from_str_fn {
-                    Some(from_str_fn) => from_str_fn.into_token_stream(),
-                    None => {
-                        quote! {
-                            <#field_type as argh::FromArgValue>::from_arg_value
-                        }
-                    }
-                };
-
-                quote! {
-                    let mut #field_name: argh::ParseValueSlotTy<#field_slot_type, #field_type>
-                        = argh::ParseValueSlotTy {
-                            slot: std::default::Default::default(),
-                            parse_func: |_, value| { #from_str_fn(value) },
-                        };
-                }
-            }
-            FieldKind::SubCommand => {
-                quote! {}
-            }
-            FieldKind::Switch => {
-                quote! { let mut #field_name: #field_slot_type = argh::Flag::default(); }
-            }
-        }
-    })
-}
-
 /// Entries of tokens like `("--some-flag-key", 5)` that map from a flag key string
 /// to an index in the output table.
 fn flag_str_to_output_table_map_entries<'a>(fields: &'a [StructField<'a>]) -> Vec<TokenStream> {
@@ -1026,7 +904,7 @@ fn impl_from_args_enum(
                     }
                 )*
 
-                Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+                Err(argh::EarlyExit::from(format!("no subcommand matched {}",subcommand_name).to_owned()))
             }
 
             fn redact_arg_values(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
@@ -1042,10 +920,10 @@ fn impl_from_args_enum(
                     }
                 )*
 
-                Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+                Err(argh::EarlyExit::from(format!("no subcommand matched {}",subcommand_name).to_owned()))
             }
 
-            fn help_json_from_args(command_name: &[&str], args: &[&str]) -> std::result::Result<String, argh::EarlyExit>
+            fn help_json_from_args(command_name: &[&str]) -> std::result::Result<String, argh::EarlyExit>
         {
             let subcommand_name = if let Some(subcommand_name) = command_name.last() {
                 *subcommand_name
@@ -1055,11 +933,11 @@ fn impl_from_args_enum(
 
             #(
                 if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
-                    return #variant_ty::help_json_from_args(command_name, args)
+                    return #variant_ty::help_json_from_args(command_name)
                     ;
                 }
             )*
-            Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+            Err(argh::EarlyExit::from(format!("no subcommand matched {}",subcommand_name).to_owned()))
         }
         }
 

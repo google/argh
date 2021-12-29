@@ -439,7 +439,7 @@ pub trait FromArgs: Sized {
     /// Returns a JSON encoded string of the usage information. This is intended to
     /// create a "machine readable" version of the help text to enable reference
     /// documentation generation.
-    fn help_json_from_args(command_name: &[&str], args: &[&str]) -> Result<String, EarlyExit>;
+    fn help_json_from_args(command_name: &[&str]) -> Result<String, EarlyExit>;
 
     /// Returns a JSON encoded string of the usage information based on the command line
     /// found in argv, identical to `::from_env()`. This is intended to
@@ -448,8 +448,7 @@ pub trait FromArgs: Sized {
     fn help_json() -> Result<String, EarlyExit> {
         let strings: Vec<String> = std::env::args().collect();
         let cmd = cmd(&strings[0], &strings[0]);
-        let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-        Self::help_json_from_args(&[cmd], &strs[1..])
+        Self::help_json_from_args(&[cmd])
     }
 }
 

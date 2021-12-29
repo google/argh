@@ -729,6 +729,7 @@ pub fn parse_struct_args(
 
         parse_positionals.parse(&mut positional_index, next_arg)?;
     }
+
     if help {
         Err(EarlyExit { output: help_func(), status: Ok(()) })
     } else {

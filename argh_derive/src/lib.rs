@@ -1004,7 +1004,6 @@ fn impl_from_args_enum(
         .collect();
 
     let name_repeating = std::iter::repeat(name.clone());
-
     let variant_ty = variants.iter().map(|x| x.ty).collect::<Vec<_>>();
     let variant_names = variants.iter().map(|x| x.name).collect::<Vec<_>>();
 
@@ -1042,6 +1041,7 @@ fn impl_from_args_enum(
                         return <#variant_ty as argh::FromArgs>::redact_arg_values(command_name, args);
                     }
                 )*
+
                 Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
             }
 

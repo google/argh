@@ -79,29 +79,29 @@ impl FieldAttrs {
 
                 let name = meta.path();
                 if name.is_ident("arg_name") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_arg_name(errors, m);
                     }
                 } else if name.is_ident("default") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_default(errors, m);
                     }
                 } else if name.is_ident("description") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         parse_attr_description(errors, m, &mut this.description);
                     }
                 } else if name.is_ident("from_str_fn") {
-                    if let Some(m) = errors.expect_meta_list(&meta) {
+                    if let Some(m) = errors.expect_meta_list(meta) {
                         this.parse_attr_from_str_fn(errors, m);
                     }
                 } else if name.is_ident("long") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_long(errors, m);
                     }
                 } else if name.is_ident("option") {
                     parse_attr_field_type(errors, meta, FieldKind::Option, &mut this.field_type);
                 } else if name.is_ident("short") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_short(errors, m);
                     }
                 } else if name.is_ident("subcommand") {
@@ -218,10 +218,8 @@ fn parse_attr_field_type(
     if let Some(path) = errors.expect_meta_word(meta) {
         if let Some(first) = slot {
             errors.duplicate_attrs("field kind", &first.ident, path);
-        } else {
-            if let Some(word) = path.get_ident() {
-                *slot = Some(FieldType { kind, ident: word.clone() });
-            }
+        } else if let Some(word) = path.get_ident() {
+            *slot = Some(FieldType { kind, ident: word.clone() });
         }
     }
 }
@@ -304,28 +302,27 @@ impl TypeAttrs {
 
                 let name = meta.path();
                 if name.is_ident("description") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         parse_attr_description(errors, m, &mut this.description);
                     }
                 } else if name.is_ident("error_code") {
-                    if let Some(m) = errors.expect_meta_list(&meta) {
+                    if let Some(m) = errors.expect_meta_list(meta) {
                         this.parse_attr_error_code(errors, m);
                     }
                 } else if name.is_ident("example") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_example(errors, m);
                     }
                 } else if name.is_ident("name") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_name(errors, m);
                     }
                 } else if name.is_ident("note") {
-                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                    if let Some(m) = errors.expect_meta_name_value(meta) {
                         this.parse_attr_note(errors, m);
                     }
                 } else if name.is_ident("subcommand") {
-                    if let Some(ident) = errors.expect_meta_word(&meta).and_then(|p| p.get_ident())
-                    {
+                    if let Some(ident) = errors.expect_meta_word(meta).and_then(|p| p.get_ident()) {
                         this.parse_attr_subcommand(errors, ident);
                     }
                 } else {
@@ -498,7 +495,7 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     // Ensure that `#[argh(subcommand)]` is present.
     if is_subcommand.is_none() {
         errors.err_span(
-            type_span.clone(),
+            *type_span,
             concat!(
                 "`#![derive(FromArgs)]` on `enum`s can only be used to enumerate subcommands.\n",
                 "Consider adding `#[argh(subcommand)]` to the `enum` declaration.",

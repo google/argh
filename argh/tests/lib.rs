@@ -1,7 +1,15 @@
-#![cfg(test)]
 // Copyright (c) 2020 Google LLC All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
+// Deny a bunch of uncommon clippy lints to make sure the generated code won't trigger a warning.
+#![deny(
+    clippy::indexing_slicing,
+    clippy::panic_in_result_fn,
+    clippy::str_to_string,
+    clippy::unreachable,
+    clippy::unwrap_in_result
+)]
 
 use {argh::FromArgs, std::fmt::Debug};
 
@@ -157,7 +165,7 @@ fn default_number() {
 fn default_function() {
     const MSG: &str = "hey I just met you";
     fn call_me_maybe() -> String {
-        MSG.to_string()
+        MSG.to_owned()
     }
 
     #[derive(FromArgs)]
@@ -830,7 +838,7 @@ Options:
             help_example,
             HelpExample {
                 force: true,
-                scribble: "fooey".to_string(),
+                scribble: "fooey".to_owned(),
                 really_really_really_long_name_for_pat: false,
                 verbose: false,
                 command: HelpExampleSubCommands::BlowUp(BlowUp { safely: true }),
@@ -1276,7 +1284,7 @@ Options:
   --help            display usage information
   --help-json       display usage information encoded in JSON
 "###
-            .to_string(),
+            .to_owned(),
             status: Ok(()),
         }),
     );
@@ -1295,7 +1303,7 @@ fn redact_arg_values_produces_errors_with_bad_arguments() {
     assert_eq!(
         Cmd::redact_arg_values(&["program-name"], &["--n"]),
         Err(argh::EarlyExit {
-            output: "No value provided for option '--n'.\n".to_string(),
+            output: "No value provided for option '--n'.\n".to_owned(),
             status: Err(()),
         }),
     );
@@ -1317,4 +1325,59 @@ fn redact_arg_values_does_not_warn_if_used() {
 
     let actual = Cmd::redact_arg_values(&["program-name"], &["5"]).unwrap();
     assert_eq!(actual, &["program-name", "speed"]);
+}
+
+#[test]
+fn subcommand_does_not_panic() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum SubCommandEnum {
+        Cmd(SubCommand),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommand {
+        #[argh(positional)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    // Passing no subcommand name to an emum
+    assert_eq!(
+        SubCommandEnum::from_args(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
+    assert_eq!(
+        SubCommandEnum::redact_arg_values(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
+    // Passing unknown subcommand name to an emum
+    assert_eq!(
+        SubCommandEnum::from_args(&["fooey"], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+    );
+
+    assert_eq!(
+        SubCommandEnum::redact_arg_values(&["fooey"], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+    );
+
+    // Passing unknown subcommand name to a struct
+    assert_eq!(
+        SubCommand::redact_arg_values(&[], &["5"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
 }

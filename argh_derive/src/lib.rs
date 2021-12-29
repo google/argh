@@ -195,7 +195,7 @@ impl<'a> StructField<'a> {
             FieldKind::SubCommand | FieldKind::Positional => None,
         };
 
-        Some(StructField { field, attrs, kind, optionality, ty_without_wrapper, name, long_name })
+        Some(StructField { field, attrs, name, kind, ty_without_wrapper, optionality, long_name })
     }
 
     pub(crate) fn arg_name(&self) -> String {
@@ -518,7 +518,7 @@ fn impl_help_json<'a>(
         fields.iter().filter(|field| field.kind == FieldKind::SubCommand).fuse();
 
     let subcommand: Option<&StructField<'_>> = subcommands_iter.next();
-    while let Some(dup_subcommand) = subcommands_iter.next() {
+    for dup_subcommand in subcommands_iter {
         errors.duplicate_attrs("subcommand", subcommand.unwrap().field, dup_subcommand.field);
     }
 

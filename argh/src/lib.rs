@@ -439,7 +439,9 @@ pub trait FromArgs: Sized {
     /// Returns a JSON encoded string of the usage information. This is intended to
     /// create a "machine readable" version of the help text to enable reference
     /// documentation generation.
-    fn help_json_from_args(command_name: &[&str]) -> Result<String, EarlyExit>;
+    fn help_json_from_args(_: &[&str]) -> Result<String, EarlyExit> {
+        Err(EarlyExit::from(String::from("Not implemented, use #[derive(FromArgs)]")))
+    }
 
     /// Returns a JSON encoded string of the usage information based on the command line
     /// found in argv, identical to `::from_env()`. This is intended to

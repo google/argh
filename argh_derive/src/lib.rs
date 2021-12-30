@@ -495,7 +495,7 @@ fn impl_help_json<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help_json = help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, &fields);
+    let help_json = help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, fields);
 
     let method_impl = quote_spanned! { impl_span =>
         fn help_json_from_args(__cmd_name: &[&str])

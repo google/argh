@@ -422,7 +422,6 @@ pub trait FromArgs: Sized {
     ///
     /// Options:
     ///   --help            display usage information
-
     ///
     /// Commands:
     ///   list              list all the classes.

@@ -242,6 +242,8 @@ fn impl_from_args_struct(
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
 
+    let help_info = impl_help(errors, type_attrs, &fields);
+
     let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
 
     let trait_impl = quote_spanned! { impl_span =>
@@ -252,15 +254,148 @@ fn impl_from_args_struct(
             #redact_arg_values_method
         }
 
+        #[automatically_derived]
+        impl argh::Help for #name {
+            const HELP_INFO: &'static argh::HelpInfo = #help_info;
+        }
+
         #top_or_sub_cmd_impl
     };
 
     trait_impl
 }
 
-fn impl_from_args_struct_from_args<'a>(
+fn impl_help<'a>(
     errors: &Errors,
     type_attrs: &TypeAttrs,
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let mut subcommands_iter =
+        fields.iter().filter(|field| field.kind == FieldKind::SubCommand).fuse();
+
+    let subcommand: Option<&StructField<'_>> = subcommands_iter.next();
+    for dup_subcommand in subcommands_iter {
+        errors.duplicate_attrs("subcommand", subcommand.unwrap().field, dup_subcommand.field);
+    }
+
+    let impl_span = Span::call_site();
+
+    let mut positionals = vec![];
+    let mut flags = vec![];
+
+    for field in fields {
+        let optionality = match field.optionality {
+            Optionality::None => quote! { argh::HelpOptionality::None },
+            Optionality::Defaulted(_) => quote! { argh::HelpOptionality::None },
+            Optionality::Optional => quote! { argh::HelpOptionality::Optional },
+            Optionality::Repeating => quote! { argh::HelpOptionality::Repeating },
+        };
+
+        match field.kind {
+            FieldKind::Positional => {
+                let name = field.arg_name();
+
+                let description = if let Some(desc) = &field.attrs.description {
+                    desc.content.value().trim().to_owned()
+                } else {
+                    String::new()
+                };
+
+                positionals.push(quote! {
+                    &argh::HelpPositionalInfo {
+                        name: #name,
+                        description: #description,
+                        optionality: #optionality,
+                    }
+                });
+            }
+            FieldKind::Switch | FieldKind::Option => {
+                let short = if let Some(short) = &field.attrs.short {
+                    quote! { Some(#short) }
+                } else {
+                    quote! { None }
+                };
+
+                let long = field.long_name.as_ref().expect("missing long name for option");
+
+                let description = help::require_description(
+                    errors,
+                    field.name.span(),
+                    &field.attrs.description,
+                    "field",
+                );
+
+                let kind = if field.kind == FieldKind::Switch {
+                    quote! {
+                        argh::HelpFieldKind::Switch
+                    }
+                } else {
+                    let arg_name = if let Some(arg_name) = &field.attrs.arg_name {
+                        quote! { #arg_name }
+                    } else {
+                        let arg_name = long.trim_start_matches("--");
+                        quote! { #arg_name }
+                    };
+
+                    quote! {
+                        argh::HelpFieldKind::Option {
+                            arg_name: #arg_name,
+                        }
+                    }
+                };
+
+                flags.push(quote! {
+                    &argh::HelpFlagInfo {
+                        short: #short,
+                        long: #long,
+                        description: #description,
+                        optionality: #optionality,
+                        kind: #kind,
+                    }
+                });
+            }
+            FieldKind::SubCommand => {}
+        }
+    }
+
+    let subcommand = if let Some(subcommand) = subcommand {
+        let subcommand_ty = subcommand.ty_without_wrapper;
+        quote! { Some(<#subcommand_ty as argh::HelpSubCommands>::HELP_INFO) }
+    } else {
+        quote! { None }
+    };
+
+    let description =
+        help::require_description(errors, Span::call_site(), &type_attrs.description, "type");
+    let examples = type_attrs
+        .examples
+        .iter()
+        .map(|e| quote! { |command_name| format!(#e, command_name = command_name.join(" ")) });
+    let notes = type_attrs
+        .notes
+        .iter()
+        .map(|e| quote! { |command_name| format!(#e, command_name = command_name.join(" ")) });
+
+    let error_codes = type_attrs.error_codes.iter().map(|(code, text)| {
+        quote! { (#code, #text) }
+    });
+
+    quote_spanned! { impl_span =>
+        &argh::HelpInfo {
+            description: #description,
+            examples: &[#( #examples, )*],
+            notes: &[#( #notes, )*],
+            positionals: &[#( #positionals, )*],
+            flags: &[#( #flags, )*],
+            subcommand: #subcommand,
+            error_codes: &[#( #error_codes, )*],
+        }
+    }
+}
+
+fn impl_from_args_struct_from_args<'a>(
+    errors: &Errors,
+    _type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
 ) -> TokenStream {
     let init_fields = declare_local_storage_for_from_args_fields(fields);
@@ -319,7 +454,7 @@ fn impl_from_args_struct_from_args<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
+    //let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
@@ -348,7 +483,8 @@ fn impl_from_args_struct_from_args<'a>(
                     last_is_repeating: #last_positional_is_repeating,
                 },
                 #parse_subcommands,
-                &|| #help,
+                //&|| #help,
+                &|| <Self as argh::Help>::HELP_INFO.help(#cmd_name_str_array_ident),
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -527,6 +663,14 @@ fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttr
                 const COMMAND: &'static argh::CommandInfo = &argh::CommandInfo {
                     name: #subcommand_name,
                     description: #description,
+                };
+            }
+
+            #[automatically_derived]
+            impl argh::HelpSubCommand for #name {
+                const HELP_INFO: &'static argh::HelpSubCommandInfo = &argh::HelpSubCommandInfo {
+                    name: #subcommand_name,
+                    info: <#name as argh::Help>::HELP_INFO,
                 };
             }
         }
@@ -951,6 +1095,15 @@ fn impl_from_args_enum(
             )*];
 
             #dynamic_commands
+        }
+
+        impl argh::HelpSubCommands for #name {
+            const HELP_INFO: &'static argh::HelpSubCommandsInfo = &argh::HelpSubCommandsInfo {
+                optional: false,
+                commands: &[#(
+                    <#variant_ty as argh::HelpSubCommand>::HELP_INFO,
+                )*],
+            };
         }
     }
 }

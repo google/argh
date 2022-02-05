@@ -267,7 +267,15 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::FromArgs;
+mod help;
+
+pub use {
+    crate::help::{
+        Help, HelpFieldKind, HelpFlagInfo, HelpInfo, HelpOptionality, HelpPositionalInfo,
+        HelpSubCommand, HelpSubCommandInfo, HelpSubCommands, HelpSubCommandsInfo,
+    },
+    argh_derive::FromArgs,
+};
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;

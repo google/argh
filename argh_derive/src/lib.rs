@@ -367,14 +367,8 @@ fn impl_help<'a>(
 
     let description =
         help::require_description(errors, Span::call_site(), &type_attrs.description, "type");
-    let examples = type_attrs
-        .examples
-        .iter()
-        .map(|e| quote! { |command_name| format!(#e, command_name = command_name.join(" ")) });
-    let notes = type_attrs
-        .notes
-        .iter()
-        .map(|e| quote! { |command_name| format!(#e, command_name = command_name.join(" ")) });
+    let examples = type_attrs.examples.iter().map(|e| quote! { #e });
+    let notes = type_attrs.notes.iter().map(|e| quote! { #e });
 
     let error_codes = type_attrs.error_codes.iter().map(|(code, text)| {
         quote! { (#code, #text) }

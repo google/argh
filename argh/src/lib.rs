@@ -171,18 +171,22 @@
 
 use std::str::FromStr;
 
-mod help;
-
 pub use {
-    crate::help::{
-        Help, HelpFieldKind, HelpFlagInfo, HelpInfo, HelpOptionality, HelpPositionalInfo,
-        HelpSubCommand, HelpSubCommandInfo, HelpSubCommands, HelpSubCommandsInfo,
-    },
     argh_derive::FromArgs,
+    argh_shared::{HelpFieldKind, HelpFlagInfo, HelpOptionality, HelpPositionalInfo},
 };
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;
+
+/// TODO
+pub type HelpInfo = argh_shared::HelpInfo<'static>;
+
+/// TODO
+pub type HelpSubCommandsInfo = argh_shared::HelpSubCommandsInfo<'static>;
+
+/// TODO
+pub type HelpSubCommandInfo = argh_shared::HelpSubCommandInfo<'static>;
 
 /// Types which can be constructed from a set of commandline arguments.
 pub trait FromArgs: Sized {
@@ -461,6 +465,30 @@ pub trait SubCommand: FromArgs {
 
 impl<T: SubCommand> SubCommands for T {
     const COMMANDS: &'static [&'static CommandInfo] = &[T::COMMAND];
+}
+
+/// TODO
+pub trait Help {
+    /// TODO
+    const HELP_INFO: &'static HelpInfo;
+}
+
+/// TODO
+pub trait HelpSubCommands {
+    /// TODO
+    const HELP_INFO: &'static HelpSubCommandsInfo;
+}
+
+/// TODO
+pub trait HelpSubCommand {
+    /// TODO
+    const HELP_INFO: &'static HelpSubCommandInfo;
+}
+
+impl<T: HelpSubCommand> HelpSubCommands for T {
+    /// TODO
+    const HELP_INFO: &'static HelpSubCommandsInfo =
+        &HelpSubCommandsInfo { optional: false, commands: &[<T as HelpSubCommand>::HELP_INFO] };
 }
 
 /// Information to display to the user about why a `FromArgs` construction exited early.

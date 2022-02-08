@@ -256,7 +256,7 @@ fn impl_from_args_struct(
 
         #[automatically_derived]
         impl argh::Help for #name {
-            const HELP_INFO: &'static argh::HelpInfo = #help_info;
+            const HELP_INFO: &'static argh::HelpInfo = &#help_info;
         }
 
         #top_or_sub_cmd_impl
@@ -302,7 +302,7 @@ fn impl_help<'a>(
                 };
 
                 positionals.push(quote! {
-                    &argh::HelpPositionalInfo {
+                    argh::HelpPositionalInfo {
                         name: #name,
                         description: #description,
                         optionality: #optionality,
@@ -345,7 +345,7 @@ fn impl_help<'a>(
                 };
 
                 flags.push(quote! {
-                    &argh::HelpFlagInfo {
+                    argh::HelpFlagInfo {
                         short: #short,
                         long: #long,
                         description: #description,
@@ -381,7 +381,7 @@ fn impl_help<'a>(
     });
 
     quote_spanned! { impl_span =>
-        &argh::HelpInfo {
+        argh::HelpInfo {
             description: #description,
             examples: &[#( #examples, )*],
             notes: &[#( #notes, )*],
@@ -395,7 +395,7 @@ fn impl_help<'a>(
 
 fn impl_from_args_struct_from_args<'a>(
     errors: &Errors,
-    _type_attrs: &TypeAttrs,
+    type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
 ) -> TokenStream {
     let init_fields = declare_local_storage_for_from_args_fields(fields);
@@ -454,7 +454,7 @@ fn impl_from_args_struct_from_args<'a>(
 
     // Identifier referring to a value containing the name of the current command as an `&[&str]`.
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    //let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
+    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
@@ -483,8 +483,8 @@ fn impl_from_args_struct_from_args<'a>(
                     last_is_repeating: #last_positional_is_repeating,
                 },
                 #parse_subcommands,
-                //&|| #help,
-                &|| <Self as argh::Help>::HELP_INFO.help(#cmd_name_str_array_ident),
+                &|| #help,
+                //&|| <Self as argh::Help>::HELP_INFO.help(#cmd_name_str_array_ident),
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();

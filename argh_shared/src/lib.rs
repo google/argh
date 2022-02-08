@@ -6,6 +6,13 @@
 //!
 //! This library is intended only for internal use by these two crates.
 
+mod help;
+
+pub use crate::help::{
+    HelpFieldKind, HelpFlagInfo, HelpInfo, HelpOptionality, HelpPositionalInfo, HelpSubCommandInfo,
+    HelpSubCommandsInfo,
+};
+
 /// Information about a particular command used for output.
 pub struct CommandInfo<'a> {
     /// The name of the command.

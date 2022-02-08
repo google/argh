@@ -6,6 +6,9 @@
 
 use super::{write_description, CommandInfo, INDENT};
 
+#[cfg(feature = "serde")]
+use serde_derive::{Deserialize, Serialize};
+
 const SECTION_SEPARATOR: &str = "\n\n";
 
 const HELP_FLAG: HelpFlagInfo = HelpFlagInfo {
@@ -18,6 +21,7 @@ const HELP_FLAG: HelpFlagInfo = HelpFlagInfo {
 
 /// TODO
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct HelpInfo<'a> {
     /// TODO
     pub description: &'a str,
@@ -135,6 +139,7 @@ fn write_error_codes(out: &mut String, error_codes: &[(isize, &str)]) {
 
 /// TODO
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct HelpSubCommandsInfo<'a> {
     /// TODO
     pub optional: bool,
@@ -144,6 +149,7 @@ pub struct HelpSubCommandsInfo<'a> {
 
 /// TODO
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct HelpSubCommandInfo<'a> {
     /// TODO
     pub name: &'a str,
@@ -153,6 +159,7 @@ pub struct HelpSubCommandInfo<'a> {
 
 /// TODO
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum HelpOptionality {
     /// TODO
     None,
@@ -171,6 +178,7 @@ impl HelpOptionality {
 
 /// TODO
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct HelpPositionalInfo<'a> {
     /// TODO
     pub name: &'a str,
@@ -211,6 +219,7 @@ impl<'a> HelpPositionalInfo<'a> {
 
 /// TODO
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct HelpFlagInfo<'a> {
     /// TODO
     pub short: Option<char>,
@@ -226,6 +235,7 @@ pub struct HelpFlagInfo<'a> {
 
 /// TODO
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum HelpFieldKind<'a> {
     /// TODO
     Switch,

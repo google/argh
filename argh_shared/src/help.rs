@@ -4,10 +4,7 @@
 
 //! TODO
 
-use {
-    super::{write_description, CommandInfo, INDENT},
-    std::fmt,
-};
+use super::{write_description, CommandInfo, INDENT};
 
 const SECTION_SEPARATOR: &str = "\n\n";
 
@@ -20,13 +17,14 @@ const HELP_FLAG: HelpFlagInfo = HelpFlagInfo {
 };
 
 /// TODO
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HelpInfo<'a> {
     /// TODO
     pub description: &'a str,
     /// TODO
-    pub examples: &'a [fn(&[&str]) -> String],
+    pub examples: &'a [&'a str],
     /// TODO
-    pub notes: &'a [fn(&[&str]) -> String],
+    pub notes: &'a [&'a str],
     /// TODO
     pub flags: &'a [HelpFlagInfo<'a>],
     /// TODO
@@ -37,16 +35,11 @@ pub struct HelpInfo<'a> {
     pub error_codes: &'a [(isize, &'a str)],
 }
 
-fn help_section(
-    out: &mut String,
-    command_name: &[&str],
-    heading: &str,
-    sections: &[fn(&[&str]) -> String],
-) {
+fn help_section(out: &mut String, command_name: &str, heading: &str, sections: &[&str]) {
     if !sections.is_empty() {
         out.push_str(SECTION_SEPARATOR);
-        for section_fn in sections {
-            let section = section_fn(command_name);
+        for section in sections {
+            let section = section.replace("{command_name}", command_name);
 
             out.push_str(heading);
             for line in section.split('\n') {
@@ -61,7 +54,8 @@ fn help_section(
 impl<'a> HelpInfo<'a> {
     /// TODO
     pub fn help(&self, command_name: &[&str]) -> String {
-        let mut out = format!("Usage: {}", command_name.join(" "));
+        let command_name = command_name.join(" ");
+        let mut out = format!("Usage: {}", command_name);
 
         for positional in self.positionals {
             out.push(' ');
@@ -115,9 +109,9 @@ impl<'a> HelpInfo<'a> {
             }
         }
 
-        help_section(&mut out, command_name, "Examples:", self.examples);
+        help_section(&mut out, &command_name, "Examples:", self.examples);
 
-        help_section(&mut out, command_name, "Notes:", self.notes);
+        help_section(&mut out, &command_name, "Notes:", self.notes);
 
         if !self.error_codes.is_empty() {
             out.push_str(SECTION_SEPARATOR);
@@ -139,24 +133,8 @@ fn write_error_codes(out: &mut String, error_codes: &[(isize, &str)]) {
     }
 }
 
-impl<'a> fmt::Debug for HelpInfo<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let examples = self.examples.iter().map(|f| f(&["{command_name}"])).collect::<Vec<_>>();
-        let notes = self.notes.iter().map(|f| f(&["{command_name}"])).collect::<Vec<_>>();
-        f.debug_struct("HelpInfo")
-            .field("description", &self.description)
-            .field("examples", &examples)
-            .field("notes", &notes)
-            .field("flags", &self.flags)
-            .field("positionals", &self.positionals)
-            .field("subcommand", &self.subcommand)
-            .field("error_codes", &self.error_codes)
-            .finish()
-    }
-}
-
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HelpSubCommandsInfo<'a> {
     /// TODO
     pub optional: bool,
@@ -165,7 +143,7 @@ pub struct HelpSubCommandsInfo<'a> {
 }
 
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HelpSubCommandInfo<'a> {
     /// TODO
     pub name: &'a str,
@@ -192,7 +170,7 @@ impl HelpOptionality {
 }
 
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HelpPositionalInfo<'a> {
     /// TODO
     pub name: &'a str,
@@ -232,7 +210,7 @@ impl<'a> HelpPositionalInfo<'a> {
 }
 
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HelpFlagInfo<'a> {
     /// TODO
     pub short: Option<char>,
@@ -247,7 +225,7 @@ pub struct HelpFlagInfo<'a> {
 }
 
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HelpFieldKind<'a> {
     /// TODO
     Switch,

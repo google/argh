@@ -209,6 +209,7 @@ fn impl_from_args_struct(
     type_attrs: &TypeAttrs,
     ds: &syn::DataStruct,
 ) -> TokenStream {
+    parse_attrs::check_struct_type_attrs(errors, type_attrs, &ds.struct_token.span);
     let fields = match &ds.fields {
         syn::Fields::Named(fields) => fields,
         syn::Fields::Unnamed(_) => {
@@ -306,6 +307,7 @@ fn impl_from_args_struct_from_args<'a>(
         quote_spanned! { impl_span =>
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
+                dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands().iter().map(|x| x.command_info()).collect::<Vec<_>>(),
                 parse_func: &mut |__command, __remaining_args| {
                     #name = Some(<#ty as argh::FromArgs>::from_args(__command, __remaining_args)?);
                     Ok(())
@@ -414,6 +416,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
         quote_spanned! { impl_span =>
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
+                dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands().iter().map(|x| x.command_info()).collect::<Vec<_>>(),
                 parse_func: &mut |__command, __remaining_args| {
                     #name = Some(<#ty as argh::FromArgs>::redact_arg_values(__command, __remaining_args)?);
                     Ok(())
@@ -769,7 +772,14 @@ fn append_missing_requirements<'a>(
                 quote! {
                     if #field_name.is_none() {
                         #mri.missing_subcommands(
-                            <#ty as argh::SubCommands>::COMMANDS,
+                            <#ty as argh::SubCommands>::COMMANDS
+                                .iter()
+                                .cloned()
+                                .chain(
+                                    <#ty as argh::SubCommands>::dynamic_commands()
+                                        .iter()
+                                        .map(|x| x.command_info())
+                                ),
                         )
                     }
                 }
@@ -849,16 +859,47 @@ fn impl_from_args_enum(
         .variants
         .iter()
         .filter_map(|variant| {
-            parse_attrs::check_enum_variant_attrs(errors, variant);
-            let name = &variant.ident;
-            let ty = enum_only_single_field_unnamed_variants(errors, &variant.fields)?;
-            Some(SubCommandVariant { name, ty })
+            if let Some(span) = parse_attrs::VariantAttrs::parse(errors, variant).is_dynamic.as_ref() {
+                if type_attrs.dynamic_path.is_none() {
+                    errors.err_span(span.span(), "Cannot use #[argh(dynamic)] unless the containing enum also has #[argh(dynamic=...)]");
+                }
+                None
+            } else {
+                let name = &variant.ident;
+                let ty = enum_only_single_field_unnamed_variants(errors, &variant.fields)?;
+                Some(SubCommandVariant { name, ty })
+            }
         })
         .collect();
 
     let name_repeating = std::iter::repeat(name.clone());
     let variant_ty = variants.iter().map(|x| x.ty).collect::<Vec<_>>();
     let variant_names = variants.iter().map(|x| x.name).collect::<Vec<_>>();
+    let dynamic_from_args = type_attrs.dynamic_path.as_ref().map(|_| {
+        quote! {
+            for dynamic_subcommand in <#name as argh::SubCommands>::dynamic_commands().iter() {
+                if subcommand_name == dynamic_subcommand.command_info().name {
+                    return dynamic_subcommand.from_args(command_name, args);
+                }
+            }
+        }
+    });
+    let dynamic_redact_arg_values = type_attrs.dynamic_path.as_ref().map(|_| {
+        quote! {
+            for dynamic_subcommand in <#name as argh::SubCommands>::dynamic_commands().iter() {
+                if subcommand_name == dynamic_subcommand.command_info().name {
+                    return dynamic_subcommand.redact_arg_values(command_name, args);
+                }
+            }
+        }
+    });
+    let dynamic_commands = type_attrs.dynamic_path.as_ref().map(|dynamic_path| {
+        quote! {
+            fn dynamic_commands() -> &'static [&'static dyn argh::DynamicCommand<Self>] {
+                #dynamic_path()
+            }
+        }
+    });
 
     quote! {
         impl argh::FromArgs for #name {
@@ -879,6 +920,8 @@ fn impl_from_args_enum(
                     }
                 )*
 
+                #dynamic_from_args
+
                 Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
             }
 
@@ -895,6 +938,8 @@ fn impl_from_args_enum(
                     }
                 )*
 
+                #dynamic_redact_arg_values
+
                 Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
             }
         }
@@ -903,6 +948,8 @@ fn impl_from_args_enum(
             const COMMANDS: &'static [&'static argh::CommandInfo] = &[#(
                 <#variant_ty as argh::SubCommand>::COMMAND,
             )*];
+
+            #dynamic_commands
         }
     }
 }

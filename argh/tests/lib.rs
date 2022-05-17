@@ -95,147 +95,6 @@ fn subcommand_example() {
 }
 
 #[test]
-fn dynamic_subcommand_example() {
-    struct DynamicSubCommandImpl {
-        info: argh::CommandInfo,
-    }
-
-    impl argh::DynamicCommand<MySubCommandEnum> for DynamicSubCommandImpl {
-        fn command_info(&self) -> &argh::CommandInfo {
-            &self.info
-        }
-
-        fn redact_arg_values(
-            &self,
-            _command_name: &[&str],
-            _args: &[&str],
-        ) -> Result<Vec<String>, argh::EarlyExit> {
-            Err(argh::EarlyExit::from("Test should not redact".to_owned()))
-        }
-
-        fn from_args(
-            &self,
-            _command_name: &[&str],
-            args: &[&str],
-        ) -> Result<MySubCommandEnum, argh::EarlyExit> {
-            if args.len() > 1 {
-                Err(argh::EarlyExit::from("Too many arguments".to_owned()))
-            } else {
-                Ok(MySubCommandEnum::ThreeFourFive(format!(
-                    "{} got {:?}",
-                    self.info.description,
-                    *args
-                        .get(0)
-                        .ok_or_else(|| argh::EarlyExit::from("Not enough arguments".to_owned()))?
-                )))
-            }
-        }
-    }
-
-    fn handler() -> &'static [&'static dyn argh::DynamicCommand<MySubCommandEnum>] {
-        use once_cell::sync::OnceCell;
-        static ARGS_VEC: OnceCell<Vec<DynamicSubCommandImpl>> = OnceCell::new();
-        static ARGS_REFS: OnceCell<Vec<&'static dyn argh::DynamicCommand<MySubCommandEnum>>> =
-            OnceCell::new();
-
-        ARGS_REFS
-            .get_or_init(|| {
-                ARGS_VEC
-                    .get_or_init(|| {
-                        vec![
-                            DynamicSubCommandImpl {
-                                info: argh::CommandInfo {
-                                    name: "three",
-                                    description: "Third command",
-                                },
-                            },
-                            DynamicSubCommandImpl {
-                                info: argh::CommandInfo {
-                                    name: "four",
-                                    description: "Fourth command",
-                                },
-                            },
-                            DynamicSubCommandImpl {
-                                info: argh::CommandInfo {
-                                    name: "five",
-                                    description: "Fifth command",
-                                },
-                            },
-                        ]
-                    })
-                    .iter()
-                    .map(|x| x as &dyn argh::DynamicCommand<MySubCommandEnum>)
-                    .collect()
-            })
-            .as_slice()
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    /// Top-level command.
-    struct TopLevel {
-        #[argh(subcommand)]
-        nested: MySubCommandEnum,
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand, dynamic = "handler")]
-    enum MySubCommandEnum {
-        One(SubCommandOne),
-        Two(SubCommandTwo),
-        #[argh(dynamic)]
-        ThreeFourFive(String),
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    /// First subcommand.
-    #[argh(subcommand, name = "one")]
-    struct SubCommandOne {
-        #[argh(option)]
-        /// how many x
-        x: usize,
-    }
-
-    #[derive(FromArgs, PartialEq, Debug)]
-    /// Second subcommand.
-    #[argh(subcommand, name = "two")]
-    struct SubCommandTwo {
-        #[argh(switch)]
-        /// whether to fooey
-        fooey: bool,
-    }
-
-    let one = TopLevel::from_args(&["cmdname"], &["one", "--x", "2"]).expect("sc 1");
-    assert_eq!(one, TopLevel { nested: MySubCommandEnum::One(SubCommandOne { x: 2 }) },);
-
-    let two = TopLevel::from_args(&["cmdname"], &["two", "--fooey"]).expect("sc 2");
-    assert_eq!(two, TopLevel { nested: MySubCommandEnum::Two(SubCommandTwo { fooey: true }) },);
-
-    let three = TopLevel::from_args(&["cmdname"], &["three", "beans"]).expect("sc 3");
-    assert_eq!(
-        three,
-        TopLevel {
-            nested: MySubCommandEnum::ThreeFourFive("Third command got \"beans\"".to_owned())
-        },
-    );
-
-    let four = TopLevel::from_args(&["cmdname"], &["four", "boulders"]).expect("sc 4");
-    assert_eq!(
-        four,
-        TopLevel {
-            nested: MySubCommandEnum::ThreeFourFive("Fourth command got \"boulders\"".to_owned())
-        },
-    );
-
-    let five = TopLevel::from_args(&["cmdname"], &["five", "gold rings"]).expect("sc 5");
-    assert_eq!(
-        five,
-        TopLevel {
-            nested: MySubCommandEnum::ThreeFourFive("Fifth command got \"gold rings\"".to_owned())
-        },
-    );
-}
-
-#[test]
 fn multiline_doc_comment_description() {
     #[derive(FromArgs)]
     /// Short description
@@ -935,12 +794,10 @@ Options:
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
-    #[argh(subcommand, dynamic = "help_example_dynamic_helper")]
+    #[argh(subcommand)]
     enum HelpExampleSubCommands {
         BlowUp(BlowUp),
         Grind(GrindCommand),
-        #[argh(dynamic)]
-        Plugin(String),
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
@@ -958,69 +815,6 @@ Options:
         /// wear a visor while grinding
         #[argh(switch)]
         safely: bool,
-    }
-
-    struct HelpExampleDynamicInfo {
-        info: argh::CommandInfo,
-    }
-
-    impl argh::DynamicCommand<HelpExampleSubCommands> for HelpExampleDynamicInfo {
-        fn command_info(&self) -> &argh::CommandInfo {
-            &self.info
-        }
-
-        fn redact_arg_values(
-            &self,
-            _command_name: &[&str],
-            _args: &[&str],
-        ) -> Result<Vec<String>, argh::EarlyExit> {
-            Err(argh::EarlyExit::from("Test should not redact".to_owned()))
-        }
-
-        fn from_args(
-            &self,
-            _command_name: &[&str],
-            args: &[&str],
-        ) -> Result<HelpExampleSubCommands, argh::EarlyExit> {
-            if args.len() > 1 {
-                Err(argh::EarlyExit::from("Too many arguments".to_owned()))
-            } else if let Some(arg) = args.get(0) {
-                Ok(HelpExampleSubCommands::Plugin(format!(
-                    "{} got {:?}",
-                    self.info.description, arg
-                )))
-            } else {
-                Ok(HelpExampleSubCommands::Plugin(format!(
-                    "{} got no argument",
-                    self.info.description,
-                )))
-            }
-        }
-    }
-
-    fn help_example_dynamic_helper(
-    ) -> &'static [&'static dyn argh::DynamicCommand<HelpExampleSubCommands>] {
-        use once_cell::sync::OnceCell;
-        static ARGS_VEC: OnceCell<Vec<HelpExampleDynamicInfo>> = OnceCell::new();
-        static ARGS_REFS: OnceCell<Vec<&'static dyn argh::DynamicCommand<HelpExampleSubCommands>>> =
-            OnceCell::new();
-
-        ARGS_REFS
-            .get_or_init(|| {
-                ARGS_VEC
-                    .get_or_init(|| {
-                        vec![HelpExampleDynamicInfo {
-                            info: argh::CommandInfo {
-                                name: "plugin",
-                                description: "Example dynamic command",
-                            },
-                        }]
-                    })
-                    .iter()
-                    .map(|x| x as &dyn argh::DynamicCommand<HelpExampleSubCommands>)
-                    .collect()
-            })
-            .as_slice()
     }
 
     #[test]
@@ -1056,7 +850,6 @@ Options:
                 "    help\n",
                 "    blow-up\n",
                 "    grind\n",
-                "    plugin\n",
             ),
         );
     }
@@ -1080,7 +873,6 @@ Options:
 Commands:
   blow-up           explosively separate
   grind             make smaller by many small cuts
-  plugin            Example dynamic command
 
 Examples:
   Scribble 'abc' and then run |grind|.

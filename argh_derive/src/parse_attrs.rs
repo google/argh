@@ -278,7 +278,6 @@ pub struct TypeAttrs {
     pub examples: Vec<syn::LitStr>,
     pub notes: Vec<syn::LitStr>,
     pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
-    pub dynamic_path: Option<syn::Path>,
 }
 
 impl TypeAttrs {
@@ -305,10 +304,6 @@ impl TypeAttrs {
                 if name.is_ident("description") {
                     if let Some(m) = errors.expect_meta_name_value(meta) {
                         parse_attr_description(errors, m, &mut this.description);
-                    }
-                } else if name.is_ident("dynamic") {
-                    if let Some(m) = errors.expect_meta_name_value(meta) {
-                        this.parse_attr_dynamic(errors, m);
                     }
                 } else if name.is_ident("error_code") {
                     if let Some(m) = errors.expect_meta_list(meta) {
@@ -410,21 +405,6 @@ impl TypeAttrs {
         }
     }
 
-    fn parse_attr_dynamic(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
-        let mut path = None;
-        parse_attr_single_string(errors, m, "dynamic", &mut path);
-        if let Some(path) = &path {
-            let path: syn::Path = if let Ok(path) = path.parse() {
-                path
-            } else {
-                errors.err(m, "Expected a function path");
-                return;
-            };
-
-            self.dynamic_path = Some(path);
-        }
-    }
-
     fn parse_attr_note(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
         parse_attr_multi_string(errors, m, &mut self.notes)
     }
@@ -435,64 +415,6 @@ impl TypeAttrs {
         } else {
             self.is_subcommand = Some(ident.clone());
         }
-    }
-}
-
-/// Represents an enum variant's attributes.
-#[derive(Default)]
-pub struct VariantAttrs {
-    pub is_dynamic: Option<syn::Path>,
-}
-
-impl VariantAttrs {
-    /// Parse top-level `#[argh(...)]` attributes
-    pub fn parse(errors: &Errors, variant: &syn::Variant) -> Self {
-        let mut this = VariantAttrs::default();
-
-        let fields = match &variant.fields {
-            syn::Fields::Named(fields) => Some(&fields.named),
-            syn::Fields::Unnamed(fields) => Some(&fields.unnamed),
-            syn::Fields::Unit => None,
-        };
-
-        for field in fields.into_iter().flatten() {
-            for attr in &field.attrs {
-                if is_argh_attr(attr) {
-                    err_unused_enum_attr(errors, attr);
-                }
-            }
-        }
-
-        for attr in &variant.attrs {
-            let ml = if let Some(ml) = argh_attr_to_meta_list(errors, attr) {
-                ml
-            } else {
-                continue;
-            };
-
-            for meta in &ml.nested {
-                let meta = if let Some(m) = errors.expect_nested_meta(meta) { m } else { continue };
-
-                let name = meta.path();
-                if name.is_ident("dynamic") {
-                    if let Some(prev) = this.is_dynamic.as_ref() {
-                        errors.duplicate_attrs("dynamic", prev, meta);
-                    } else {
-                        this.is_dynamic = errors.expect_meta_word(meta).cloned();
-                    }
-                } else {
-                    errors.err(
-                        &meta,
-                        concat!(
-                            "Invalid variant-level `argh` attribute\n",
-                            "Variants can only have the #[argh(dynamic)] attribute.",
-                        ),
-                    );
-                }
-            }
-        }
-
-        this
     }
 }
 
@@ -565,25 +487,10 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
     *slot = Some(Description { explicit: true, content: lit_str.clone() });
 }
 
-/// Checks that a `#![derive(FromArgs)]` struct does not have a `#[argh(dynamic=...)]` attribute
-pub fn check_struct_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    if type_attrs.dynamic_path.is_some() {
-        errors.err_span(*type_span, "#[argh(dynamic=...)] is only allowed on `enum` declarations.");
-    }
-}
-
 /// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
 /// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
 pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    let TypeAttrs {
-        is_subcommand,
-        name,
-        description,
-        dynamic_path: _,
-        examples,
-        notes,
-        error_codes,
-    } = type_attrs;
+    let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes } = type_attrs;
 
     // Ensure that `#[argh(subcommand)]` is present.
     if is_subcommand.is_none() {
@@ -613,6 +520,29 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
     if let Some(err_code) = error_codes.first() {
         err_unused_enum_attr(errors, &err_code.0);
+    }
+}
+
+/// Checks that an enum variant and its fields have no `#[argh(...)]` attributes.
+pub fn check_enum_variant_attrs(errors: &Errors, variant: &syn::Variant) {
+    for attr in &variant.attrs {
+        if is_argh_attr(attr) {
+            err_unused_enum_attr(errors, attr);
+        }
+    }
+
+    let fields = match &variant.fields {
+        syn::Fields::Named(fields) => &fields.named,
+        syn::Fields::Unnamed(fields) => &fields.unnamed,
+        syn::Fields::Unit => return,
+    };
+
+    for field in fields {
+        for attr in &field.attrs {
+            if is_argh_attr(attr) {
+                err_unused_enum_attr(errors, attr);
+            }
+        }
     }
 }
 

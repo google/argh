@@ -443,6 +443,11 @@ pub trait TopLevelCommand: FromArgs {}
 pub trait SubCommands: FromArgs {
     /// Info for the commands.
     const COMMANDS: &'static [&'static CommandInfo];
+
+    /// Get a list of commands that are discovered at runtime.
+    fn dynamic_commands() -> &'static [&'static CommandInfo] {
+        &[]
+    }
 }
 
 /// A `FromArgs` implementation that represents a single subcommand.
@@ -453,6 +458,23 @@ pub trait SubCommand: FromArgs {
 
 impl<T: SubCommand> SubCommands for T {
     const COMMANDS: &'static [&'static CommandInfo] = &[T::COMMAND];
+}
+
+/// Trait implemented by values returned from a dynamic subcommand handler.
+pub trait DynamicSubCommand: Sized {
+    /// Info about supported subcommands.
+    fn commands() -> &'static [&'static CommandInfo];
+
+    /// Perform the function of `FromArgs::redact_arg_values` for this dynamic command. If the
+    /// command being processed is not recognized return `None`.
+    fn try_redact_arg_values(
+        command_name: &[&str],
+        args: &[&str],
+    ) -> Option<Result<Vec<String>, EarlyExit>>;
+
+    /// Perform the function of `FromArgs::from_args` for this dynamic command. If the command being
+    /// processed is not recognized return `None`.
+    fn try_from_args(command_name: &[&str], args: &[&str]) -> Option<Result<Self, EarlyExit>>;
 }
 
 /// Information to display to the user about why a `FromArgs` construction exited early.
@@ -480,7 +502,7 @@ impl From<String> for EarlyExit {
 
 /// Extract the base cmd from a path
 fn cmd<'a>(default: &'a str, path: &'a str) -> &'a str {
-    std::path::Path::new(path).file_name().map(|s| s.to_str()).flatten().unwrap_or(default)
+    std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(default)
 }
 
 /// Create a `FromArgs` type from the current process's `env::args`.
@@ -845,6 +867,8 @@ pub struct ParseStructSubCommand<'a> {
     // The subcommand commands
     pub subcommands: &'static [&'static CommandInfo],
 
+    pub dynamic_subcommands: &'a [&'static CommandInfo],
+
     // The function to parse the subcommand arguments.
     pub parse_func: &'a mut dyn FnMut(&[&str], &[&str]) -> Result<(), EarlyExit>,
 }
@@ -857,7 +881,7 @@ impl<'a> ParseStructSubCommand<'a> {
         arg: &str,
         remaining_args: &[&str],
     ) -> Result<bool, EarlyExit> {
-        for subcommand in self.subcommands {
+        for subcommand in self.subcommands.iter().chain(self.dynamic_subcommands.iter()) {
             if subcommand.name == arg {
                 let mut command = cmd_name.to_owned();
                 command.push(subcommand.name);
@@ -886,7 +910,7 @@ fn prepend_help<'a>(args: &[&'a str]) -> Vec<&'a str> {
 }
 
 #[doc(hidden)]
-pub fn print_subcommands(commands: &[&CommandInfo]) -> String {
+pub fn print_subcommands<'a>(commands: impl Iterator<Item = &'a CommandInfo>) -> String {
     let mut out = String::new();
     for cmd in commands {
         argh_shared::write_description(&mut out, cmd);
@@ -903,7 +927,7 @@ fn unrecognized_arg(arg: &str) -> String {
 #[derive(Default)]
 pub struct MissingRequirements {
     options: Vec<&'static str>,
-    subcommands: Option<&'static [&'static CommandInfo]>,
+    subcommands: Option<Vec<&'static CommandInfo>>,
     positional_args: Vec<&'static str>,
 }
 
@@ -918,8 +942,8 @@ impl MissingRequirements {
 
     // Add a missing required subcommand.
     #[doc(hidden)]
-    pub fn missing_subcommands(&mut self, commands: &'static [&'static CommandInfo]) {
-        self.subcommands = Some(commands);
+    pub fn missing_subcommands(&mut self, commands: impl Iterator<Item = &'static CommandInfo>) {
+        self.subcommands = Some(commands.collect());
     }
 
     // Add a missing positional argument.
@@ -958,7 +982,7 @@ impl MissingRequirements {
             }
         }
 
-        if let Some(missing_subcommands) = self.subcommands {
+        if let Some(missing_subcommands) = &self.subcommands {
             if !self.options.is_empty() {
                 output.push('\n');
             }

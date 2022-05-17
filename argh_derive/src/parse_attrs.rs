@@ -418,6 +418,62 @@ impl TypeAttrs {
     }
 }
 
+/// Represents an enum variant's attributes.
+#[derive(Default)]
+pub struct VariantAttrs {
+    pub is_dynamic: Option<syn::Path>,
+}
+
+impl VariantAttrs {
+    /// Parse enum variant `#[argh(...)]` attributes
+    pub fn parse(errors: &Errors, variant: &syn::Variant) -> Self {
+        let mut this = VariantAttrs::default();
+
+        let fields = match &variant.fields {
+            syn::Fields::Named(fields) => Some(&fields.named),
+            syn::Fields::Unnamed(fields) => Some(&fields.unnamed),
+            syn::Fields::Unit => None,
+        };
+
+        for field in fields.into_iter().flatten() {
+            for attr in &field.attrs {
+                if is_argh_attr(attr) {
+                    err_unused_enum_attr(errors, attr);
+                }
+            }
+        }
+
+        for attr in &variant.attrs {
+            let ml = if let Some(ml) = argh_attr_to_meta_list(errors, attr) {
+                ml
+            } else {
+                continue;
+            };
+
+            for meta in &ml.nested {
+                let meta = if let Some(m) = errors.expect_nested_meta(meta) { m } else { continue };
+
+                let name = meta.path();
+                if name.is_ident("dynamic") {
+                    if let Some(prev) = this.is_dynamic.as_ref() {
+                        errors.duplicate_attrs("dynamic", prev, meta);
+                    } else {
+                        this.is_dynamic = errors.expect_meta_word(meta).cloned();
+                    }
+                } else {
+                    errors.err(
+                        &meta,
+                        "Invalid variant-level `argh` attribute\n\
+                         Variants can only have the #[argh(dynamic)] attribute.",
+                    );
+                }
+            }
+        }
+
+        this
+    }
+}
+
 fn check_option_description(errors: &Errors, desc: &str, span: Span) {
     let chars = &mut desc.trim().chars();
     match (chars.next(), chars.next()) {
@@ -520,29 +576,6 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
     if let Some(err_code) = error_codes.first() {
         err_unused_enum_attr(errors, &err_code.0);
-    }
-}
-
-/// Checks that an enum variant and its fields have no `#[argh(...)]` attributes.
-pub fn check_enum_variant_attrs(errors: &Errors, variant: &syn::Variant) {
-    for attr in &variant.attrs {
-        if is_argh_attr(attr) {
-            err_unused_enum_attr(errors, attr);
-        }
-    }
-
-    let fields = match &variant.fields {
-        syn::Fields::Named(fields) => &fields.named,
-        syn::Fields::Unnamed(fields) => &fields.unnamed,
-        syn::Fields::Unit => return,
-    };
-
-    for field in fields {
-        for attr in &field.attrs {
-            if is_argh_attr(attr) {
-                err_unused_enum_attr(errors, attr);
-            }
-        }
     }
 }
 

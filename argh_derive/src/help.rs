@@ -85,6 +85,12 @@ pub(crate) fn help(
         subcommand_calculation = quote! {
             let subcommands = argh::print_subcommands(
                 <#subcommand_ty as argh::SubCommands>::COMMANDS
+                    .iter()
+                    .copied()
+                    .chain(
+                        <#subcommand_ty as argh::SubCommands>::dynamic_commands()
+                            .iter()
+                            .copied())
             );
         };
     } else {

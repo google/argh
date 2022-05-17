@@ -174,4 +174,92 @@ struct SubCommandTwo {
 }
 ```
 
+## Attribute summary
+
+### Type attributes for `argh`
+
+The attributes used to configure the argh information for a type are defined in
+[parse_attrs::TypeAttrs](argh_derive/src/parse_attrs.rs).
+
+- `subcommand` - a subcommand type. This attribute must appear on both enumeration and each struct that
+    is a variant for the enumerated subcommand.
+- `error_code(code, description)` - an error code for the command. This attribute can appear zero
+    or more times.
+- `examples=` - Formatted text containing examples of how to use this command. This
+   is an optional attribute.
+- `name=` - (required for subcommand variant) the name of the subcommand.
+- `notes=` - Formatted text containing usage notes for this command. This
+   is an optional attribute.
+
+### Field attributes for `argh`
+
+The attributes used to configure the argh information for a field are
+defined in [parse_attrs.rs](argh_derive/src/parse_attrs.rs).
+
+- Field kind. This is the first attribute. Valid kinds are:
+   - `switch` - a boolean flag, its presence on the command sets the field to `true`.
+   - `option` - a value. This can be a simple type like String, or usize, and enumeration.
+       This can be a scalar or Vec<>  for repeated values.
+   - `subcommand` - a subcommand. The type of this field is an enumeration with a value for each
+       subcommand. This attribute must appear on both the "top level" field and each struct that
+       is a variant for the enumerated subcommand.
+   - `positional` - a positional argument. This can be scalar or Vec<>. Only the last positional
+       argument can be Option<>, Vec<>, or defaulted.
+- `arg_name=` - the name to use for a positional argument in the help or the value of a `option`.
+    If not given, the default is the name of the field.
+- `default=` - the default value for the `option` or `positional` fields.
+- `description=` - the description of the flag or argument. The default value is the doc comment
+    for the field.
+- `from_str_fn` is the name of a custom deserialization function for this field with the signature:
+    `fn(&str) -> Result<T, String>`.
+- `long=` - the long format of the option or switch name. If `long` is not present, the
+    flag name defaults to the field name.
+- `short=` - the single character for this flag. If `short` is not present, there is no
+    short equivalent flag.
+
+## JSON encoded help
+
+The `FromArgs` trait implements 2 methods for accessing the usage information in a JSON
+encoded format. This is intended to facilitate generating reference documentation based on
+the command line arguments. In order to use this capability, you need to use `#[derive(FromArgs)]`
+in order to generate the method to construct  the JSON string.
+
+`fn help_json_from_args(command: &[&str]) -> Result<String, EarlyExit>` returns JSON
+encoded help information, using the `command` paramter in the _usage_ field.  Alternatively,
+you can use `fn help_json() -> Result<String, EarlyExit>` to use the command
+name used to invoke the application.
+
+### JSON structure
+
+The structure returned contains the following fields:
+
+- **name** - the name of the command or subcommand.
+- **usage** - the command line pattern showing the usage of the command.
+- **description** - the description of the command or subcommand.
+- **flags** - the array of command line flags each with:
+  - **short** - the 1 letter option, if specified, otherwise the empty string.
+  - **long** - the value of the _long_ attribute or the field name.
+  - **description** - the description of the option.
+  - **arg_name** - the name of the option argument, or the field name if not
+    specified.
+  - **optionality** - the type of usage for this option. Can be _optional_,
+    _required_, _repeated_, or the default value if the `default` attribute is
+    specified.
+- **positional** - the array of positional arguments each with:
+  - **name** - the name of the argument
+  - **description** - the description of the argument
+  - **optionality** - the type of usage for this option. Can be _optional_,
+    _required_, _repeated_, or the default value if the `default` attribute is
+    specified.
+- **examples** - a formatted string of example usage of the command, as
+  specified in the `examples` attribute.
+- **notes** - a formatted string of notes about the usage of the command, as
+  specified in the `examples` attribute.
+- **error_codes** - the array of error code information for this command
+  including:
+  - **name** - the error code return value.
+  - **description** - the meaning of the error code.
+- **subcommands** - the array of subcommands for this command.
+
+
 NOTE: This is not an officially supported Google product.

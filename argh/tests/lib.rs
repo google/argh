@@ -13,6 +13,8 @@
 
 use {argh::FromArgs, std::fmt::Debug};
 
+mod help_json_tests;
+
 #[test]
 fn basic_example() {
     #[derive(FromArgs, PartialEq, Debug)]
@@ -766,7 +768,7 @@ Options:
 
     #[derive(FromArgs, PartialEq, Debug)]
     #[argh(
-        description = "Destroy the contents of <file>.",
+        description = "Destroy the contents of <file> with a specific \"method of destruction\".",
         example = "Scribble 'abc' and then run |grind|.\n$ {command_name} -s 'abc' grind old.txt taxes.cp",
         note = "Use `{command_name} help <command>` for details on [<args>] for a subcommand.",
         error_code(2, "The blade is too dull."),
@@ -859,7 +861,7 @@ Options:
         assert_help_string::<HelpExample>(
             r###"Usage: test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]
 
-Destroy the contents of <file>.
+Destroy the contents of <file> with a specific "method of destruction".
 
 Options:
   -f, --force       force, ignore minor errors. This description is so long that
@@ -1352,18 +1354,30 @@ fn subcommand_does_not_panic() {
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
     );
 
+    assert_eq!(
+        SubCommandEnum::help_json_from_args(&[]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
     // Passing unknown subcommand name to an emum
     assert_eq!(
         SubCommandEnum::from_args(&["fooey"], &["5"]).unwrap_err(),
-        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+        argh::EarlyExit { output: "no subcommand matched fooey".into(), status: Err(()) },
     );
 
     assert_eq!(
         SubCommandEnum::redact_arg_values(&["fooey"], &["5"]).unwrap_err(),
-        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+        argh::EarlyExit { output: "no subcommand matched fooey".into(), status: Err(()) },
+    );
+
+    assert_eq!(
+        SubCommandEnum::help_json_from_args(&["fooey"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched fooey".into(), status: Err(()) },
     );
 
     // Passing unknown subcommand name to a struct
+    // Not testing from_args since it will assign 5 to x as a positional.
+    // Also not testing help_json_from_args since it is a valid to get help.
     assert_eq!(
         SubCommand::redact_arg_values(&[], &["5"]).unwrap_err(),
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },

@@ -434,6 +434,23 @@ pub trait FromArgs: Sized {
     fn redact_arg_values(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
         Ok(vec!["<<REDACTED>>".into()])
     }
+
+    /// Returns a JSON encoded string of the usage information. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+    fn help_json_from_args(_: &[&str]) -> Result<String, EarlyExit> {
+        Err(EarlyExit::from(String::from("Not implemented, use #[derive(FromArgs)]")))
+    }
+
+    /// Returns a JSON encoded string of the usage information based on the command line
+    /// found in argv, identical to `::from_env()`. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+    fn help_json() -> Result<String, EarlyExit> {
+        let strings: Vec<String> = std::env::args().collect();
+        let cmd = cmd(&strings[0], &strings[0]);
+        Self::help_json_from_args(&[cmd])
+    }
 }
 
 /// A top-level `FromArgs` implementation that is not a subcommand.

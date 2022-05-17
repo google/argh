@@ -21,6 +21,7 @@ use {
 
 mod errors;
 mod help;
+mod help_json;
 mod parse_attrs;
 
 /// Entrypoint for `#[derive(FromArgs)]`.
@@ -194,7 +195,7 @@ impl<'a> StructField<'a> {
             FieldKind::SubCommand | FieldKind::Positional => None,
         };
 
-        Some(StructField { field, attrs, kind, optionality, ty_without_wrapper, name, long_name })
+        Some(StructField { field, attrs, name, kind, ty_without_wrapper, optionality, long_name })
     }
 
     pub(crate) fn arg_name(&self) -> String {
@@ -242,6 +243,8 @@ fn impl_from_args_struct(
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
 
+    let json_help_method = impl_help_json(errors, type_attrs, &fields);
+
     let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
 
     let trait_impl = quote_spanned! { impl_span =>
@@ -250,6 +253,8 @@ fn impl_from_args_struct(
             #from_args_method
 
             #redact_arg_values_method
+
+            #json_help_method
         }
 
         #top_or_sub_cmd_impl
@@ -273,7 +278,6 @@ fn impl_from_args_struct_from_args<'a>(
         .last()
         .map(|field| field.optionality == Optionality::Repeating)
         .unwrap_or(false);
-
     let flag_output_table = fields.iter().filter_map(|field| {
         let field_name = &field.field.ident;
         match field.kind {
@@ -325,7 +329,6 @@ fn impl_from_args_struct_from_args<'a>(
             -> std::result::Result<Self, argh::EarlyExit>
         {
             #![allow(clippy::unwrap_in_result)]
-
             #( #init_fields )*
 
             argh::parse_struct_args(
@@ -477,6 +480,28 @@ fn impl_from_args_struct_redact_arg_values<'a>(
             #( #unwrap_fields )*
 
             Ok(__redacted)
+        }
+    };
+
+    method_impl
+}
+
+fn impl_help_json<'a>(
+    errors: &Errors,
+    type_attrs: &TypeAttrs,
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let impl_span = Span::call_site();
+
+    // Identifier referring to a value containing the name of the current command as an `&[&str]`.
+    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
+    let help_json = help_json::help_json(errors, &cmd_name_str_array_ident, type_attrs, fields);
+
+    let method_impl = quote_spanned! { impl_span =>
+        fn help_json_from_args(__cmd_name: &[&str])
+            -> Result<String, argh::EarlyExit>
+        {
+           Ok(String::from(#help_json))
         }
     };
 
@@ -879,7 +904,7 @@ fn impl_from_args_enum(
                     }
                 )*
 
-                Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+                Err(argh::EarlyExit::from(format!("no subcommand matched {}",subcommand_name).to_owned()))
             }
 
             fn redact_arg_values(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
@@ -895,8 +920,25 @@ fn impl_from_args_enum(
                     }
                 )*
 
-                Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+                Err(argh::EarlyExit::from(format!("no subcommand matched {}",subcommand_name).to_owned()))
             }
+
+            fn help_json_from_args(command_name: &[&str]) -> std::result::Result<String, argh::EarlyExit>
+        {
+            let subcommand_name = if let Some(subcommand_name) = command_name.last() {
+                *subcommand_name
+            } else {
+                return Err(argh::EarlyExit::from("no subcommand name".to_owned()));
+            };
+
+            #(
+                if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
+                    return #variant_ty::help_json_from_args(command_name)
+                    ;
+                }
+            )*
+            Err(argh::EarlyExit::from(format!("no subcommand matched {}",subcommand_name).to_owned()))
+        }
         }
 
         impl argh::SubCommands for #name {

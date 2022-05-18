@@ -15,6 +15,94 @@ use {
 
 const SECTION_SEPARATOR: &str = "\n\n";
 
+struct PositionalInfo {
+    name: String,
+    description: String,
+    optionality: argh_shared::HelpOptionality,
+}
+
+impl PositionalInfo {
+    fn new(field: &StructField) -> Self {
+        let name = field.arg_name();
+        let mut description = String::from("");
+        if let Some(desc) = &field.attrs.description {
+            description = desc.content.value().trim().to_owned();
+        }
+
+        Self { name, description, optionality: to_help_optional(&field.optionality) }
+    }
+
+    fn as_help_info(&self) -> argh_shared::HelpPositionalInfo {
+        argh_shared::HelpPositionalInfo {
+            name: &self.name,
+            description: &self.description,
+            optionality: self.optionality,
+        }
+    }
+}
+struct FlagInfo {
+    short: Option<char>,
+    long: String,
+    description: String,
+    optionality: argh_shared::HelpOptionality,
+    kind: HelpFieldKind,
+}
+
+enum HelpFieldKind {
+    Switch,
+    Option { arg_name: String },
+}
+
+impl FlagInfo {
+    fn new(errors: &Errors, field: &StructField) -> Self {
+        let short = field.attrs.short.as_ref().map(|s| s.value());
+
+        let long = field.long_name.as_ref().expect("missing long name for option").to_owned();
+
+        let description =
+            require_description(errors, field.name.span(), &field.attrs.description, "field");
+
+        let kind = if field.kind == FieldKind::Switch {
+            HelpFieldKind::Switch
+        } else {
+            let arg_name = if let Some(arg_name) = &field.attrs.arg_name {
+                arg_name.value()
+            } else {
+                long.trim_start_matches("--").to_owned()
+            };
+            HelpFieldKind::Option { arg_name }
+        };
+
+        Self { short, long, description, optionality: to_help_optional(&field.optionality), kind }
+    }
+
+    fn as_help_info(&self) -> argh_shared::HelpFlagInfo {
+        let kind = match &self.kind {
+            HelpFieldKind::Switch => argh_shared::HelpFieldKind::Switch,
+            HelpFieldKind::Option { arg_name } => {
+                argh_shared::HelpFieldKind::Option { arg_name: arg_name.as_str() }
+            }
+        };
+
+        argh_shared::HelpFlagInfo {
+            short: self.short,
+            long: &self.long,
+            description: &self.description,
+            optionality: self.optionality,
+            kind,
+        }
+    }
+}
+
+fn to_help_optional(optionality: &Optionality) -> argh_shared::HelpOptionality {
+    match optionality {
+        Optionality::None => argh_shared::HelpOptionality::None,
+        Optionality::Defaulted(_) => argh_shared::HelpOptionality::None,
+        Optionality::Optional => argh_shared::HelpOptionality::Optional,
+        Optionality::Repeating => argh_shared::HelpOptionality::Repeating,
+    }
+}
+
 /// Returns a `TokenStream` generating a `String` help message.
 ///
 /// Note: `fields` entries with `is_subcommand.is_some()` will be ignored
@@ -28,18 +116,36 @@ pub(crate) fn help(
 ) -> TokenStream {
     let mut format_lit = "Usage: {command_name}".to_string();
 
-    let positional = fields.iter().filter(|f| f.kind == FieldKind::Positional);
+    let positionals = fields
+        .iter()
+        .filter_map(|f| {
+            if f.kind == FieldKind::Positional {
+                Some(PositionalInfo::new(f))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let positionals = positionals.iter().map(|o| o.as_help_info()).collect::<Vec<_>>();
+
+    let flags = fields
+        .iter()
+        .filter_map(|f| if f.long_name.is_some() { Some(FlagInfo::new(errors, f)) } else { None })
+        .collect::<Vec<_>>();
+
+    let flags = flags.iter().map(|o| o.as_help_info()).collect::<Vec<_>>();
+
     let mut has_positional = false;
-    for arg in positional.clone() {
+    for arg in &positionals {
         has_positional = true;
         format_lit.push(' ');
-        positional_usage(&mut format_lit, arg);
+        arg.help_usage(&mut format_lit);
     }
 
-    let options = fields.iter().filter(|f| f.long_name.is_some());
-    for option in options.clone() {
+    for flag in &flags {
         format_lit.push(' ');
-        option_usage(&mut format_lit, option);
+        flag.help_usage(&mut format_lit);
     }
 
     if let Some(subcommand) = subcommand {
@@ -62,16 +168,17 @@ pub(crate) fn help(
     if has_positional {
         format_lit.push_str(SECTION_SEPARATOR);
         format_lit.push_str("Positional Arguments:");
-        for arg in positional {
-            positional_description(&mut format_lit, arg);
+        for field in positionals {
+            field.help_description(&mut format_lit);
         }
     }
 
     format_lit.push_str(SECTION_SEPARATOR);
     format_lit.push_str("Options:");
-    for option in options {
-        option_description(errors, &mut format_lit, option);
+    for flag in flags {
+        flag.help_description(&mut format_lit);
     }
+
     // Also include "help"
     option_description_format(&mut format_lit, None, "--help", "display usage information");
 
@@ -130,61 +237,6 @@ fn lits_section(out: &mut String, heading: &str, lits: &[syn::LitStr]) {
     }
 }
 
-/// Add positional arguments like `[<foo>...]` to a help format string.
-fn positional_usage(out: &mut String, field: &StructField<'_>) {
-    if !field.optionality.is_required() {
-        out.push('[');
-    }
-    out.push('<');
-    let name = field.arg_name();
-    out.push_str(&name);
-    if field.optionality == Optionality::Repeating {
-        out.push_str("...");
-    }
-    out.push('>');
-    if !field.optionality.is_required() {
-        out.push(']');
-    }
-}
-
-/// Add options like `[-f <foo>]` to a help format string.
-/// This function must only be called on options (things with `long_name.is_some()`)
-fn option_usage(out: &mut String, field: &StructField<'_>) {
-    // bookend with `[` and `]` if optional
-    if !field.optionality.is_required() {
-        out.push('[');
-    }
-
-    let long_name = field.long_name.as_ref().expect("missing long name for option");
-    if let Some(short) = field.attrs.short.as_ref() {
-        out.push('-');
-        out.push(short.value());
-    } else {
-        out.push_str(long_name);
-    }
-
-    match field.kind {
-        FieldKind::SubCommand | FieldKind::Positional => unreachable!(), // don't have long_name
-        FieldKind::Switch => {}
-        FieldKind::Option => {
-            out.push_str(" <");
-            if let Some(arg_name) = &field.attrs.arg_name {
-                out.push_str(&arg_name.value());
-            } else {
-                out.push_str(long_name.trim_start_matches("--"));
-            }
-            if field.optionality == Optionality::Repeating {
-                out.push_str("...");
-            }
-            out.push('>');
-        }
-    }
-
-    if !field.optionality.is_required() {
-        out.push(']');
-    }
-}
-
 // TODO(cramertj) make it so this is only called at least once per object so
 // as to avoid creating multiple errors.
 pub fn require_description(
@@ -204,35 +256,6 @@ Add a doc comment or an `#[argh(description = \"...\")]` attribute.",
         );
         "".to_string()
     })
-}
-
-/// Describes a positional argument like this:
-///  hello       positional argument description
-fn positional_description(out: &mut String, field: &StructField<'_>) {
-    let field_name = field.arg_name();
-
-    let mut description = String::from("");
-    if let Some(desc) = &field.attrs.description {
-        description = desc.content.value().trim().to_owned();
-    }
-    positional_description_format(out, &field_name, &description)
-}
-
-fn positional_description_format(out: &mut String, name: &str, description: &str) {
-    let info = argh_shared::CommandInfo { name: &*name, description };
-    argh_shared::write_description(out, &info);
-}
-
-/// Describes an option like this:
-///  -f, --force       force, ignore minor errors. This description
-///                    is so long that it wraps to the next line.
-fn option_description(errors: &Errors, out: &mut String, field: &StructField<'_>) {
-    let short = field.attrs.short.as_ref().map(|s| s.value());
-    let long_with_leading_dashes = field.long_name.as_ref().expect("missing long name for option");
-    let description =
-        require_description(errors, field.name.span(), &field.attrs.description, "field");
-
-    option_description_format(out, short, long_with_leading_dashes, &description)
 }
 
 fn option_description_format(

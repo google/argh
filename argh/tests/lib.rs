@@ -1369,3 +1369,17 @@ fn subcommand_does_not_panic() {
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
     );
 }
+
+#[test]
+fn long_alphanumeric() {
+    #[derive(FromArgs)]
+    /// Short description
+    struct Cmd {
+        #[argh(option, long = "ac97")]
+        /// fooey
+        ac97: String,
+    }
+
+    let cmd = Cmd::from_args(&["cmdname"], &["--ac97", "bar"]).unwrap();
+    assert_eq!(cmd.ac97, "bar");
+}

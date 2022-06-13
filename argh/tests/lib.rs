@@ -208,6 +208,416 @@ fn dynamic_subcommand_example() {
 }
 
 #[test]
+fn option_subcommand_ok() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand)]
+        nested: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let one = TopLevel::from_args(&["cmdname"], &["one", "--x", "2"]).expect("sc 1");
+    assert_eq!(one, TopLevel { nested: Some(MySubCommandEnum::One(SubCommandOne { x: 2 })) },);
+}
+
+#[test]
+fn optional_subcommand_empty_show_help_no_default() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand)]
+        nested: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let help_str = r###"Usage: cmdname [<command>] [<args>]
+
+Top-level command.
+
+Options:
+  --help            display usage information
+
+Commands:
+  one               First subcommand.
+  two               Second subcommand.
+"###;
+
+    match TopLevel::from_args(&["cmdname"], &["--help"]) {
+        Ok(_) => panic!("help was parsed as args"),
+        Err(e) => {
+            assert_eq!(help_str, e.output);
+            e.status.expect("help returned an error");
+        }
+    }
+}
+
+#[test]
+fn optional_subcommand_empty_show_help_for_both() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand, default = "SubCommandOne")]
+        nested: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let help_str = r###"Usage: cmdname [<command>] [<args>]
+
+Top-level command.
+
+Options:
+  --help            display usage information
+
+Commands:
+  one               First subcommand.
+  two               Second subcommand.
+
+When no subcommand is given, the command `one` is used as the default. Allowing the additional:
+
+First subcommand.
+
+Options:
+  --x               how many x
+  --help            display usage information
+"###;
+
+    match TopLevel::from_args(&["cmdname"], &["--help"]) {
+        Ok(_) => panic!("help was parsed as args"),
+        Err(e) => {
+            assert_eq!(help_str, e.output);
+            e.status.expect("help returned an error");
+        }
+    }
+}
+
+#[test]
+fn option_subcommand_empty() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand)]
+        nested: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option)]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let one = TopLevel::from_args(&["cmdname"], &[]).expect("sc 1");
+    assert_eq!(one, TopLevel { nested: None },);
+}
+
+#[test]
+fn option_subcommand_with_default() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand, default = "SubCommandOne")]
+        nested: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option, default = "1")]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let one = TopLevel::from_args(&["cmdname"], &[]).expect("sc 1");
+    assert_eq!(one, TopLevel { nested: Some(MySubCommandEnum::One(SubCommandOne { x: 1 })) },);
+}
+
+#[test]
+fn option_subcommand_nested_multiple() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand, default = "MySubCommandStruct")]
+        nested: Option<MySubCommandStruct>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    // Nested command.
+    #[argh(subcommand, name = "my", description = "")]
+    struct MySubCommandStruct {
+        #[argh(subcommand, default = "SubCommandOne")]
+        /// nested command.
+        nested_again: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option, default = "1")]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let one = TopLevel::from_args(&["cmdname"], &[]).expect("sc 1");
+    assert_eq!(
+        one,
+        TopLevel {
+            nested: Some(MySubCommandStruct {
+                nested_again: Some(MySubCommandEnum::One(SubCommandOne { x: 1 }))
+            })
+        }
+    );
+}
+
+#[test]
+fn option_subcommand_nested_multiple_show_help_both() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand, default = "MySubCommandStruct")]
+        nested: Option<MySubCommandStruct>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    // Nested command.
+    #[argh(subcommand, name = "my", description = "My Subcmd")]
+    struct MySubCommandStruct {
+        #[argh(subcommand, default = "SubCommandOne")]
+        /// nested command.
+        nested_again: Option<MySubCommandEnum>,
+
+        #[argh(option, default = "69", description = "delta")]
+        /// the delta
+        delta: i32,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option, default = "1")]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+    let help_str = r###"Usage: cmdname [<command>] [<args>]
+
+Top-level command.
+
+Options:
+  --help            display usage information
+
+Commands:
+  my                My Subcmd
+
+When no subcommand is given, the command `my` is used as the default. Allowing the additional:
+
+My Subcmd
+
+Options:
+  --delta           delta
+  --help            display usage information
+
+Commands:
+  one               First subcommand.
+  two               Second subcommand.
+
+When no subcommand is given, the command `one` is used as the default. Allowing the additional:
+
+First subcommand.
+
+Options:
+  --x               how many x
+  --help            display usage information
+"###;
+
+    match TopLevel::from_args(&["cmdname"], &["--help"]) {
+        Ok(_) => panic!("help was parsed as args"),
+        Err(e) => {
+            assert_eq!(help_str, e.output);
+            e.status.expect("help returned an error");
+        }
+    }
+}
+
+#[test]
+fn option_subcommand_with_default_and_args() {
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Top-level command.
+    struct TopLevel {
+        #[argh(subcommand, default = "SubCommandOne")]
+        nested: Option<MySubCommandEnum>,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum MySubCommandEnum {
+        One(SubCommandOne),
+        Two(SubCommandTwo),
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// First subcommand.
+    #[argh(subcommand, name = "one")]
+    struct SubCommandOne {
+        #[argh(option, default = "1")]
+        /// how many x
+        x: usize,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Second subcommand.
+    #[argh(subcommand, name = "two")]
+    struct SubCommandTwo {
+        #[argh(switch)]
+        /// whether to fooey
+        fooey: bool,
+    }
+
+    let one = TopLevel::from_args(&["cmdname"], &["--x", "69"]).expect("sc 1");
+    assert_eq!(one, TopLevel { nested: Some(MySubCommandEnum::One(SubCommandOne { x: 69 })) },);
+}
+
+#[test]
 fn multiline_doc_comment_description() {
     #[derive(FromArgs)]
     /// Short description
@@ -877,6 +1287,7 @@ Options:
         e.status.expect_err("should be an error");
     }
 
+    // TODO(qhua948): undocumented feature of format! templating for {command_name}
     #[derive(FromArgs, PartialEq, Debug)]
     #[argh(
         description = "Destroy the contents of <file>.",

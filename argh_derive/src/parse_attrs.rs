@@ -135,11 +135,11 @@ impl FieldAttrs {
 
         if let (Some(default), Some(field_type)) = (&this.default, &this.field_type) {
             match field_type.kind {
-                FieldKind::Option | FieldKind::Positional => {}
-                FieldKind::SubCommand | FieldKind::Switch => errors.err(
+                FieldKind::Option | FieldKind::Positional | FieldKind::SubCommand => {}
+                FieldKind::Switch => errors.err(
                     default,
-                    "`default` may only be specified on `#[argh(option)]` \
-                     or `#[argh(positional)]` fields",
+                    "`default` may only be specified on `#[argh(option)],` \
+                     `#[argh(positional)]` or `#[argh(subcommand)]` fields",
                 ),
             }
         }

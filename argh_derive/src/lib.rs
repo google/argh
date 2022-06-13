@@ -170,6 +170,7 @@ impl<'a> StructField<'a> {
             }
             FieldKind::SubCommand => {
                 let inner = ty_inner(&["Option"], &field.ty);
+                // Whether or not the subcommand is optional.
                 optionality =
                     if inner.is_some() { Optionality::Optional } else { Optionality::None };
                 ty_without_wrapper = inner.unwrap_or(&field.ty);
@@ -303,14 +304,21 @@ fn impl_from_args_struct_from_args<'a>(
     let parse_subcommands = if let Some(subcommand) = subcommand {
         let name = subcommand.name;
         let ty = subcommand.ty_without_wrapper;
+        let default_opt = if let Some(ref default) = subcommand.attrs.default {
+            let idt = default.parse_with(syn::Path::parse_mod_style).unwrap();
+            quote! { Some ( <#idt as argh::SubCommand>::COMMAND.name ) }
+        } else {
+            quote! { None }
+        };
         quote_spanned! { impl_span =>
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
-                parse_func: &mut |__command, __remaining_args| {
-                    #name = Some(<#ty as argh::FromArgs>::from_args(__command, __remaining_args)?);
+                parse_func: &mut |__command, __remaining_args, __show_command_usage| {
+                    #name = Some(<#ty as argh::FromArgs>::from_args_show_command_usage(__command, __remaining_args, __show_command_usage)?);
                     Ok(())
                 },
+                default: #default_opt,
             })
         }
     } else {
@@ -322,14 +330,14 @@ fn impl_from_args_struct_from_args<'a>(
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
-        fn from_args(__cmd_name: &[&str], __args: &[&str])
+        fn from_args_show_command_usage(__cmd_name: &[&str], __args: &[&str], __show_command_usage: bool)
             -> std::result::Result<Self, argh::EarlyExit>
         {
             #![allow(clippy::unwrap_in_result)]
 
             #( #init_fields )*
 
-            argh::parse_struct_args(
+            argh::parse_struct_args_show_command_usage(
                 __cmd_name,
                 __args,
                 argh::ParseStructOptions {
@@ -348,7 +356,8 @@ fn impl_from_args_struct_from_args<'a>(
                     last_is_repeating: #last_positional_is_repeating,
                 },
                 #parse_subcommands,
-                &|| #help,
+                #help,
+                __show_command_usage,
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -412,14 +421,21 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     let redact_subcommands = if let Some(subcommand) = subcommand {
         let name = subcommand.name;
         let ty = subcommand.ty_without_wrapper;
+        let default_opt = if let Some(ref default) = subcommand.attrs.default {
+            let idt = default.parse_with(syn::Path::parse_mod_style).unwrap();
+            quote! { Some ( <#idt as argh::SubCommand>::COMMAND.name ) }
+        } else {
+            quote! { None }
+        };
         quote_spanned! { impl_span =>
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
-                parse_func: &mut |__command, __remaining_args| {
-                    #name = Some(<#ty as argh::FromArgs>::redact_arg_values(__command, __remaining_args)?);
+                parse_func: &mut |__command, __remaining_args, __show_command_usage| {
+                    #name = Some(<#ty as argh::FromArgs>::redact_arg_values_show_command_usage(__command, __remaining_args, __show_command_usage)?);
                     Ok(())
                 },
+                default: #default_opt,
             })
         }
     } else {
@@ -437,10 +453,10 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
     let method_impl = quote_spanned! { impl_span =>
-        fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
+        fn redact_arg_values_show_command_usage(__cmd_name: &[&str], __args: &[&str], __show_command_usage: bool) -> std::result::Result<Vec<String>, argh::EarlyExit> {
             #( #init_fields )*
 
-            argh::parse_struct_args(
+            argh::parse_struct_args_show_command_usage(
                 __cmd_name,
                 __args,
                 argh::ParseStructOptions {
@@ -459,7 +475,8 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                     last_is_repeating: #last_positional_is_repeating,
                 },
                 #redact_subcommands,
-                &|| #help,
+                #help,
+                __show_command_usage,
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -904,7 +921,7 @@ fn impl_from_args_enum(
 
     quote! {
         impl argh::FromArgs for #name {
-            fn from_args(command_name: &[&str], args: &[&str])
+            fn from_args_show_command_usage(command_name: &[&str], args: &[&str], show_command_usage: bool)
                 -> std::result::Result<Self, argh::EarlyExit>
             {
                 let subcommand_name = if let Some(subcommand_name) = command_name.last() {
@@ -916,7 +933,7 @@ fn impl_from_args_enum(
                 #(
                     if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
                         return Ok(#name_repeating::#variant_names(
-                            <#variant_ty as argh::FromArgs>::from_args(command_name, args)?
+                            <#variant_ty as argh::FromArgs>::from_args_show_command_usage(command_name, args, show_command_usage)?
                         ));
                     }
                 )*
@@ -926,7 +943,7 @@ fn impl_from_args_enum(
                 Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
             }
 
-            fn redact_arg_values(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
+            fn redact_arg_values_show_command_usage(command_name: &[&str], args: &[&str], show_command_usage: bool) -> std::result::Result<Vec<String>, argh::EarlyExit> {
                 let subcommand_name = if let Some(subcommand_name) = command_name.last() {
                     *subcommand_name
                 } else {
@@ -935,7 +952,7 @@ fn impl_from_args_enum(
 
                 #(
                     if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
-                        return <#variant_ty as argh::FromArgs>::redact_arg_values(command_name, args);
+                        return <#variant_ty as argh::FromArgs>::redact_arg_values_show_command_usage(command_name, args, show_command_usage);
                     }
                 )*
 

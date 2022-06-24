@@ -16,4 +16,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Run clippy
-      run: cargo clippy -- -D warnings
+      run: cargo clippy --version && cargo clippy -- -D warnings
+    - name: Run cargo expand
+      run: (rustup default nightly && cd argh && cargo install cargo-expand && cargo expand --example simple_example.rs)

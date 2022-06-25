@@ -1,6 +1,6 @@
 [package]
 name = "argh_shared"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
 license = "BSD-3-Clause"

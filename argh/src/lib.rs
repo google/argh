@@ -166,6 +166,102 @@
 //!     fooey: bool,
 //! }
 //! ```
+//!
+//! You can also discover subcommands dynamically at runtime. To do this,
+//! declare subcommands as usual and add a variant to the enum with the
+//! `dynamic` attribute. Instead of deriving `FromArgs`, the value inside the
+//! dynamic variant should implement `DynamicSubCommand`.
+//!
+//! ```rust
+//! # use argh::CommandInfo;
+//! # use argh::DynamicSubCommand;
+//! # use argh::EarlyExit;
+//! # use argh::FromArgs;
+//! # use once_cell::sync::OnceCell;
+//!
+//! #[derive(FromArgs, PartialEq, Debug)]
+//! /// Top-level command.
+//! struct TopLevel {
+//!     #[argh(subcommand)]
+//!     nested: MySubCommandEnum,
+//! }
+//!
+//! #[derive(FromArgs, PartialEq, Debug)]
+//! #[argh(subcommand)]
+//! enum MySubCommandEnum {
+//!     Normal(NormalSubCommand),
+//!     #[argh(dynamic)]
+//!     Dynamic(Dynamic),
+//! }
+//!
+//! #[derive(FromArgs, PartialEq, Debug)]
+//! /// Normal subcommand.
+//! #[argh(subcommand, name = "normal")]
+//! struct NormalSubCommand {
+//!     #[argh(option)]
+//!     /// how many x
+//!     x: usize,
+//! }
+//!
+//! /// Dynamic subcommand.
+//! #[derive(PartialEq, Debug)]
+//! struct Dynamic {
+//!     name: String
+//! }
+//!
+//! impl DynamicSubCommand for Dynamic {
+//!     fn commands() -> &'static [&'static CommandInfo] {
+//!         static RET: OnceCell<Vec<&'static CommandInfo>> = OnceCell::new();
+//!         RET.get_or_init(|| {
+//!             let mut commands = Vec::new();
+//!
+//!             // argh needs the `CommandInfo` structs we generate to be valid
+//!             // for the static lifetime. We can allocate the structures on
+//!             // the heap with `Box::new` and use `Box::leak` to get a static
+//!             // reference to them. We could also just use a constant
+//!             // reference, but only because this is a synthetic example; the
+//!             // point of using dynamic commands is to have commands you
+//!             // don't know about until runtime!
+//!             commands.push(&*Box::leak(Box::new(CommandInfo {
+//!                 name: "dynamic_command",
+//!                 description: "A dynamic command",
+//!             })));
+//!
+//!             commands
+//!         })
+//!     }
+//!
+//!     fn try_redact_arg_values(
+//!         command_name: &[&str],
+//!         args: &[&str],
+//!     ) -> Option<Result<Vec<String>, EarlyExit>> {
+//!         for command in Self::commands() {
+//!             if command_name.last() == Some(&command.name) {
+//!                 // Process arguments and redact values here.
+//!                 if !args.is_empty() {
+//!                     return Some(Err("Our example dynamic command never takes arguments!"
+//!                                     .to_string().into()));
+//!                 }
+//!                 return Some(Ok(Vec::new()))
+//!             }
+//!         }
+//!         None
+//!     }
+//!
+//!     fn try_from_args(command_name: &[&str], args: &[&str]) -> Option<Result<Self, EarlyExit>> {
+//!         for command in Self::commands() {
+//!             if command_name.last() == Some(&command.name) {
+//!                 if !args.is_empty() {
+//!                     return Some(Err("Our example dynamic command never takes arguments!"
+//!                                     .to_string().into()));
+//!                 }
+//!                 return Some(Ok(Dynamic { name: command.name.to_string() }))
+//!             }
+//!         }
+//!         None
+//!     }
+//! }
+//! ```
 
 #![deny(missing_docs)]
 
@@ -465,15 +561,26 @@ pub trait DynamicSubCommand: Sized {
     /// Info about supported subcommands.
     fn commands() -> &'static [&'static CommandInfo];
 
-    /// Perform the function of `FromArgs::redact_arg_values` for this dynamic command. If the
-    /// command being processed is not recognized return `None`.
+    /// Perform the function of `FromArgs::redact_arg_values` for this dynamic
+    /// command.
+    ///
+    /// The full list of subcommands, ending with the subcommand that should be
+    /// dynamically recognized, is passed in `command_name`. If the command
+    /// passed is not recognized, this function should return `None`. Otherwise
+    /// it should return `Some`, and the value within the `Some` has the same
+    /// semantics as the return of `FromArgs::redact_arg_values`.
     fn try_redact_arg_values(
         command_name: &[&str],
         args: &[&str],
     ) -> Option<Result<Vec<String>, EarlyExit>>;
 
-    /// Perform the function of `FromArgs::from_args` for this dynamic command. If the command being
-    /// processed is not recognized return `None`.
+    /// Perform the function of `FromArgs::from_args` for this dynamic command.
+    ///
+    /// The full list of subcommands, ending with the subcommand that should be
+    /// dynamically recognized, is passed in `command_name`. If the command
+    /// passed is not recognized, this function should return `None`. Otherwise
+    /// it should return `Some`, and the value within the `Some` has the same
+    /// semantics as the return of `FromArgs::from_args`.
     fn try_from_args(command_name: &[&str], args: &[&str]) -> Option<Result<Self, EarlyExit>>;
 }
 

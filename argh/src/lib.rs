@@ -394,7 +394,18 @@ pub trait FromArgs: Sized {
     ///     },
     /// );
     /// ```
-    fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit>;
+    fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit> {
+        Self::from_args_show_command_usage(command_name, args, true)
+    }
+
+    /// Just like `from_args`, but with an additional parameter to specify whether or not
+    /// to print the first line of command_usage.
+    /// Internal use only.
+    fn from_args_show_command_usage(
+        command_name: &[&str],
+        args: &[&str],
+        show_command_usage: bool,
+    ) -> Result<Self, EarlyExit>;
 
     /// Get a String with just the argument names, e.g., options, flags, subcommands, etc, but
     /// without the values of the options and arguments. This can be useful as a means to capture
@@ -528,6 +539,17 @@ pub trait FromArgs: Sized {
     /// );
     /// ```
     fn redact_arg_values(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
+        Self::redact_arg_values_show_command_usage(_command_name, _args, true)
+    }
+
+    /// Just like `redact_arg_values`, but with an additional parameter to specify whether or not
+    /// to print the first line of command_usage.
+    /// Internal use only.
+    fn redact_arg_values_show_command_usage(
+        _command_name: &[&str],
+        _args: &[&str],
+        _show_command_usage: bool,
+    ) -> Result<Vec<String>, EarlyExit> {
         Ok(vec!["<<REDACTED>>".into()])
     }
 }
@@ -796,19 +818,25 @@ impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 /// `parse_positionals`: Helper to parse positional arguments.
 /// `parse_subcommand`: Helper to parse a subcommand.
 /// `help_func`: Generate a help message.
+/// `show_command_usage`: The bool value `help_func` is called with.
 #[doc(hidden)]
-pub fn parse_struct_args(
+pub fn parse_struct_args_show_command_usage(
     cmd_name: &[&str],
     args: &[&str],
     mut parse_options: ParseStructOptions<'_>,
     mut parse_positionals: ParseStructPositionals<'_>,
     mut parse_subcommand: Option<ParseStructSubCommand<'_>>,
-    help_func: &dyn Fn() -> String,
+    help_func: &dyn Fn(bool) -> String,
+    show_command_usage: bool,
 ) -> Result<(), EarlyExit> {
     let mut help = false;
     let mut remaining_args = args;
     let mut positional_index = 0;
     let mut options_ended = false;
+    let (has_default_subcommand_parse, subcmd_str) = match parse_subcommand {
+        Some(ParseStructSubCommand { default: Some(subcmd_str), .. }) => (true, subcmd_str),
+        _ => (false, ""),
+    };
 
     'parse_args: while let Some(&next_arg) = remaining_args.get(0) {
         remaining_args = &remaining_args[1..];
@@ -827,26 +855,101 @@ pub fn parse_struct_args(
                 return Err("Trailing arguments are not allowed after `help`.".to_string().into());
             }
 
-            parse_options.parse(next_arg, &mut remaining_args)?;
-            continue;
+            // Give a chance to default subcommand reparsing.
+            let parse_result = parse_options.parse(next_arg, &mut remaining_args);
+            if parse_result.is_err() {
+                if has_default_subcommand_parse {
+                    break 'parse_args;
+                }
+                parse_result?
+            } else {
+                continue;
+            }
         }
 
         if let Some(ref mut parse_subcommand) = parse_subcommand {
-            if parse_subcommand.parse(help, cmd_name, next_arg, remaining_args)? {
+            if parse_subcommand.parse(help, cmd_name, next_arg, remaining_args, true)? {
                 // Unset `help`, since we handled it in the subcommand
                 help = false;
                 break 'parse_args;
             }
         }
 
-        parse_positionals.parse(&mut positional_index, next_arg)?;
+        let parse_result = parse_positionals.parse(&mut positional_index, next_arg);
+        if parse_result.is_err() {
+            if has_default_subcommand_parse {
+                break 'parse_args;
+            }
+            parse_result?
+        } else {
+            continue;
+        }
     }
 
     if help {
-        Err(EarlyExit { output: help_func(), status: Ok(()) })
+        // If there is also a default subcommand, we'd like to print the help for that subcommand as well.
+        if has_default_subcommand_parse {
+            let mut unwrapped_parse_subcommand = parse_subcommand.unwrap();
+            // Do not print usage again for the subcommand.
+            let sub_parse = (&mut unwrapped_parse_subcommand.parse_func)(
+                &[cmd_name, &[subcmd_str]].concat(),
+                args,
+                false,
+            )
+            .expect_err("bad parse func");
+            let default_subcommand_help_msg = format!("When no subcommand is given, the command `{}` is used as the default. Allowing the additional:", unwrapped_parse_subcommand.default.unwrap());
+            Err(EarlyExit {
+                output: format!(
+                    "{}\n{}\n\n{}",
+                    help_func(show_command_usage),
+                    default_subcommand_help_msg,
+                    &sub_parse.output
+                ),
+                status: Ok(()),
+            })
+        } else {
+            Err(EarlyExit { output: help_func(show_command_usage), status: Ok(()) })
+        }
+    } else if let Some(ref mut parse_subcommand) = parse_subcommand {
+        // If we have a potential subcommand and it is not parsed.
+        if let Some(default_subcommand) = parse_subcommand.default {
+            // Pass the args again to the default args.
+            // TODO(qhua948, #130): make this better, pass args without re-parsing.
+            parse_subcommand.parse(help, cmd_name, default_subcommand, args, true).map(|_| ())
+        } else {
+            Ok(())
+        }
     } else {
         Ok(())
     }
+}
+
+/// This function implements argument parsing for structs.
+///
+/// `cmd_name`: The identifier for the current command.
+/// `args`: The command line arguments.
+/// `parse_options`: Helper to parse optional arguments.
+/// `parse_positionals`: Helper to parse positional arguments.
+/// `parse_subcommand`: Helper to parse a subcommand.
+/// `help_func`: Generate a help message.
+#[doc(hidden)]
+pub fn parse_struct_args(
+    cmd_name: &[&str],
+    args: &[&str],
+    parse_options: ParseStructOptions<'_>,
+    parse_positionals: ParseStructPositionals<'_>,
+    parse_subcommand: Option<ParseStructSubCommand<'_>>,
+    help_func: &dyn Fn(bool) -> String,
+) -> Result<(), EarlyExit> {
+    parse_struct_args_show_command_usage(
+        cmd_name,
+        args,
+        parse_options,
+        parse_positionals,
+        parse_subcommand,
+        help_func,
+        true,
+    )
 }
 
 #[doc(hidden)]
@@ -872,7 +975,7 @@ impl<'a> ParseStructOptions<'a> {
             .arg_to_slot
             .iter()
             .find_map(|&(name, pos)| if name == arg { Some(pos) } else { None })
-            .ok_or_else(|| unrecognized_argument(arg))?;
+            .ok_or_else(|| unrecognized_arg(arg))?;
 
         match self.slots[pos] {
             ParseStructOption::Flag(ref mut b) => b.set_flag(arg),
@@ -890,10 +993,6 @@ impl<'a> ParseStructOptions<'a> {
 
         Ok(())
     }
-}
-
-fn unrecognized_argument(x: &str) -> String {
-    ["Unrecognized argument: ", x, "\n"].concat()
 }
 
 // `--` or `-` options, including a mutable reference to their value.
@@ -977,7 +1076,10 @@ pub struct ParseStructSubCommand<'a> {
     pub dynamic_subcommands: &'a [&'static CommandInfo],
 
     // The function to parse the subcommand arguments.
-    pub parse_func: &'a mut dyn FnMut(&[&str], &[&str]) -> Result<(), EarlyExit>,
+    pub parse_func: &'a mut dyn FnMut(&[&str], &[&str], bool) -> Result<(), EarlyExit>,
+
+    // The default subcommand as a literal string, which should match one of the subcommand's "name" attribute.
+    pub default: Option<&'static str>,
 }
 
 impl<'a> ParseStructSubCommand<'a> {
@@ -987,6 +1089,7 @@ impl<'a> ParseStructSubCommand<'a> {
         cmd_name: &[&str],
         arg: &str,
         remaining_args: &[&str],
+        show_command_usage: bool,
     ) -> Result<bool, EarlyExit> {
         for subcommand in self.subcommands.iter().chain(self.dynamic_subcommands.iter()) {
             if subcommand.name == arg {
@@ -1000,7 +1103,7 @@ impl<'a> ParseStructSubCommand<'a> {
                     remaining_args
                 };
 
-                (self.parse_func)(&command, remaining_args)?;
+                (self.parse_func)(&command, remaining_args, show_command_usage)?;
 
                 return Ok(true);
             }

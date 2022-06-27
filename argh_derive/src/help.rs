@@ -26,35 +26,36 @@ pub(crate) fn help(
     fields: &[StructField<'_>],
     subcommand: Option<&StructField<'_>>,
 ) -> TokenStream {
-    let mut format_lit = "Usage: {command_name}".to_string();
+    let mut usage_section = "Usage: {command_name}".to_string();
 
     let positional = fields.iter().filter(|f| f.kind == FieldKind::Positional);
     let mut has_positional = false;
     for arg in positional.clone() {
         has_positional = true;
-        format_lit.push(' ');
-        positional_usage(&mut format_lit, arg);
+        usage_section.push(' ');
+        positional_usage(&mut usage_section, arg);
     }
 
     let options = fields.iter().filter(|f| f.long_name.is_some());
     for option in options.clone() {
-        format_lit.push(' ');
-        option_usage(&mut format_lit, option);
+        usage_section.push(' ');
+        option_usage(&mut usage_section, option);
     }
 
     if let Some(subcommand) = subcommand {
-        format_lit.push(' ');
+        usage_section.push(' ');
         if !subcommand.optionality.is_required() {
-            format_lit.push('[');
+            usage_section.push('[');
         }
-        format_lit.push_str("<command>");
+        usage_section.push_str("<command>");
         if !subcommand.optionality.is_required() {
-            format_lit.push(']');
+            usage_section.push(']');
         }
-        format_lit.push_str(" [<args>]");
+        usage_section.push_str(" [<args>]");
     }
 
-    format_lit.push_str(SECTION_SEPARATOR);
+    usage_section.push_str(SECTION_SEPARATOR);
+    let mut format_lit = "".to_string();
 
     let description = require_description(errors, Span::call_site(), &ty_attrs.description, "type");
     format_lit.push_str(&description);
@@ -114,10 +115,26 @@ pub(crate) fn help(
 
     format_lit.push('\n');
 
-    quote! { {
-        #subcommand_calculation
-        format!(#format_lit, command_name = #cmd_name_str_array_ident.join(" "), #subcommand_format_arg)
-    } }
+    let has_format_template_command_name = format_lit.contains("{command_name}");
+    let command_name_format_arg = quote! { command_name = #cmd_name_str_array_ident.join(" ") };
+    let together = format!("{}{}", usage_section, format_lit);
+
+    // We also allow user to template a `{command_name}` in their Notes/Examples.
+    let second_section_format_tokens = if has_format_template_command_name {
+        quote! { format!(#format_lit, #command_name_format_arg, #subcommand_format_arg) }
+    } else {
+        quote! { format!(#format_lit, #subcommand_format_arg) }
+    };
+
+    quote! { & |show_command_usage: bool| {
+            #subcommand_calculation
+            if show_command_usage{
+                format!(#together, #command_name_format_arg, #subcommand_format_arg)
+            } else {
+                #second_section_format_tokens
+            }
+        }
+    }
 }
 
 /// A section composed of exactly just the literals provided to the program.

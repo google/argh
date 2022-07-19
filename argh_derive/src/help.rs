@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+use std::fmt::Write;
 use {
     crate::{
         errors::Errors,
@@ -109,7 +110,7 @@ pub(crate) fn help(
         for (code, text) in &ty_attrs.error_codes {
             format_lit.push('\n');
             format_lit.push_str(INDENT);
-            format_lit.push_str(&format!("{} {}", code, text.value()));
+            write!(format_lit, "{} {}", code, text.value()).unwrap();
         }
     }
 

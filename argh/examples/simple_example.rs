@@ -36,4 +36,7 @@ struct SubCommandTwo {
     fooey: bool,
 }
 
-fn main() {}
+fn main() {
+    let toplevel: TopLevel = argh::from_env();
+    println!("{:#?}", toplevel);
+}

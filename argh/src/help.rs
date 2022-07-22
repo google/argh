@@ -180,7 +180,7 @@ impl fmt::Debug for HelpInfo {
 }
 
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct HelpSubCommandsInfo {
     /// TODO
     pub optional: bool,

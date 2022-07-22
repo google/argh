@@ -286,7 +286,7 @@ fn impl_help<'a>(
     for field in fields {
         let optionality = match field.optionality {
             Optionality::None => quote! { argh::HelpOptionality::None },
-            Optionality::Defaulted(_) => quote! { argh::HelpOptionality::None },
+            Optionality::Defaulted(_) => quote! { argh::HelpOptionality::Optional },
             Optionality::Optional => quote! { argh::HelpOptionality::Optional },
             Optionality::Repeating => quote! { argh::HelpOptionality::Repeating },
         };

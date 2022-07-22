@@ -1519,3 +1519,8 @@ fn subcommand_does_not_panic() {
         argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
     );
 }
+
+#[test]
+fn manual_impl_works() {
+    
+}

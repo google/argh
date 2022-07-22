@@ -13,6 +13,30 @@ pub use crate::help::{
     HelpSubCommandsInfo,
 };
 
+/// Information to display to the user about why a `FromArgs` construction exited early.
+///
+/// This can occur due to either failed parsing or a flag like `--help`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EarlyExit {
+    /// The output to display to the user of the commandline tool.
+    pub output: String,
+    /// Status of argument parsing.
+    ///
+    /// `Ok` if the command was parsed successfully and the early exit is due
+    /// to a flag like `--help` causing early exit with output.
+    ///
+    /// `Err` if the arguments were not successfully parsed.
+    // TODO replace with std::process::ExitCode when stable.
+    pub status: Result<(), ()>,
+}
+
+impl From<String> for EarlyExit {
+    fn from(err_msg: String) -> Self {
+        Self { output: err_msg, status: Err(()) }
+    }
+}
+
+
 /// Information about a particular command used for output.
 pub struct CommandInfo<'a> {
     /// The name of the command.
@@ -84,4 +108,9 @@ fn new_line(current_line: &mut String, out: &mut String) {
     out.push('\n');
     out.push_str(current_line);
     current_line.truncate(0);
+}
+
+/// Extract the base cmd from a path
+pub fn cmd<'a>(default: &'a str, path: &'a str) -> &'a str {
+    std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(default)
 }

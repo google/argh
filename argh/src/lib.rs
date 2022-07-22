@@ -269,7 +269,7 @@ use std::str::FromStr;
 
 pub use {
     argh_derive::FromArgs,
-    argh_shared::{HelpFieldKind, HelpFlagInfo, HelpOptionality, HelpPositionalInfo},
+    argh_shared::{cmd,EarlyExit,HelpFieldKind, HelpFlagInfo, HelpOptionality, HelpPositionalInfo},
 };
 
 /// Information about a particular command used for output.
@@ -600,8 +600,27 @@ pub trait DynamicSubCommand: Sized {
 pub trait Help {
     /// TODO
     const HELP_INFO: &'static HelpInfo;
+
+
+            /// Returns a JSON encoded string of the usage information. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+    fn help_json_from_args(strs: &[&str]) -> Result<String, EarlyExit> {
+        Ok(Self::HELP_INFO.help_json_from_args(strs))
+    }
 }
 
+    /// Returns a JSON encoded string of the usage information based on the command line
+    /// found in argv, identical to `::from_env()`. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+   pub fn help_json<T:Help>() -> Result<String, EarlyExit> {
+        let strings: Vec<String> = std::env::args().collect();
+        //let cmd = cmd(&strings[0], &strings[0]);
+        let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
+        T::help_json_from_args(strs.as_slice())
+
+    }
 /// TODO
 pub trait HelpSubCommands {
     /// TODO
@@ -620,22 +639,6 @@ impl<T: HelpSubCommand> HelpSubCommands for T {
         &HelpSubCommandsInfo { optional: false, commands: &[<T as HelpSubCommand>::HELP_INFO] };
 }
 
-/// Information to display to the user about why a `FromArgs` construction exited early.
-///
-/// This can occur due to either failed parsing or a flag like `--help`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EarlyExit {
-    /// The output to display to the user of the commandline tool.
-    pub output: String,
-    /// Status of argument parsing.
-    ///
-    /// `Ok` if the command was parsed successfully and the early exit is due
-    /// to a flag like `--help` causing early exit with output.
-    ///
-    /// `Err` if the arguments were not successfully parsed.
-    // TODO replace with std::process::ExitCode when stable.
-    pub status: Result<(), ()>,
-}
 
 impl From<String> for EarlyExit {
     fn from(err_msg: String) -> Self {

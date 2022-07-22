@@ -29,7 +29,7 @@ impl PositionalInfo {
             description = desc.content.value().trim().to_owned();
         }
 
-        Self { name, description, optionality: to_help_optional(&field.optionality) }
+        Self { name, description, optionality: to_help_optional(&field.optionality)}
     }
 
     fn as_help_info(&self) -> argh_shared::HelpPositionalInfo {
@@ -96,8 +96,10 @@ impl FlagInfo {
 
 fn to_help_optional(optionality: &Optionality) -> argh_shared::HelpOptionality {
     match optionality {
+        // None means it is required
         Optionality::None => argh_shared::HelpOptionality::None,
-        Optionality::Defaulted(_) => argh_shared::HelpOptionality::None,
+        // fields with default values are optional.
+        Optionality::Defaulted(_) => argh_shared::HelpOptionality::Optional,
         Optionality::Optional => argh_shared::HelpOptionality::Optional,
         Optionality::Repeating => argh_shared::HelpOptionality::Repeating,
     }

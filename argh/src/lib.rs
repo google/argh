@@ -796,6 +796,7 @@ impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 /// `parse_positionals`: Helper to parse positional arguments.
 /// `parse_subcommand`: Helper to parse a subcommand.
 /// `help_func`: Generate a help message.
+/// `complete_func`: Generates all possible subcommands for tab completion.
 #[doc(hidden)]
 pub fn parse_struct_args(
     cmd_name: &[&str],
@@ -804,8 +805,10 @@ pub fn parse_struct_args(
     mut parse_positionals: ParseStructPositionals<'_>,
     mut parse_subcommand: Option<ParseStructSubCommand<'_>>,
     help_func: &dyn Fn() -> String,
+    complete_func: &dyn Fn() -> String,
 ) -> Result<(), EarlyExit> {
     let mut help = false;
+    let mut complete = false;
     let mut remaining_args = args;
     let mut positional_index = 0;
     let mut options_ended = false;
@@ -817,6 +820,11 @@ pub fn parse_struct_args(
             continue;
         }
 
+        if (next_arg == "--complete" || next_arg == "complete") && !options_ended {
+            complete = true;
+            continue;
+        }
+
         if next_arg.starts_with('-') && !options_ended {
             if next_arg == "--" {
                 options_ended = true;
@@ -825,6 +833,10 @@ pub fn parse_struct_args(
 
             if help {
                 return Err("Trailing arguments are not allowed after `help`.".to_string().into());
+            }
+
+            if complete {
+                return Err("Trailing arguments are not allowed after `complete`.".to_string().into());
             }
 
             parse_options.parse(next_arg, &mut remaining_args)?;
@@ -842,8 +854,11 @@ pub fn parse_struct_args(
         parse_positionals.parse(&mut positional_index, next_arg)?;
     }
 
+    // Prioritize a `help` request over a `complete` request.
     if help {
         Err(EarlyExit { output: help_func(), status: Ok(()) })
+    } else if complete {
+        Err(EarlyExit { output: complete_func(), status: Ok(()) })
     } else {
         Ok(())
     }
@@ -1023,6 +1038,16 @@ pub fn print_subcommands<'a>(commands: impl Iterator<Item = &'a CommandInfo>) ->
         argh_shared::write_description(&mut out, cmd);
     }
     out
+}
+
+#[doc(hidden)]
+pub fn print_subcommand_list<'a>(commands: impl Iterator<Item = &'a CommandInfo>) -> String {
+    let mut out = String::new();
+    for cmd in commands {
+        out.push_str(cmd.name);
+        out.push('\n');
+    }
+    out.trim().to_string()
 }
 
 fn unrecognized_arg(arg: &str) -> String {

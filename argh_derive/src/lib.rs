@@ -321,6 +321,9 @@ fn impl_from_args_struct_from_args<'a>(
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
+    // Generate all subcommands of the current command to assist with auto-completion in the shell.
+    let complete = help::complete(subcommand);
+
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
             -> std::result::Result<Self, argh::EarlyExit>
@@ -349,6 +352,7 @@ fn impl_from_args_struct_from_args<'a>(
                 },
                 #parse_subcommands,
                 &|| #help,
+                &|| #complete
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -436,6 +440,9 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
     let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
 
+    // Generate all subcommands of the current command to assist with auto-completion in the shell.
+    let complete = help::complete(subcommand);
+
     let method_impl = quote_spanned! { impl_span =>
         fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
             #( #init_fields )*
@@ -460,6 +467,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                 },
                 #redact_subcommands,
                 &|| #help,
+                &|| #complete,
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();

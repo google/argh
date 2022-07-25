@@ -121,6 +121,39 @@ pub(crate) fn help(
     } }
 }
 
+/// Returns a `TokenStream` generating a `String` list of subcommands.
+pub(crate) fn complete(
+    subcommand: Option<&StructField<'_>>,
+) -> TokenStream {
+    let mut format_lit = "".to_string();
+    let subcommand_calculation;
+    let subcommand_format_arg;
+    if let Some(subcommand) = subcommand {
+        format_lit.push_str("{subcommands}");
+        let subcommand_ty = subcommand.ty_without_wrapper;
+        subcommand_format_arg = quote! { subcommands = subcommands };
+        subcommand_calculation = quote! {
+            let subcommands = argh::print_subcommand_list(
+                <#subcommand_ty as argh::SubCommands>::COMMANDS
+                    .iter()
+                    .copied()
+                    .chain(
+                        <#subcommand_ty as argh::SubCommands>::dynamic_commands()
+                            .iter()
+                            .copied())
+            );
+        };
+    } else {
+        subcommand_calculation = TokenStream::new();
+        subcommand_format_arg = TokenStream::new()
+    }
+
+    quote! { {
+        #subcommand_calculation
+        format!(#format_lit, #subcommand_format_arg)
+    } }
+}
+
 /// A section composed of exactly just the literals provided to the program.
 fn lits_section(out: &mut String, heading: &str, lits: &[syn::LitStr]) {
     if !lits.is_empty() {

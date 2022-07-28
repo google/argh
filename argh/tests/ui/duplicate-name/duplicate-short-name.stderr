@@ -1,0 +1,31 @@
+error: The short name of "-f" was already used here.
+ --> tests/ui/duplicate-name/duplicate-short-name.rs:4:5
+  |
+4 | /     /// foo1
+5 | |     #[argh(option, short = 'f')]
+6 | |     foo1: u32,
+  | |_____________^
+
+error: Later usage here.
+  --> tests/ui/duplicate-name/duplicate-short-name.rs:8:5
+   |
+8  | /     /// foo2
+9  | |     #[argh(option, short = 'f')]
+10 | |     foo2: u32,
+   | |_____________^
+
+error: The short name of "-b" was already used here.
+  --> tests/ui/duplicate-name/duplicate-short-name.rs:12:5
+   |
+12 | /     /// bar1
+13 | |     #[argh(option, short = 'b')]
+14 | |     bar1: u32,
+   | |_____________^
+
+error: Later usage here.
+  --> tests/ui/duplicate-name/duplicate-short-name.rs:16:5
+   |
+16 | /     /// bar2
+17 | |     #[argh(option, short = 'b')]
+18 | |     bar2: u32,
+   | |_____________^

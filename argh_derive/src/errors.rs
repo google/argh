@@ -146,6 +146,11 @@ impl Errors {
         self.push(syn::Error::new(span, msg));
     }
 
+    /// Issue an error spanning over the given syntax tree node.
+    pub fn err_span_tokens<T: ToTokens>(&self, tokens: T, msg: &str) {
+        self.push(syn::Error::new_spanned(tokens, msg));
+    }
+
     /// Push a `syn::Error` onto the list of errors to issue.
     pub fn push(&self, err: syn::Error) {
         self.errors.borrow_mut().push(err);

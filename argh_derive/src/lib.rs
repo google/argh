@@ -15,7 +15,7 @@ use {
     },
     proc_macro2::{Span, TokenStream},
     quote::{quote, quote_spanned, ToTokens},
-    std::str::FromStr,
+    std::{collections::HashMap, str::FromStr},
     syn::{spanned::Spanned, LitStr},
 };
 
@@ -233,6 +233,7 @@ fn impl_from_args_struct(
         })
         .collect();
 
+    ensure_unique_names(errors, &fields);
     ensure_only_last_positional_is_optional(errors, &fields);
 
     let impl_span = Span::call_site();
@@ -501,6 +502,39 @@ fn ensure_only_last_positional_is_optional(errors: &Errors, fields: &[StructFiel
             if !field.optionality.is_required() {
                 first_non_required_span = Some(field.field.span());
             }
+        }
+    }
+}
+
+/// Ensures that only one short or long name is used.
+fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
+    let mut seen_short_names = HashMap::new();
+    let mut seen_long_names = HashMap::new();
+
+    for field in fields {
+        if let Some(short_name) = &field.attrs.short {
+            let short_name = short_name.value();
+            if let Some(first_use_field) = seen_short_names.get(&short_name) {
+                errors.err_span_tokens(
+                    first_use_field,
+                    &format!("The short name of \"-{}\" was already used here.", short_name),
+                );
+                errors.err_span_tokens(&field.field, "Later usage here.");
+            }
+
+            seen_short_names.insert(short_name, &field.field);
+        }
+
+        if let Some(long_name) = &field.long_name {
+            if let Some(first_use_field) = seen_long_names.get(&long_name) {
+                errors.err_span_tokens(
+                    *first_use_field,
+                    &format!("The long name of \"{}\" was already used here.", long_name),
+                );
+                errors.err_span_tokens(&field.field, "Later usage here.");
+            }
+
+            seen_long_names.insert(long_name, field.field);
         }
     }
 }

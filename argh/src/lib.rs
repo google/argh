@@ -267,10 +267,22 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::FromArgs;
+pub use {
+    argh_derive::{FromArgs, Help},
+    argh_shared::{HelpFieldKind, HelpFlagInfo, HelpOptionality, HelpPositionalInfo},
+};
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;
+
+/// TODO
+pub type HelpInfo = argh_shared::HelpInfo<'static>;
+
+/// TODO
+pub type HelpSubCommandsInfo = argh_shared::HelpSubCommandsInfo<'static>;
+
+/// TODO
+pub type HelpSubCommandInfo = argh_shared::HelpSubCommandInfo<'static>;
 
 /// Types which can be constructed from a set of commandline arguments.
 pub trait FromArgs: Sized {
@@ -600,6 +612,50 @@ pub struct EarlyExit {
     // TODO replace with std::process::ExitCode when stable.
     pub status: Result<(), ()>,
 }
+
+/// TODO
+pub trait Help : FromArgs {
+    /// TODO
+    const HELP_INFO: &'static HelpInfo;
+
+
+            /// Returns a JSON encoded string of the usage information. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+    fn help_json_from_args(strs: &[&str]) -> Result<String, EarlyExit> {
+        Ok(Self::HELP_INFO.help_json_from_args(strs))
+    }
+}
+
+    /// Returns a JSON encoded string of the usage information based on the command line
+    /// found in argv, identical to `::from_env()`. This is intended to
+    /// create a "machine readable" version of the help text to enable reference
+    /// documentation generation.
+   pub fn help_json<T:Help>() -> Result<String, EarlyExit> {
+        let strings: Vec<String> = std::env::args().collect();
+        //let cmd = cmd(&strings[0], &strings[0]);
+        let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
+        T::help_json_from_args(strs.as_slice())
+
+    }
+/// TODO
+pub trait HelpSubCommands {
+    /// TODO
+    const HELP_INFO: &'static HelpSubCommandsInfo;
+}
+
+/// TODO
+pub trait HelpSubCommand {
+    /// TODO
+    const HELP_INFO: &'static HelpSubCommandInfo;
+}
+
+impl<T: HelpSubCommand> HelpSubCommands for T {
+    /// TODO
+    const HELP_INFO: &'static HelpSubCommandsInfo =
+        &HelpSubCommandsInfo { optional: false, commands: &[<T as HelpSubCommand>::HELP_INFO] };
+}
+
 
 impl From<String> for EarlyExit {
     fn from(err_msg: String) -> Self {

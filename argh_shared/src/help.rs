@@ -134,46 +134,53 @@ impl<'a> HelpInfo<'a> {
     pub fn help_json_from_args(&self, command_name_arr: &[&str]) -> String {
         let command_name = command_name_arr.join(" ");
 
-        let mut out = format!("{{\n\"name\": \"{}\"", command_name_arr.last().unwrap_or(&"<unknown>"));
+        let mut out =
+            format!("{{\n\"name\": \"{}\"", command_name_arr.last().unwrap_or(&"<unknown>"));
         out.push_str(format!(",\n\"usage\": \"{}\"", self.usage_string(&command_name)).as_str());
-        out.push_str(format!(",\n\"description\": \"{}\"", escape_json(&self.description.replace("{command_name}", &command_name))).as_str());
+        out.push_str(
+            format!(
+                ",\n\"description\": \"{}\"",
+                escape_json(&self.description.replace("{command_name}", &command_name))
+            )
+            .as_str(),
+        );
 
-     
         out.push_str(",\n\"flags\": [");
         let mut first = true;
         for flag in self.flags {
             let short_flag = match flag.short {
-                Some(ch) => format!("{}",ch),
-                None => String::from("")
+                Some(ch) => format!("{}", ch),
+                None => String::from(""),
             };
             let arg_name = match flag.kind {
                 HelpFieldKind::Option { arg_name } => arg_name,
-                _ => ""
+                _ => "",
             };
             let optionality = match flag.optionality {
                 HelpOptionality::Optional => "optional",
                 HelpOptionality::Repeating => "repeating",
-                HelpOptionality::None => "required"
+                HelpOptionality::None => "required",
             };
 
-            if ! first {
+            if !first {
                 out.push_str(",\n");
             }
             first = false;
-            out.push_str(format!("{{\"short\": \"{}\"",short_flag).as_str());
-            out.push_str(format!(", \"long\": \"{}\"",flag.long).as_str());
-            out.push_str(format!(", \"description\": \"{}\"", escape_json(flag.description)).as_str());
-            out.push_str(format!(", \"arg_name\": \"{}\"",arg_name).as_str());
-            out.push_str(format!(", \"optionality\": \"{}\"}}",optionality).as_str());
-
+            out.push_str(format!("{{\"short\": \"{}\"", short_flag).as_str());
+            out.push_str(format!(", \"long\": \"{}\"", flag.long).as_str());
+            out.push_str(
+                format!(", \"description\": \"{}\"", escape_json(flag.description)).as_str(),
+            );
+            out.push_str(format!(", \"arg_name\": \"{}\"", arg_name).as_str());
+            out.push_str(format!(", \"optionality\": \"{}\"}}", optionality).as_str());
         }
         //Help flag is implicit
-        if ! first {
+        if !first {
             out.push_str(",\n");
         }
         out.push_str("{\"short\": \"\"");
         out.push_str(", \"long\": \"--help\"");
-        out.push_str(format!(", \"description\": \"{}\"",HELP_FLAG.description).as_str());
+        out.push_str(format!(", \"description\": \"{}\"", HELP_FLAG.description).as_str());
         out.push_str(", \"arg_name\": \"\"");
         out.push_str(", \"optionality\": \"optional\"}");
 
@@ -185,43 +192,64 @@ impl<'a> HelpInfo<'a> {
             let optionality = match positional.optionality {
                 HelpOptionality::Optional => "optional",
                 HelpOptionality::Repeating => "repeating",
-                HelpOptionality::None => "required"
+                HelpOptionality::None => "required",
             };
-            if ! first {
+            if !first {
                 out.push_str(",\n");
             }
             first = false;
             out.push_str(format!("{{\"name\": \"{}\"", positional.name).as_str());
-            out.push_str(format!(", \"description\": \"{}\"", escape_json(positional.description)).as_str());
-            out.push_str(format!(", \"optionality\": \"{}\"",optionality).as_str());
+            out.push_str(
+                format!(", \"description\": \"{}\"", escape_json(positional.description)).as_str(),
+            );
+            out.push_str(format!(", \"optionality\": \"{}\"", optionality).as_str());
             out.push('}');
         }
         out.push(']');
-        
-        out.push_str(format!(",\n\"examples\": \"{}\"", escape_json(&self.examples.join("\n").replace("{command_name}", &command_name))).as_str());
-        out.push_str(format!(",\n\"notes\": \"{}\"", escape_json(&self.notes.join("\n").replace("{command_name}", &command_name))).as_str());
+
+        out.push_str(
+            format!(
+                ",\n\"examples\": \"{}\"",
+                escape_json(&self.examples.join("\n").replace("{command_name}", &command_name))
+            )
+            .as_str(),
+        );
+        out.push_str(
+            format!(
+                ",\n\"notes\": \"{}\"",
+                escape_json(&self.notes.join("\n").replace("{command_name}", &command_name))
+            )
+            .as_str(),
+        );
 
         out.push_str(",\n\"error_codes\": [");
         first = true;
         for (code, description) in self.error_codes {
-            if ! first {
+            if !first {
                 out.push_str(",\n");
             }
             first = false;
-           out.push_str(format!("{{\"name\": \"{}\", \"description\": \"{}\"}}",code, escape_json(description)).as_str());
+            out.push_str(
+                format!(
+                    "{{\"name\": \"{}\", \"description\": \"{}\"}}",
+                    code,
+                    escape_json(description)
+                )
+                .as_str(),
+            );
         }
         out.push(']');
 
         if let Some(subcommands) = self.subcommand {
             first = true;
 
-        out.push_str(",\n\"subcommands\": [");
+            out.push_str(",\n\"subcommands\": [");
             for sub in subcommands.commands {
-                if ! first {
+                if !first {
                     out.push_str(",\n");
                 }
                 first = false;
-                let sub_command_name =  [command_name_arr, &[sub.name]].concat();
+                let sub_command_name = [command_name_arr, &[sub.name]].concat();
                 out.push_str(sub.info.help_json_from_args(&sub_command_name).as_str());
             }
             out.push(']');
@@ -233,15 +261,8 @@ impl<'a> HelpInfo<'a> {
         out
     }
 
-
-    /*
-  left: `"{\n\"name\": \"test_arg_0\",\n\"usage\": \"test_arg_0 [--verbose] <command> [<args>]\",\n\"description\": \"Top level command with \\\"subcommands\\\".\",\n\"flags\": [{\"short\": \"\", \"long\": \"--verbose\", \"description\": \"show verbose output\", \"arg_name\": \"\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": [{\n\"name\": \"one\",\n\"usage\": \"test_arg_0 one <root> <trunk> [<leaves>]\",\n\"description\": \"Command1 args are used for Command1.\",\n\"flags\": [{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [{\"name\": \"root\", \"description\": \"the \\\"root\\\" position.\", \"optionality\": \"required\"},\n{\"name\": \"trunk\", \"description\": \"trunk value\", \"optionality\": \"required\"},\n{\"name\": \"leaves\", \"description\": \"leaves. There can be zero leaves, defaults to hello.\", \"optionality\": \"optional\"}],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n,\n{\n\"name\": \"two\",\n\"usage\": \"test_arg_0 two [--power] --required <required> [-s <speed>] [--link <url...>]\",\n\"description\": \"Command2 args are used for Command2.\",\n\"flags\": [{\"short\": \"\", \"long\": \"--power\", \"description\": \"should the power be on. \\\"Quoted value\\\" should work too.\", \"arg_name\": \"\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--required\", \"description\": \"option that is required because of no default and not Option<>.\", \"arg_name\": \"required_flag\", \"optionality\": \"required\"},\n{\"short\": \"s\", \"long\": \"--speed\", \"description\": \"optional speed if not specified it is None.\", \"arg_name\": \"speed\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--link\", \"description\": \"repeatable option.\", \"arg_name\": \"url\", \"optionality\": \"repeating\"},\n{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n,\n{\n\"name\": \"three\",\n\"usage\": \"test_arg_0 three\",\n\"description\": \"Command3 args are used for Command3 which has no options or arguments.\",\n\"flags\": [{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n]\n}\n"`,
- right: `"{\n\"name\": \"test_arg_0\",\n\"usage\": \"test_arg_0 [--verbose] <command> [<args>]\",\n\"description\": \"Top level command with \\\"subcommands\\\".\",\n\"flags\": [{\"short\": \"\", \"long\": \"--verbose\", \"description\": \"show verbose output\", \"arg_name\": \"\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": [{\n\"name\": \"one\",\n\"usage\": \"test_arg_0 one <root> <trunk> [<leaves>]\",\n\"description\": \"Command1 args are used for Command1.\",\n\"flags\": [{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [{\"name\": \"root\", \"description\": \"the \\\"root\\\" position.\", \"optionality\": \"required\"},\n{\"name\": \"trunk\", \"description\": \"trunk value\", \"optionality\": \"required\"},\n{\"name\": \"leaves\", \"description\": \"leaves. There can be zero leaves, defaults to hello.\", \"optionality\": \"optional\"}],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n,\n{\n\"name\": \"two\",\n\"usage\": \"test_arg_0 two [--power] --required <required> [-s <speed>] [--link <url...>]\",\n\"description\": \"Command2 args are used for Command2.\",\n\"flags\": [{\"short\": \"\", \"long\": \"--power\", \"description\": \"should the power be on. \\\"Quoted value\\\" should work too.\", \"arg_name\": \"\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--required\", \"description\": \"option that is required because of no default and not Option<>.\", \"arg_name\": \"required\", \"optionality\": \"required\"},\n{\"short\": \"s\", \"long\": \"--speed\", \"description\": \"optional speed if not specified it is None.\", \"arg_name\": \"speed\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--link\", \"description\": \"repeatable option.\", \"arg_name\": \"url\", \"optionality\": \"repeating\"},\n{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n,\n{\n\"name\": \"three\",\n\"usage\": \"test_arg_0 three\",\n\"description\": \"Command3 args are used for Command3 which has no options or arguments.\",\n\"flags\": [{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],\n\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n]\n}\n"`',
-
- */
-
     fn usage_string(&self, command_name: &String) -> String {
-        let mut out =  command_name.to_string();
+        let mut out = command_name.to_string();
 
         for positional in self.positionals {
             out.push(' ');
@@ -329,7 +350,7 @@ pub struct HelpPositionalInfo<'a> {
     /// TODO
     pub description: &'a str,
     /// TODO
-    pub optionality: HelpOptionality
+    pub optionality: HelpOptionality,
 }
 
 impl<'a> HelpPositionalInfo<'a> {

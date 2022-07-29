@@ -1,11 +1,14 @@
 #![cfg(test)]
-// Copyright (c) 2020 Google LLC All rights reserved.
+// Copyright (c) 2022 Google LLC All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-use std::path::PathBuf;
+use {
+    argh::{FromArgs, Help},
+    std::{fmt::Debug, path::PathBuf},
+};
 
-use {argh:: {FromArgs, Help}, std::fmt::Debug};
+/// Tests that exercise the JSON output for help text.
 
 #[test]
 fn help_json_test_subcommand() {
@@ -602,7 +605,7 @@ fn help_json_test_example() {
         Grind(GrindCommand),
     }
 
-    #[derive(FromArgs,Help, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     #[argh(subcommand, name = "blow-up")]
     /// explosively separate
     struct BlowUp {
@@ -665,33 +668,6 @@ fn help_json_test_example() {
 "###,
     );
 }
-
-/*
-{
-\"name\": \"test_arg_0\",
-\"usage\": \"test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]\",
-\"description\": \"Destroy the contents of <file> with a specific \\\"method of destruction\\\".\",
-\"flags\": [{\"short\": \"f\", \"long\": \"--force\", \"description\": \"force, ignore minor errors. This description is so long that it wraps to the next line.\", \"arg_name\": \"\", \"optionality\": \"optional\"},
-{\"short\": \"\", \"long\": \"--really-really-really-long-name-for-pat\", \"description\": \"documentation\", \"arg_name\": \"\", \"optionality\": \"optional\"},
-{\"short\": \"s\", \"long\": \"--scribble\", \"description\": \"write <scribble> repeatedly\", \"arg_name\": \"scribble\", \"optionality\": \"required\"},
-{\"short\": \"v\", \"long\": \"--verbose\", \"description\": \"say more. Defaults to $BLAST_VERBOSE.\", \"arg_name\": \"\", \"optionality\": \"optional\"},
-{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}]
-,\n\"positional\": [],
-\"examples\": \"Scribble 'abc' and then run |grind|.\\n$ test_arg_0 -s 'abc' grind old.txt taxes.cp\",\n\"notes\": \"Use `test_arg_0 help <command>` for details on [<args>] for a subcommand.\",
-\"error_codes\": [{\"name\": \"2\", \"description\": \"The blade is too dull.\", \"optionality\": \"\"},\n{\"name\": \"3\", \"description\": \"Out of fuel.\", \"optionality\": \"\"}],
-\"subcommands\": [{\n\"name\": \"blow-up\",\n\"usage\": \"test_arg_0 blow-up [--safely]\",
-\"description\": \"explosively separate\",
-\"flags\": [{\"short\": \"\", \"long\": \"--safely\", \"description\": \"blow up bombs safely\", \"arg_name\": \"\", \"optionality\": \"optional\"},
-{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],
-\"positional\": [],
-\"examples\": \"\",
-\"notes\": \"\",
-\"error_codes\": [],\n\"subcommands\": []\n}\n,\n{
-    \"name\": \"grind\",\n\"usage\": \"test_arg_0 grind [--safely]\",\n\"description\": \"make smaller by many small cuts\",
-    \"flags\": [{\"short\": \"\", \"long\": \"--safely\", \"description\": \"wear a visor while grinding\", \"arg_name\": \"\", \"optionality\": \"optional\"},\n{\"short\": \"\", \"long\": \"--help\", \"description\": \"display usage information\", \"arg_name\": \"\", \"optionality\": \"optional\"}],
-\"positional\": [],\n\"examples\": \"\",\n\"notes\": \"\",\n\"error_codes\": [],\n\"subcommands\": []\n}\n]\n}
-
-*/
 
 fn assert_help_json_string<T: Help>(args: Vec<&str>, help_str: &str) {
     let mut command_args = vec!["test_arg_0"];

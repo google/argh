@@ -12,31 +12,6 @@ pub use crate::help::{
     HelpFieldKind, HelpFlagInfo, HelpInfo, HelpOptionality, HelpPositionalInfo, HelpSubCommandInfo,
     HelpSubCommandsInfo,
 };
-
-/// Information to display to the user about why a `FromArgs` construction exited early.
-///
-/// This can occur due to either failed parsing or a flag like `--help`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EarlyExit {
-    /// The output to display to the user of the commandline tool.
-    pub output: String,
-    /// Status of argument parsing.
-    ///
-    /// `Ok` if the command was parsed successfully and the early exit is due
-    /// to a flag like `--help` causing early exit with output.
-    ///
-    /// `Err` if the arguments were not successfully parsed.
-    // TODO replace with std::process::ExitCode when stable.
-    pub status: Result<(), ()>,
-}
-
-impl From<String> for EarlyExit {
-    fn from(err_msg: String) -> Self {
-        Self { output: err_msg, status: Err(()) }
-    }
-}
-
-
 /// Information about a particular command used for output.
 pub struct CommandInfo<'a> {
     /// The name of the command.

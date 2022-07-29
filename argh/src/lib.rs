@@ -268,8 +268,8 @@
 use std::str::FromStr;
 
 pub use {
-    argh_derive::FromArgs,
-    argh_shared::{cmd,EarlyExit,HelpFieldKind, HelpFlagInfo, HelpOptionality, HelpPositionalInfo},
+    argh_derive::{FromArgs, Help},
+    argh_shared::{HelpFieldKind, HelpFlagInfo, HelpOptionality, HelpPositionalInfo},
 };
 
 /// Information about a particular command used for output.
@@ -596,8 +596,25 @@ pub trait DynamicSubCommand: Sized {
     fn try_from_args(command_name: &[&str], args: &[&str]) -> Option<Result<Self, EarlyExit>>;
 }
 
+/// Information to display to the user about why a `FromArgs` construction exited early.
+///
+/// This can occur due to either failed parsing or a flag like `--help`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EarlyExit {
+    /// The output to display to the user of the commandline tool.
+    pub output: String,
+    /// Status of argument parsing.
+    ///
+    /// `Ok` if the command was parsed successfully and the early exit is due
+    /// to a flag like `--help` causing early exit with output.
+    ///
+    /// `Err` if the arguments were not successfully parsed.
+    // TODO replace with std::process::ExitCode when stable.
+    pub status: Result<(), ()>,
+}
+
 /// TODO
-pub trait Help {
+pub trait Help : FromArgs {
     /// TODO
     const HELP_INFO: &'static HelpInfo;
 

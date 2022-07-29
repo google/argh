@@ -23,12 +23,43 @@ mod errors;
 mod help;
 mod parse_attrs;
 
+/// Entrypoint for `#[derive(Help)]`.
+#[proc_macro_derive(Help, attributes(argh))]
+pub fn argh_derive_help(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+   let ast = syn::parse_macro_input!(input as syn::DeriveInput);
+   let gen = impl_derive_help(&ast);
+  // let gen = TokenStream::new();
+    gen.into()
+}
+
+
 /// Entrypoint for `#[derive(FromArgs)]`.
 #[proc_macro_derive(FromArgs, attributes(argh))]
 pub fn argh_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
     let gen = impl_from_args(&ast);
     gen.into()
+}
+
+fn impl_derive_help(input: &syn::DeriveInput) -> TokenStream {
+    let errors = &Errors::default();
+    if !input.generics.params.is_empty() {
+        errors.err(
+            &input.generics,
+            "`#![derive(Help)]` cannot be applied to types with generic parameters",
+        );
+    }
+    let type_attrs = &TypeAttrs::parse(errors, input);
+    let mut output_tokens = match &input.data {
+        syn::Data::Struct(ds) => impl_help_from_args_struct(errors, &input.ident, type_attrs, ds),
+        syn::Data::Enum(de) => impl_help_from_args_enum(errors, &input.ident, type_attrs, de),
+        syn::Data::Union(_) => {
+            errors.err(input, "`#[derive(Help)]` cannot be applied to unions");
+            TokenStream::new()
+        }
+    };
+    errors.to_tokens(&mut output_tokens);
+    output_tokens
 }
 
 /// Transform the input into a token stream containing any generated implementations,
@@ -202,6 +233,56 @@ impl<'a> StructField<'a> {
     }
 }
 
+fn impl_help_from_args_struct(
+    errors: &Errors,
+    name: &syn::Ident,
+    type_attrs: &TypeAttrs,
+    ds: &syn::DataStruct, 
+) -> TokenStream {
+
+    let fields = match &ds.fields {
+        syn::Fields::Named(fields) => fields,
+        syn::Fields::Unnamed(_) => {
+            errors.err(
+                &ds.struct_token,
+                "`#![derive(FromArgs)]` is not currently supported on tuple structs",
+            );
+            return TokenStream::new();
+        }
+        syn::Fields::Unit => {
+            errors.err(&ds.struct_token, "#![derive(FromArgs)]` cannot be applied to unit structs");
+            return TokenStream::new();
+        }
+    };
+
+    let fields: Vec<_> = fields
+    .named
+    .iter()
+    .filter_map(|field| {
+        let attrs = FieldAttrs::parse(errors, field);
+        StructField::new(errors, field, attrs)
+    })
+    .collect();
+
+    let impl_span = Span::call_site();
+
+    let help_info = impl_help(errors, type_attrs, &fields);
+
+    let top_or_sub_cmd_help_impl = top_or_sub_cmd_help_impl(errors, name, type_attrs);
+
+    let trait_impl = quote_spanned! { impl_span =>
+        #[automatically_derived]
+        impl argh::Help for #name {
+            const HELP_INFO: &'static argh::HelpInfo = &#help_info;
+        }
+
+        #top_or_sub_cmd_help_impl
+    };
+
+    trait_impl
+
+}
+
 /// Implements `FromArgs` and `TopLevelCommand` or `SubCommand` for a `#[derive(FromArgs)]` struct.
 fn impl_from_args_struct(
     errors: &Errors,
@@ -242,8 +323,6 @@ fn impl_from_args_struct(
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
 
-    let help_info = impl_help(errors, type_attrs, &fields);
-
     let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
 
     let trait_impl = quote_spanned! { impl_span =>
@@ -253,12 +332,6 @@ fn impl_from_args_struct(
 
             #redact_arg_values_method
         }
-
-        #[automatically_derived]
-        impl argh::Help for #name {
-            const HELP_INFO: &'static argh::HelpInfo = &#help_info;
-        }
-
         #top_or_sub_cmd_impl
     };
 
@@ -478,7 +551,6 @@ fn impl_from_args_struct_from_args<'a>(
                 },
                 #parse_subcommands,
                 &|| #help,
-                //&|| <Self as argh::Help>::HELP_INFO.help(#cmd_name_str_array_ident),
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -635,6 +707,26 @@ fn ensure_only_last_positional_is_optional(errors: &Errors, fields: &[StructFiel
     }
 }
 
+fn top_or_sub_cmd_help_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttrs) -> TokenStream {
+    if type_attrs.is_subcommand.is_some() {
+        let empty_str = syn::LitStr::new("", Span::call_site());
+        let subcommand_name = type_attrs.name.as_ref().unwrap_or_else(|| {
+            errors.err(name, "`#[argh(name = \"...\")]` attribute is required for subcommands");
+            &empty_str
+        });
+        quote! {
+            #[automatically_derived]
+            impl argh::HelpSubCommand for #name {
+                const HELP_INFO: &'static argh::HelpSubCommandInfo = &argh::HelpSubCommandInfo {
+                    name: #subcommand_name,
+                    info: <#name as argh::Help>::HELP_INFO,
+                };
+            }
+        }
+    } else {
+        quote! {}
+    }
+}
 /// Implement `argh::TopLevelCommand` or `argh::SubCommand` as appropriate.
 fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttrs) -> TokenStream {
     let description =
@@ -657,14 +749,6 @@ fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttr
                 const COMMAND: &'static argh::CommandInfo = &argh::CommandInfo {
                     name: #subcommand_name,
                     description: #description,
-                };
-            }
-
-            #[automatically_derived]
-            impl argh::HelpSubCommand for #name {
-                const HELP_INFO: &'static argh::HelpSubCommandInfo = &argh::HelpSubCommandInfo {
-                    name: #subcommand_name,
-                    info: <#name as argh::Help>::HELP_INFO,
                 };
             }
         }
@@ -977,6 +1061,62 @@ fn ty_inner<'a>(wrapper_names: &[&str], ty: &'a syn::Type) -> Option<&'a syn::Ty
     None
 }
 
+fn impl_help_from_args_enum(
+    errors: &Errors,
+    name: &syn::Ident,
+    type_attrs: &TypeAttrs,
+    de: &syn::DataEnum,
+) -> TokenStream {
+    parse_attrs::check_enum_type_attrs(errors, type_attrs, &de.enum_token.span);
+
+        // An enum variant like `<name>(<ty>)`
+        struct SubCommandVariant<'a> {
+            ty: &'a syn::Type,
+        }
+    
+        let mut dynamic_type_and_variant = None;
+    
+        let variants: Vec<SubCommandVariant<'_>> = de
+            .variants
+            .iter()
+            .filter_map(|variant| {
+                let name = &variant.ident;
+                let ty = enum_only_single_field_unnamed_variants(errors, &variant.fields)?;
+                if parse_attrs::VariantAttrs::parse(errors, variant).is_dynamic.is_some() {
+                    if dynamic_type_and_variant.is_some() {
+                        errors.err(variant, "Only one variant can have the `dynamic` attribute");
+                    }
+                    dynamic_type_and_variant = Some((ty, name));
+                    None
+                } else {
+                    Some(SubCommandVariant { ty })
+                }
+            })
+            .collect();
+    
+        let variant_ty = variants.iter().map(|x| x.ty).collect::<Vec<_>>();
+
+        let dynamic_commands_help = dynamic_type_and_variant.as_ref().map(|(dynamic_type, _)| {
+            quote! {
+                fn dynamic_commands_help() -> &'static [&'static argh::HelpSubCommandsInfo] {
+                    <#dynamic_type as argh::DynamicHelpSubCommand>::commands()
+                }
+            }
+        });
+
+    quote! {
+        impl argh::HelpSubCommands for #name {
+            const HELP_INFO: &'static argh::HelpSubCommandsInfo = &argh::HelpSubCommandsInfo {
+                optional: false,
+                commands: &[#(
+                    <#variant_ty as argh::HelpSubCommand>::HELP_INFO,
+                )*],
+            };
+            #dynamic_commands_help
+        }
+    }
+}
+
 /// Implements `FromArgs` and `SubCommands` for a `#![derive(FromArgs)]` enum.
 fn impl_from_args_enum(
     errors: &Errors,
@@ -1089,15 +1229,6 @@ fn impl_from_args_enum(
             )*];
 
             #dynamic_commands
-        }
-
-        impl argh::HelpSubCommands for #name {
-            const HELP_INFO: &'static argh::HelpSubCommandsInfo = &argh::HelpSubCommandsInfo {
-                optional: false,
-                commands: &[#(
-                    <#variant_ty as argh::HelpSubCommand>::HELP_INFO,
-                )*],
-            };
         }
     }
 }

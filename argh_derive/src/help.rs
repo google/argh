@@ -116,7 +116,6 @@ pub(crate) fn help(
     fields: &[StructField<'_>],
     subcommand: Option<&StructField<'_>>,
 ) -> TokenStream {
-    #![allow(clippy::format_push_string)]
     let mut format_lit = "Usage: {command_name}".to_string();
 
     let positionals = fields
@@ -265,35 +264,6 @@ Add a doc comment or an `#[argh(description = \"...\")]` attribute.",
         );
         "".to_string()
     })
-}
-
-/// Describes a positional argument like this:
-///  hello       positional argument description
-fn positional_description(out: &mut String, field: &StructField<'_>) {
-    let field_name = field.arg_name();
-
-    let mut description = String::from("");
-    if let Some(desc) = &field.attrs.description {
-        description = desc.content.value().trim().to_owned();
-    }
-    positional_description_format(out, &field_name, &description)
-}
-
-fn positional_description_format(out: &mut String, name: &str, description: &str) {
-    let info = argh_shared::CommandInfo { name, description };
-    argh_shared::write_description(out, &info);
-}
-
-/// Describes an option like this:
-///  -f, --force       force, ignore minor errors. This description
-///                    is so long that it wraps to the next line.
-fn option_description(errors: &Errors, out: &mut String, field: &StructField<'_>) {
-    let short = field.attrs.short.as_ref().map(|s| s.value());
-    let long_with_leading_dashes = field.long_name.as_ref().expect("missing long name for option");
-    let description =
-        require_description(errors, field.name.span(), &field.attrs.description, "field");
-
-    option_description_format(out, short, long_with_leading_dashes, &description)
 }
 
 fn option_description_format(

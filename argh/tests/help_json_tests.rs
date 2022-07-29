@@ -5,26 +5,25 @@
 
 use std::path::PathBuf;
 
-use argh::Help;
-use {argh::FromArgs, std::fmt::Debug};
+use {argh:: {FromArgs, Help}, std::fmt::Debug};
 
 #[test]
 fn help_json_test_subcommand() {
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     /// Top-level command.
     struct TopLevel {
         #[argh(subcommand)]
         nested: MySubCommandEnum,
     }
 
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     #[argh(subcommand)]
     enum MySubCommandEnum {
         One(SubCommandOne),
         Two(SubCommandTwo),
     }
 
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     /// First subcommand.
     #[argh(subcommand, name = "one")]
     struct SubCommandOne {
@@ -33,7 +32,7 @@ fn help_json_test_subcommand() {
         x: usize,
     }
 
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     /// Second subcommand.
     #[argh(subcommand, name = "two")]
     struct SubCommandTwo {
@@ -103,7 +102,7 @@ fn help_json_test_subcommand() {
 
 #[test]
 fn help_json_test_multiline_doc_comment() {
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     /// Short description
     struct Cmd {
         #[argh(switch)]
@@ -134,7 +133,7 @@ fn help_json_test_multiline_doc_comment() {
 #[test]
 fn help_json_test_basic_args() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     /// Basic command args demonstrating multiple types and cardinality. "With quotes"
     struct Basic {
         /// should the power be on. "Quoted value" should work too.
@@ -177,7 +176,7 @@ fn help_json_test_basic_args() {
 #[test]
 fn help_json_test_positional_args() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     /// Command with positional args demonstrating. "With quotes"
     struct Positional {
         /// the "root" position.
@@ -214,7 +213,7 @@ fn help_json_test_positional_args() {
 #[test]
 fn help_json_test_optional_positional_args() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     /// Command with positional args demonstrating last value is optional
     struct Positional {
         /// the "root" position.
@@ -251,7 +250,7 @@ fn help_json_test_optional_positional_args() {
 #[test]
 fn help_json_test_default_positional_args() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     /// Command with positional args demonstrating last value is defaulted.
     struct Positional {
         /// the "root" position.
@@ -288,7 +287,7 @@ fn help_json_test_default_positional_args() {
 #[test]
 fn help_json_test_notes_examples_errors() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     /// Command with Examples and usage Notes, including error codes.
     #[argh(
         note = r##"
@@ -342,7 +341,7 @@ fn help_json_test_notes_examples_errors() {
 #[test]
 fn help_json_test_subcommands() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     ///Top level command with "subcommands".
     struct TopLevel {
         /// show verbose output
@@ -354,7 +353,7 @@ fn help_json_test_subcommands() {
         cmd: SubcommandEnum,
     }
 
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     #[argh(subcommand)]
     /// Doc comments for subcommand enums does not appear in the help text.
     enum SubcommandEnum {
@@ -365,7 +364,7 @@ fn help_json_test_subcommands() {
 
     /// Command1 args are used for Command1.
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     #[argh(subcommand, name = "one")]
     struct Command1Args {
         /// the "root" position.
@@ -382,7 +381,7 @@ fn help_json_test_subcommands() {
     }
     /// Command2 args are used for Command2.
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     #[argh(subcommand, name = "two")]
     struct Command2Args {
         /// should the power be on. "Quoted value" should work too.
@@ -402,7 +401,7 @@ fn help_json_test_subcommands() {
         link: Vec<String>,
     }
     /// Command3 args are used for Command3 which has no options or arguments.
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     #[argh(subcommand, name = "three")]
     struct Command3Args {}
 
@@ -468,7 +467,7 @@ fn help_json_test_subcommands() {
 #[test]
 fn help_json_test_subcommand_notes_examples() {
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     ///Top level command with "subcommands".
     #[argh(
         note = "Top level note",
@@ -485,7 +484,7 @@ fn help_json_test_subcommand_notes_examples() {
         cmd: SubcommandEnum,
     }
 
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     #[argh(subcommand)]
     /// Doc comments for subcommand enums does not appear in the help text.
     enum SubcommandEnum {
@@ -494,7 +493,7 @@ fn help_json_test_subcommand_notes_examples() {
 
     /// Command1 args are used for subcommand one.
     #[allow(dead_code)]
-    #[derive(FromArgs)]
+    #[derive(FromArgs, Help)]
     #[argh(
         subcommand,
         name = "one",
@@ -567,7 +566,7 @@ fn help_json_test_subcommand_notes_examples() {
 
 #[test]
 fn help_json_test_example() {
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     #[argh(
         description = "Destroy the contents of <file> with a specific \"method of destruction\".",
         example = "Scribble 'abc' and then run |grind|.\n$ {command_name} -s 'abc' grind old.txt taxes.cp",
@@ -596,14 +595,14 @@ fn help_json_test_example() {
         command: HelpExampleSubCommands,
     }
 
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     #[argh(subcommand)]
     enum HelpExampleSubCommands {
         BlowUp(BlowUp),
         Grind(GrindCommand),
     }
 
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs,Help, PartialEq, Debug)]
     #[argh(subcommand, name = "blow-up")]
     /// explosively separate
     struct BlowUp {
@@ -612,7 +611,7 @@ fn help_json_test_example() {
         safely: bool,
     }
 
-    #[derive(FromArgs, PartialEq, Debug)]
+    #[derive(FromArgs, Help, PartialEq, Debug)]
     #[argh(subcommand, name = "grind", description = "make smaller by many small cuts")]
     struct GrindCommand {
         /// wear a visor while grinding

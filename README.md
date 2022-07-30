@@ -177,11 +177,11 @@ struct SubCommandTwo {
 NOTE: This is not an officially supported Google product.
 
 
-## How to debug the expanded derive marco for `argh`
+## How to debug the expanded derive macro for `argh`
 
-The `argh::FromArgs` derive marco can be debugged with the [cargo-expand](https://crates.io/crates/cargo-expand) crate.
+The `argh::FromArgs` derive macro can be debugged with the [cargo-expand](https://crates.io/crates/cargo-expand) crate.
 
-### Expand the derive marco in `examples/simple_example.rs`
+### Expand the derive macro in `examples/simple_example.rs`
 
 See [argh/examples/simple_example.rs](./argh/examples/simple_example.rs) for the example struct we wish to expand.
 

@@ -184,7 +184,10 @@ impl<'a> StructField<'a> {
                     .long
                     .as_ref()
                     .map(syn::LitStr::value)
-                    .unwrap_or_else(|| heck::KebabCase::to_kebab_case(&*name.to_string()));
+                    .unwrap_or_else(|| {
+                        use heck::ToKebabCase;
+                        name.to_string().to_kebab_case()
+                    });
                 if long_name == "help" {
                     errors.err(field, "Custom `--help` flags are not supported.");
                 }

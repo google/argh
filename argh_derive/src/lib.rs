@@ -13,6 +13,7 @@ use {
         errors::Errors,
         parse_attrs::{FieldAttrs, FieldKind, TypeAttrs},
     },
+    heck::ToKebabCase,
     proc_macro2::{Span, TokenStream},
     quote::{quote, quote_spanned, ToTokens},
     std::{collections::HashMap, str::FromStr},
@@ -184,10 +185,7 @@ impl<'a> StructField<'a> {
                     .long
                     .as_ref()
                     .map(syn::LitStr::value)
-                    .unwrap_or_else(|| {
-                        use heck::ToKebabCase;
-                        name.to_string().to_kebab_case()
-                    });
+                    .unwrap_or_else(|| name.to_string().to_kebab_case());
                 if long_name == "help" {
                     errors.err(field, "Custom `--help` flags are not supported.");
                 }

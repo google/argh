@@ -36,16 +36,14 @@ pub fn argh_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// as well as all errors that occurred.
 fn impl_from_args(input: &syn::DeriveInput) -> TokenStream {
     let errors = &Errors::default();
-    if !input.generics.params.is_empty() {
-        errors.err(
-            &input.generics,
-            "`#![derive(FromArgs)]` cannot be applied to types with generic parameters",
-        );
-    }
     let type_attrs = &TypeAttrs::parse(errors, input);
     let mut output_tokens = match &input.data {
-        syn::Data::Struct(ds) => impl_from_args_struct(errors, &input.ident, type_attrs, ds),
-        syn::Data::Enum(de) => impl_from_args_enum(errors, &input.ident, type_attrs, de),
+        syn::Data::Struct(ds) => {
+            impl_from_args_struct(errors, &input.ident, type_attrs, &input.generics, ds)
+        }
+        syn::Data::Enum(de) => {
+            impl_from_args_enum(errors, &input.ident, type_attrs, &input.generics, de)
+        }
         syn::Data::Union(_) => {
             errors.err(input, "`#[derive(FromArgs)]` cannot be applied to unions");
             TokenStream::new()
@@ -208,6 +206,7 @@ fn impl_from_args_struct(
     errors: &Errors,
     name: &syn::Ident,
     type_attrs: &TypeAttrs,
+    generic_args: &syn::Generics,
     ds: &syn::DataStruct,
 ) -> TokenStream {
     let fields = match &ds.fields {
@@ -244,11 +243,12 @@ fn impl_from_args_struct(
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
 
-    let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs);
+    let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs, generic_args);
 
+    let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     let trait_impl = quote_spanned! { impl_span =>
         #[automatically_derived]
-        impl argh::FromArgs for #name {
+        impl #impl_generics argh::FromArgs for #name #ty_generics #where_clause {
             #from_args_method
 
             #redact_arg_values_method
@@ -541,14 +541,20 @@ fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
 }
 
 /// Implement `argh::TopLevelCommand` or `argh::SubCommand` as appropriate.
-fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttrs) -> TokenStream {
+fn top_or_sub_cmd_impl(
+    errors: &Errors,
+    name: &syn::Ident,
+    type_attrs: &TypeAttrs,
+    generic_args: &syn::Generics,
+) -> TokenStream {
     let description =
         help::require_description(errors, name.span(), &type_attrs.description, "type");
+    let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     if type_attrs.is_subcommand.is_none() {
         // Not a subcommand
         quote! {
             #[automatically_derived]
-            impl argh::TopLevelCommand for #name {}
+            impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {}
         }
     } else {
         let empty_str = syn::LitStr::new("", Span::call_site());
@@ -558,7 +564,7 @@ fn top_or_sub_cmd_impl(errors: &Errors, name: &syn::Ident, type_attrs: &TypeAttr
         });
         quote! {
             #[automatically_derived]
-            impl argh::SubCommand for #name {
+            impl #impl_generics argh::SubCommand for #name #ty_generics #where_clause {
                 const COMMAND: &'static argh::CommandInfo = &argh::CommandInfo {
                     name: #subcommand_name,
                     description: #description,
@@ -879,6 +885,7 @@ fn impl_from_args_enum(
     errors: &Errors,
     name: &syn::Ident,
     type_attrs: &TypeAttrs,
+    generic_args: &syn::Generics,
     de: &syn::DataEnum,
 ) -> TokenStream {
     parse_attrs::check_enum_type_attrs(errors, type_attrs, &de.enum_token.span);
@@ -937,8 +944,9 @@ fn impl_from_args_enum(
         }
     });
 
+    let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     quote! {
-        impl argh::FromArgs for #name {
+        impl #impl_generics argh::FromArgs for #name #ty_generics #where_clause {
             fn from_args(command_name: &[&str], args: &[&str])
                 -> std::result::Result<Self, argh::EarlyExit>
             {
@@ -980,7 +988,7 @@ fn impl_from_args_enum(
             }
         }
 
-        impl argh::SubCommands for #name {
+        impl #impl_generics argh::SubCommands for #name #ty_generics #where_clause {
             const COMMANDS: &'static [&'static argh::CommandInfo] = &[#(
                 <#variant_ty as argh::SubCommand>::COMMAND,
             )*];

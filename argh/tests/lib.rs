@@ -36,6 +36,34 @@ fn basic_example() {
 }
 
 #[test]
+fn generic_example() {
+    use std::fmt::Display;
+    use std::str::FromStr;
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    /// Reach new heights.
+    struct GoUp<S: FromStr>
+    where
+        <S as FromStr>::Err: Display,
+    {
+        /// whether or not to jump
+        #[argh(switch, short = 'j')]
+        jump: bool,
+
+        /// how high to go
+        #[argh(option)]
+        height: usize,
+
+        /// an optional nickname for the pilot
+        #[argh(option)]
+        pilot_nickname: Option<S>,
+    }
+
+    let up = GoUp::<String>::from_args(&["cmdname"], &["--height", "5"]).expect("failed go_up");
+    assert_eq!(up, GoUp::<String> { jump: false, height: 5, pilot_nickname: None });
+}
+
+#[test]
 fn custom_from_str_example() {
     #[derive(FromArgs)]
     /// Goofy thing.

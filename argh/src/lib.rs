@@ -810,7 +810,7 @@ pub fn parse_struct_args(
     let mut positional_index = 0;
     let mut options_ended = false;
 
-    'parse_args: while let Some(&next_arg) = remaining_args.get(0) {
+    'parse_args: while let Some(&next_arg) = remaining_args.first() {
         remaining_args = &remaining_args[1..];
         if (next_arg == "--help" || next_arg == "help") && !options_ended {
             help = true;
@@ -878,7 +878,7 @@ impl<'a> ParseStructOptions<'a> {
             ParseStructOption::Flag(ref mut b) => b.set_flag(arg),
             ParseStructOption::Value(ref mut pvs) => {
                 let value = remaining_args
-                    .get(0)
+                    .first()
                     .ok_or_else(|| ["No value provided for option '", arg, "'.\n"].concat())?;
                 *remaining_args = &remaining_args[1..];
                 pvs.fill_slot(arg, value).map_err(|s| {
@@ -977,6 +977,7 @@ pub struct ParseStructSubCommand<'a> {
     pub dynamic_subcommands: &'a [&'static CommandInfo],
 
     // The function to parse the subcommand arguments.
+    #[allow(clippy::type_complexity)]
     pub parse_func: &'a mut dyn FnMut(&[&str], &[&str]) -> Result<(), EarlyExit>,
 }
 

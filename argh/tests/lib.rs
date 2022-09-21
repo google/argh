@@ -128,7 +128,7 @@ fn dynamic_subcommand_example() {
             let description = Self::commands().iter().find(|x| x.name == command_name)?.description;
             if args.len() > 1 {
                 Some(Err(argh::EarlyExit::from("Too many arguments".to_owned())))
-            } else if let Some(arg) = args.get(0) {
+            } else if let Some(arg) = args.first() {
                 Some(Ok(DynamicSubCommandImpl { got: format!("{} got {:?}", description, arg) }))
             } else {
                 Some(Err(argh::EarlyExit::from("Not enough arguments".to_owned())))
@@ -957,7 +957,7 @@ Options:
                 None
             } else if args.len() > 1 {
                 Some(Err(argh::EarlyExit::from("Too many arguments".to_owned())))
-            } else if let Some(arg) = args.get(0) {
+            } else if let Some(arg) = args.first() {
                 Some(Ok(HelpExamplePlugin { got: format!("plugin got {:?}", arg) }))
             } else {
                 Some(Ok(HelpExamplePlugin { got: "plugin got no argument".to_owned() }))

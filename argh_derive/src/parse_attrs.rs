@@ -18,6 +18,7 @@ pub struct FieldAttrs {
     pub long: Option<syn::LitStr>,
     pub short: Option<syn::LitChar>,
     pub arg_name: Option<syn::LitStr>,
+    pub greedy: Option<syn::Path>,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -120,13 +121,15 @@ impl FieldAttrs {
                         FieldKind::Positional,
                         &mut this.field_type,
                     );
+                } else if name.is_ident("greedy") {
+                    this.greedy = Some(name.clone());
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
-                            "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `long`, ",
-                            "`option`, `short`, `subcommand`, `switch`",
+                            "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `greedy`, ",
+                            "`long`, `option`, `short`, `subcommand`, `switch`",
                         ),
                     );
                 }
@@ -142,6 +145,16 @@ impl FieldAttrs {
                      or `#[argh(positional)]` fields",
                 ),
             }
+        }
+
+        match (&this.greedy, this.field_type.as_ref().map(|f| f.kind)) {
+            (Some(_), Some(FieldKind::Positional)) => {}
+            (Some(greedy), Some(_)) => errors.err(
+                &greedy,
+                "`greedy` may only be specified on `#[argh(positional)]` \
+                    fields",
+            ),
+            _ => {}
         }
 
         if let Some(d) = &this.description {

@@ -127,6 +127,34 @@
 //! The last positional argument may include a default, or be wrapped in
 //! `Option` or `Vec` to indicate an optional or repeating positional argument.
 //!
+//! If your final positional argument has the `greedy` option on it, it will consume
+//! any arguments after it as if a `--` were placed before the first argument to
+//! match the greedy positional:
+//!
+//! ```rust
+//! use argh::FromArgs;
+//! #[derive(FromArgs, PartialEq, Debug)]
+//! /// A command with a greedy positional argument at the end.
+//! struct WithGreedyPositional {
+//!     /// some stuff
+//!     #[argh(option)]
+//!     stuff: Option<String>,
+//!     #[argh(positional, greedy)]
+//!     all_the_rest: Vec<String>,
+//! }
+//! ```
+//!
+//! Now if you pass `--stuff Something` after a positional argument, it will
+//! be consumed by `all_the_rest` instead of setting the `stuff` field.
+//!
+//! Note that `all_the_rest` won't be listed as a positional argument in the
+//! long text part of help output (and it will be listed at the end of the usage
+//! line as `[all_the_rest...]`), and it's up to the caller to append any
+//! extra help output for the meaning of the captured arguments. This is to
+//! enable situations where some amount of argument processing needs to happen
+//! before the rest of the arguments can be interpreted, and shouldn't be used
+//! for regular use as it might be confusing.
+//!
 //! Subcommands are also supported. To use a subcommand, declare a separate
 //! `FromArgs` type for each subcommand as well as an enum that cases
 //! over each command:
@@ -839,7 +867,7 @@ pub fn parse_struct_args(
             }
         }
 
-        parse_positionals.parse(&mut positional_index, next_arg)?;
+        options_ended |= parse_positionals.parse(&mut positional_index, next_arg)?;
     }
 
     if help {
@@ -910,25 +938,31 @@ pub enum ParseStructOption<'a> {
 pub struct ParseStructPositionals<'a> {
     pub positionals: &'a mut [ParseStructPositional<'a>],
     pub last_is_repeating: bool,
+    pub last_is_greedy: bool,
 }
 
 impl<'a> ParseStructPositionals<'a> {
     /// Parse the next positional argument.
     ///
     /// `arg`: the argument supplied by the user.
-    fn parse(&mut self, index: &mut usize, arg: &str) -> Result<(), EarlyExit> {
+    ///
+    /// Returns true if non-positional argument parsing should stop
+    /// after this one.
+    fn parse(&mut self, index: &mut usize, arg: &str) -> Result<bool, EarlyExit> {
         if *index < self.positionals.len() {
             self.positionals[*index].parse(arg)?;
 
-            // Don't increment position if we're at the last arg
-            // *and* the last arg is repeating.
-            let skip_increment = self.last_is_repeating && *index == self.positionals.len() - 1;
-
-            if !skip_increment {
+            if self.last_is_repeating && *index == self.positionals.len() - 1 {
+                // Don't increment position if we're at the last arg
+                // *and* the last arg is repeating. If it's also remainder,
+                // halt non-option processing after this.
+                Ok(self.last_is_greedy)
+            } else {
+                // If it is repeating, though, increment the index and continue
+                // processing options.
                 *index += 1;
+                Ok(false)
             }
-
-            Ok(())
         } else {
             Err(EarlyExit { output: unrecognized_arg(arg), status: Err(()) })
         }

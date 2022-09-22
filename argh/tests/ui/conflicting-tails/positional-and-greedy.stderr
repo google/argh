@@ -1,0 +1,11 @@
+error: Only the last positional argument may be `Option`, `Vec`, or defaulted.
+ --> tests/ui/conflicting-tails/positional-and-greedy.rs:4:5
+  |
+4 |     #[argh(positional)]
+  |     ^
+
+error: Later positional argument declared here.
+ --> tests/ui/conflicting-tails/positional-and-greedy.rs:8:5
+  |
+8 |     #[argh(positional, greedy)]
+  |     ^

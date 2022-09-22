@@ -460,6 +460,90 @@ Options:
 
     #[derive(FromArgs, Debug, PartialEq)]
     /// Woot
+    struct LastRepeatingGreedy {
+        #[argh(positional)]
+        /// fooey
+        a: u32,
+        #[argh(switch)]
+        /// woo
+        b: bool,
+        #[argh(option)]
+        /// stuff
+        c: Option<String>,
+        #[argh(positional, greedy)]
+        /// fooey
+        d: Vec<String>,
+    }
+
+    #[test]
+    fn positional_greedy() {
+        assert_output(&["5"], LastRepeatingGreedy { a: 5, b: false, c: None, d: vec![] });
+        assert_output(
+            &["5", "foo"],
+            LastRepeatingGreedy { a: 5, b: false, c: None, d: vec!["foo".into()] },
+        );
+        assert_output(
+            &["5", "foo", "bar"],
+            LastRepeatingGreedy { a: 5, b: false, c: None, d: vec!["foo".into(), "bar".into()] },
+        );
+        assert_output(
+            &["5", "--b", "foo", "bar"],
+            LastRepeatingGreedy { a: 5, b: true, c: None, d: vec!["foo".into(), "bar".into()] },
+        );
+        assert_output(
+            &["5", "foo", "bar", "--b"],
+            LastRepeatingGreedy {
+                a: 5,
+                b: false,
+                c: None,
+                d: vec!["foo".into(), "bar".into(), "--b".into()],
+            },
+        );
+        assert_output(
+            &["5", "--c", "hi", "foo", "bar"],
+            LastRepeatingGreedy {
+                a: 5,
+                b: false,
+                c: Some("hi".into()),
+                d: vec!["foo".into(), "bar".into()],
+            },
+        );
+        assert_output(
+            &["5", "foo", "bar", "--c", "hi"],
+            LastRepeatingGreedy {
+                a: 5,
+                b: false,
+                c: None,
+                d: vec!["foo".into(), "bar".into(), "--c".into(), "hi".into()],
+            },
+        );
+        assert_output(
+            &["5", "foo", "bar", "--", "hi"],
+            LastRepeatingGreedy {
+                a: 5,
+                b: false,
+                c: None,
+                d: vec!["foo".into(), "bar".into(), "--".into(), "hi".into()],
+            },
+        );
+        assert_help_string::<LastRepeatingGreedy>(
+            r###"Usage: test_arg_0 <a> [--b] [--c <c>] [d...]
+
+Woot
+
+Positional Arguments:
+  a                 fooey
+
+Options:
+  --b               woo
+  --c               stuff
+  --help            display usage information
+"###,
+        );
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
     struct LastOptional {
         #[argh(positional)]
         /// fooey

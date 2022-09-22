@@ -117,7 +117,7 @@ impl<'a> StructField<'a> {
                 field,
                 concat!(
                     "Missing `argh` field kind attribute.\n",
-                    "Expected one of: `switch`, `option`, `subcommand`, `positional`",
+                    "Expected one of: `switch`, `option`, `remaining`, `subcommand`, `positional`",
                 ),
             );
             return None;
@@ -275,6 +275,10 @@ fn impl_from_args_struct_from_args<'a>(
         .last()
         .map(|field| field.optionality == Optionality::Repeating)
         .unwrap_or(false);
+    let last_positional_is_greedy = positional_fields
+        .last()
+        .map(|field| field.kind == FieldKind::Positional && field.attrs.greedy.is_some())
+        .unwrap_or(false);
 
     let flag_output_table = fields.iter().filter_map(|field| {
         let field_name = &field.field.ident;
@@ -348,6 +352,7 @@ fn impl_from_args_struct_from_args<'a>(
                         )*
                     ],
                     last_is_repeating: #last_positional_is_repeating,
+                    last_is_greedy: #last_positional_is_greedy,
                 },
                 #parse_subcommands,
                 &|| #help,
@@ -383,6 +388,10 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     let last_positional_is_repeating = positional_fields
         .last()
         .map(|field| field.optionality == Optionality::Repeating)
+        .unwrap_or(false);
+    let last_positional_is_greedy = positional_fields
+        .last()
+        .map(|field| field.kind == FieldKind::Positional && field.attrs.greedy.is_some())
         .unwrap_or(false);
 
     let flag_output_table = fields.iter().filter_map(|field| {
@@ -459,6 +468,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                         )*
                     ],
                     last_is_repeating: #last_positional_is_repeating,
+                    last_is_greedy: #last_positional_is_greedy,
                 },
                 #redact_subcommands,
                 &|| #help,

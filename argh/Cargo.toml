@@ -1,6 +1,6 @@
 [package]
 name = "argh"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
 keywords = ["args", "arguments", "derive", "cli"]
@@ -10,8 +10,8 @@ repository = "https://github.com/google/argh"
 readme = "README.md"
 
 [dependencies]
-argh_shared = { version = "0.1.8", path = "../argh_shared" }
-argh_derive = { version = "0.1.8", path = "../argh_derive" }
+argh_shared = { version = "0.1.9", path = "../argh_shared" }
+argh_derive = { version = "0.1.9", path = "../argh_derive" }
 
 [dev-dependencies]
 once_cell = "1.10.0"

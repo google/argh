@@ -17,7 +17,7 @@ use {
     proc_macro2::{Span, TokenStream},
     quote::{quote, quote_spanned, ToTokens},
     std::{collections::HashMap, str::FromStr},
-    syn::{spanned::Spanned, LitStr},
+    syn::{spanned::Spanned, GenericArgument, LitStr, PathArguments, Type},
 };
 
 mod errors;
@@ -854,6 +854,16 @@ fn ty_expect_switch(errors: &Errors, ty: &syn::Type) -> bool {
                 return false;
             }
             let ident = &path.path.segments[0].ident;
+            // `Option<bool>` can be used as a `switch`.
+            if ident == "Option" {
+                if let PathArguments::AngleBracketed(args) = &path.path.segments[0].arguments {
+                    if let GenericArgument::Type(Type::Path(p)) = &args.args[0] {
+                        if p.path.segments[0].ident == "bool" {
+                            return true;
+                        }
+                    }
+                }
+            }
             ["bool", "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128"]
                 .iter()
                 .any(|path| ident == path)
@@ -864,7 +874,7 @@ fn ty_expect_switch(errors: &Errors, ty: &syn::Type) -> bool {
 
     let res = ty_can_be_switch(ty);
     if !res {
-        errors.err(ty, "switches must be of type `bool` or integer type");
+        errors.err(ty, "switches must be of type `bool`, `Option<bool>`, or integer type");
     }
     res
 }

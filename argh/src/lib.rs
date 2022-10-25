@@ -822,6 +822,16 @@ impl Flag for bool {
     }
 }
 
+impl Flag for Option<bool> {
+    fn default() -> Self {
+        None
+    }
+
+    fn set_flag(&mut self) {
+        *self = Some(true);
+    }
+}
+
 macro_rules! impl_flag_for_integers {
     ($($ty:ty,)*) => {
         $(

@@ -30,8 +30,9 @@ pub(crate) fn help(
     #![allow(clippy::format_push_string)]
     let mut format_lit = "Usage: {command_name}".to_string();
 
-    let positional =
-        fields.iter().filter(|f| f.kind == FieldKind::Positional && f.attrs.greedy.is_none());
+    let positional = fields.iter().filter(|f| {
+        f.kind == FieldKind::Positional && f.attrs.greedy.is_none() && !f.attrs.omit_usage
+    });
     let mut has_positional = false;
     for arg in positional.clone() {
         has_positional = true;

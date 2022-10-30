@@ -1173,6 +1173,28 @@ Options:
 "###,
         );
     }
+
+    #[test]
+    fn omit_usage_attribute() {
+        #[derive(FromArgs)]
+        /// Short description
+        struct Cmd {
+            /// this one should be hidden
+            #[argh(positional, omit_usage)]
+            _one: String,
+            #[argh(positional)]
+            /// this one is real
+            _two: String,
+        }
+
+        assert_help_string::<Cmd>(
+            r###"Usage: test_arg_0 <_two>
+Short description
+Options:
+  --help            display usage information
+"###,
+        );
+    }
 }
 
 #[test]

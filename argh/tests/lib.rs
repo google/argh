@@ -1185,11 +1185,19 @@ Options:
             #[argh(positional)]
             /// this one is real
             _two: String,
+            /// this one should be hidden
+            #[argh(option, omit_usage)]
+            _three: String,
         }
 
         assert_help_string::<Cmd>(
             r###"Usage: test_arg_0 <_two>
+
 Short description
+
+Positional Arguments:
+  _two              this one is real
+
 Options:
   --help            display usage information
 "###,

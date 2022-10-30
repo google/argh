@@ -300,12 +300,15 @@
 //! # use argh::FromArgs;
 //!
 //! #[derive(FromArgs)]
-//! ///
+//! /// Cargo arguments
 //! struct CargoArgs {
 //!     // Cargo puts the command name invoked into the first argument,
 //!     // so we don't want this argument to show up in the usage text.
 //!     #[argh(positional, omit_usage)]
 //!     command: String,
+//!     /// an option used for internal debugging
+//!     #[argh(option, omit_usage)]
+//!     internal_debugging: String,
 //!     #[argh(positional)]
 //!     real_first_arg: String,
 //! }

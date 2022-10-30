@@ -40,14 +40,15 @@ pub(crate) fn help(
         positional_usage(&mut format_lit, arg);
     }
 
-    let options = fields.iter().filter(|f| f.long_name.is_some());
+    let options = fields.iter().filter(|f| f.long_name.is_some() && !f.attrs.omit_usage);
     for option in options.clone() {
         format_lit.push(' ');
         option_usage(&mut format_lit, option);
     }
 
-    let remain =
-        fields.iter().filter(|f| f.kind == FieldKind::Positional && f.attrs.greedy.is_some());
+    let remain = fields.iter().filter(|f| {
+        f.kind == FieldKind::Positional && f.attrs.greedy.is_some() && !f.attrs.omit_usage
+    });
     for arg in remain {
         format_lit.push(' ');
         positional_usage(&mut format_lit, arg);

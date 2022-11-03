@@ -530,7 +530,7 @@ fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
                     first_use_field,
                     &format!("The short name of \"-{}\" was already used here.", short_name),
                 );
-                errors.err_span_tokens(&field.field, "Later usage here.");
+                errors.err_span_tokens(field.field, "Later usage here.");
             }
 
             seen_short_names.insert(short_name, &field.field);
@@ -542,7 +542,7 @@ fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
                     *first_use_field,
                     &format!("The long name of \"{}\" was already used here.", long_name),
                 );
-                errors.err_span_tokens(&field.field, "Later usage here.");
+                errors.err_span_tokens(field.field, "Later usage here.");
             }
 
             seen_long_names.insert(long_name, field.field);

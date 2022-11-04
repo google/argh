@@ -703,6 +703,26 @@ Required options not provided:
             },
         );
     }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct Underscores {
+        #[argh(positional)]
+        /// fooey
+        a_: String,
+    }
+
+    #[test]
+    fn positional_name_with_underscores() {
+        assert_output(&["first"], Underscores { a_: "first".into() });
+
+        assert_error::<Underscores>(
+            &[],
+            r###"Required positional arguments not provided:
+    a
+"###,
+        );
+    }
 }
 
 /// Tests derived from

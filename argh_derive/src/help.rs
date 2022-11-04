@@ -153,7 +153,7 @@ fn positional_usage(out: &mut String, field: &StructField<'_>) {
     if field.attrs.greedy.is_none() {
         out.push('<');
     }
-    let name = field.arg_name();
+    let name = field.positional_arg_name();
     out.push_str(&name);
     if field.optionality == Optionality::Repeating {
         out.push_str("...");
@@ -228,7 +228,7 @@ Add a doc comment or an `#[argh(description = \"...\")]` attribute.",
 /// Describes a positional argument like this:
 ///  hello       positional argument description
 fn positional_description(out: &mut String, field: &StructField<'_>) {
-    let field_name = field.arg_name();
+    let field_name = field.positional_arg_name();
 
     let mut description = String::from("");
     if let Some(desc) = &field.attrs.description {

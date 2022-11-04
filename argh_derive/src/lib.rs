@@ -196,8 +196,12 @@ impl<'a> StructField<'a> {
         Some(StructField { field, attrs, kind, optionality, ty_without_wrapper, name, long_name })
     }
 
-    pub(crate) fn arg_name(&self) -> String {
-        self.attrs.arg_name.as_ref().map(LitStr::value).unwrap_or_else(|| self.name.to_string())
+    pub(crate) fn positional_arg_name(&self) -> String {
+        self.attrs
+            .arg_name
+            .as_ref()
+            .map(LitStr::value)
+            .unwrap_or_else(|| self.name.to_string().trim_matches('_').to_owned())
     }
 }
 
@@ -710,7 +714,7 @@ fn declare_local_storage_for_redacted_fields<'a>(
                     }
                 };
 
-                let arg_name = field.arg_name();
+                let arg_name = field.positional_arg_name();
                 quote! {
                     let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
@@ -802,7 +806,7 @@ fn append_missing_requirements<'a>(
         match field.kind {
             FieldKind::Switch => unreachable!("switches are always optional"),
             FieldKind::Positional => {
-                let name = field.arg_name();
+                let name = field.positional_arg_name();
                 quote! {
                     if #field_name.slot.is_none() {
                         #mri.missing_positional_arg(#name)

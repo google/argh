@@ -1173,6 +1173,36 @@ Options:
 "###,
         );
     }
+
+    #[test]
+    fn hidden_help_attribute() {
+        #[derive(FromArgs)]
+        /// Short description
+        struct Cmd {
+            /// this one should be hidden
+            #[argh(positional, hidden_help)]
+            _one: String,
+            #[argh(positional)]
+            /// this one is real
+            _two: String,
+            /// this one should be hidden
+            #[argh(option, hidden_help)]
+            _three: String,
+        }
+
+        assert_help_string::<Cmd>(
+            r###"Usage: test_arg_0 <_two>
+
+Short description
+
+Positional Arguments:
+  _two              this one is real
+
+Options:
+  --help            display usage information
+"###,
+        );
+    }
 }
 
 #[test]

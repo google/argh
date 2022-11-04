@@ -19,6 +19,7 @@ pub struct FieldAttrs {
     pub short: Option<syn::LitChar>,
     pub arg_name: Option<syn::LitStr>,
     pub greedy: Option<syn::Path>,
+    pub hidden_help: bool,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -123,13 +124,15 @@ impl FieldAttrs {
                     );
                 } else if name.is_ident("greedy") {
                     this.greedy = Some(name.clone());
+                } else if name.is_ident("hidden_help") {
+                    this.hidden_help = true;
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
                             "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `greedy`, ",
-                            "`long`, `option`, `short`, `subcommand`, `switch`",
+                            "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`",
                         ),
                     );
                 }

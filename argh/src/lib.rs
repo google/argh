@@ -290,6 +290,29 @@
 //!     }
 //! }
 //! ```
+//!
+//! Programs that are run from an environment such as cargo may find it
+//! useful to have positional arguments present in the structure but
+//! omitted from the usage output. This can be accomplished by adding
+//! the `hidden_help` attribute to that argument:
+//!
+//! ```rust
+//! # use argh::FromArgs;
+//!
+//! #[derive(FromArgs)]
+//! /// Cargo arguments
+//! struct CargoArgs {
+//!     // Cargo puts the command name invoked into the first argument,
+//!     // so we don't want this argument to show up in the usage text.
+//!     #[argh(positional, hidden_help)]
+//!     command: String,
+//!     /// an option used for internal debugging
+//!     #[argh(option, hidden_help)]
+//!     internal_debugging: String,
+//!     #[argh(positional)]
+//!     real_first_arg: String,
+//! }
+//! ```
 
 #![deny(missing_docs)]
 

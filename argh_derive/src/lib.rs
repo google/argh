@@ -13,7 +13,6 @@ use {
         errors::Errors,
         parse_attrs::{FieldAttrs, FieldKind, TypeAttrs},
     },
-    heck::ToKebabCase,
     proc_macro2::{Span, TokenStream},
     quote::{quote, quote_spanned, ToTokens},
     std::{collections::HashMap, str::FromStr},
@@ -183,7 +182,7 @@ impl<'a> StructField<'a> {
                     .long
                     .as_ref()
                     .map(syn::LitStr::value)
-                    .unwrap_or_else(|| name.to_string().to_kebab_case());
+                    .unwrap_or_else(|| to_kebab_case(&name.to_string()));
                 if long_name == "help" {
                     errors.err(field, "Custom `--help` flags are not supported.");
                 }
@@ -203,6 +202,34 @@ impl<'a> StructField<'a> {
             .map(LitStr::value)
             .unwrap_or_else(|| self.name.to_string().trim_matches('_').to_owned())
     }
+}
+
+fn to_kebab_case(s: &str) -> String {
+    let words = s.split('_').filter(|word| !word.is_empty());
+    let mut res = String::with_capacity(s.len());
+    for word in words {
+        if !res.is_empty() {
+            res.push('-')
+        }
+        res.push_str(word)
+    }
+    res
+}
+
+#[test]
+fn test_kebabs() {
+    #[track_caller]
+    fn check(s: &str, want: &str) {
+        let got = to_kebab_case(s);
+        assert_eq!(got.as_str(), want)
+    }
+    check("", "");
+    check("_", "");
+    check("foo", "foo");
+    check("__foo_", "foo");
+    check("foo_bar", "foo-bar");
+    check("foo__Bar", "foo-Bar");
+    check("foo_bar__baz_", "foo-bar-baz");
 }
 
 /// Implements `FromArgs` and `TopLevelCommand` or `SubCommand` for a `#[derive(FromArgs)]` struct.

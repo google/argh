@@ -669,7 +669,19 @@ fn cmd<'a>(default: &'a str, path: &'a str) -> &'a str {
 /// was unsuccessful or if information like `--help` was requested. Error messages will be printed
 /// to stderr, and `--help` output to stdout.
 pub fn from_env<T: TopLevelCommand>() -> T {
-    let strings: Vec<String> = std::env::args().collect();
+    let strings: Vec<String> = std::env::args_os()
+        .map(|s| s.into_string())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|arg| {
+            eprintln!("Invalid utf8: {}", arg.to_string_lossy());
+            std::process::exit(1)
+        });
+
+    if strings.is_empty() {
+        eprintln!("No program name, argv is empty");
+        std::process::exit(1)
+    }
+
     let cmd = cmd(&strings[0], &strings[0]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
     T::from_args(&[cmd], &strs[1..]).unwrap_or_else(|early_exit| {

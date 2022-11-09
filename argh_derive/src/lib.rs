@@ -11,7 +11,7 @@ extern crate proc_macro;
 use {
     crate::{
         errors::Errors,
-        parse_attrs::{FieldAttrs, FieldKind, TypeAttrs},
+        parse_attrs::{check_long_name, FieldAttrs, FieldKind, TypeAttrs},
     },
     proc_macro2::{Span, TokenStream},
     quote::{quote, quote_spanned, ToTokens},
@@ -178,11 +178,11 @@ impl<'a> StructField<'a> {
         // Defaults to the kebab-case'd field name if `#[argh(long = "...")]` is omitted.
         let long_name = match kind {
             FieldKind::Switch | FieldKind::Option => {
-                let long_name = attrs
-                    .long
-                    .as_ref()
-                    .map(syn::LitStr::value)
-                    .unwrap_or_else(|| to_kebab_case(&name.to_string()));
+                let long_name = attrs.long.as_ref().map(syn::LitStr::value).unwrap_or_else(|| {
+                    let kebab_name = to_kebab_case(&name.to_string());
+                    check_long_name(errors, name, &kebab_name);
+                    kebab_name
+                });
                 if long_name == "help" {
                     errors.err(field, "Custom `--help` flags are not supported.");
                 }

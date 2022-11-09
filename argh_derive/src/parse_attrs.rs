@@ -183,12 +183,7 @@ impl FieldAttrs {
         parse_attr_single_string(errors, m, "long", &mut self.long);
         let long = self.long.as_ref().unwrap();
         let value = long.value();
-        if !value.is_ascii() {
-            errors.err(long, "Long names must be ASCII");
-        }
-        if !value.chars().all(|c| c.is_lowercase() || c == '-' || c.is_ascii_digit()) {
-            errors.err(long, "Long names must be lowercase");
-        }
+        check_long_name(errors, long, &value);
     }
 
     fn parse_attr_short(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
@@ -200,6 +195,15 @@ impl FieldAttrs {
                 errors.err(lit_char, "Short names must be ASCII");
             }
         }
+    }
+}
+
+pub(crate) fn check_long_name(errors: &Errors, spanned: &impl syn::spanned::Spanned, value: &str) {
+    if !value.is_ascii() {
+        errors.err(spanned, "Long names must be ASCII");
+    }
+    if !value.chars().all(|c| c.is_lowercase() || c == '-' || c.is_ascii_digit()) {
+        errors.err(spanned, "Long names must be lowercase");
     }
 }
 

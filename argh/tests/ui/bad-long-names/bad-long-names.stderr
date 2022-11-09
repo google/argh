@@ -1,0 +1,17 @@
+error: Long names must be ASCII
+ --> tests/ui/bad-long-names/bad-long-names.rs:6:5
+  |
+6 |     привет: bool,
+  |     ^^^^^^
+
+error: Long names must be lowercase
+ --> tests/ui/bad-long-names/bad-long-names.rs:9:5
+  |
+9 |     XMLHTTPRequest: bool,
+  |     ^^^^^^^^^^^^^^
+
+error: Long names must be lowercase
+  --> tests/ui/bad-long-names/bad-long-names.rs:10:27
+   |
+10 |     #[argh(switch, long = "not really")]
+   |                           ^^^^^^^^^^^^

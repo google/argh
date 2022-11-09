@@ -1211,12 +1211,12 @@ Options:
         }
 
         assert_help_string::<Cmd>(
-            r###"Usage: test_arg_0 <_two>
+            r###"Usage: test_arg_0 <two>
 
 Short description
 
 Positional Arguments:
-  _two              this one is real
+  two               this one is real
 
 Options:
   --help            display usage information

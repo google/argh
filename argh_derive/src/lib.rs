@@ -259,7 +259,7 @@ fn impl_from_args_struct(
         .named
         .iter()
         .filter_map(|field| {
-            let attrs = FieldAttrs::parse(errors, field);
+            let attrs = FieldAttrs::parse(errors, field, type_attrs);
             StructField::new(errors, field, attrs)
         })
         .collect();

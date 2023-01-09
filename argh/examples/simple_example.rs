@@ -6,7 +6,12 @@ use {argh::FromArgs, std::fmt::Debug};
 
 #[derive(FromArgs, PartialEq, Debug)]
 /// Top-level command.
+#[argh(lax_descriptions)]
 struct TopLevel {
+    /// Foo
+    #[argh(switch)]
+    common: bool,
+
     #[argh(subcommand)]
     nested: MySubCommandEnum,
 }

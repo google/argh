@@ -61,7 +61,7 @@ pub struct Description {
 }
 
 impl FieldAttrs {
-    pub fn parse(errors: &Errors, field: &syn::Field) -> Self {
+    pub fn parse(errors: &Errors, field: &syn::Field, type_attrs: &TypeAttrs) -> Self {
         let mut this = Self::default();
 
         for attr in &field.attrs {
@@ -160,8 +160,10 @@ impl FieldAttrs {
             _ => {}
         }
 
-        if let Some(d) = &this.description {
-            check_option_description(errors, d.content.value().trim(), d.content.span());
+        if !type_attrs.lax_descriptions {
+            if let Some(d) = &this.description {
+                check_option_description(errors, d.content.value().trim(), d.content.span());
+            }
         }
 
         this
@@ -298,6 +300,7 @@ pub struct TypeAttrs {
     pub examples: Vec<syn::LitStr>,
     pub notes: Vec<syn::LitStr>,
     pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
+    pub lax_descriptions: bool,
 }
 
 impl TypeAttrs {
@@ -345,13 +348,15 @@ impl TypeAttrs {
                     if let Some(ident) = errors.expect_meta_word(meta).and_then(|p| p.get_ident()) {
                         this.parse_attr_subcommand(errors, ident);
                     }
+                } else if name.is_ident("lax_descriptions") {
+                    this.lax_descriptions = true;
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid type-level `argh` attribute\n",
                             "Expected one of: `description`, `error_code`, `example`, `name`, ",
-                            "`note`, `subcommand`",
+                            "`note`, `subcommand`, `lax_descriptions`",
                         ),
                     );
                 }
@@ -566,7 +571,15 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
 /// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
 /// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
 pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes } = type_attrs;
+    let TypeAttrs {
+        is_subcommand,
+        name,
+        description,
+        examples,
+        notes,
+        error_codes,
+        lax_descriptions: _,
+    } = type_attrs;
 
     // Ensure that `#[argh(subcommand)]` is present.
     if is_subcommand.is_none() {

@@ -285,6 +285,21 @@ struct DescriptionStartsWithInitialism {
     x: u8,
 }
 
+/// Test that descriptions can start with any case when
+/// the type attribute `lax_descriptions` is specified.
+#[derive(FromArgs)]
+#[argh(lax_descriptions)]
+#[allow(unused)]
+struct LaxDescription {
+    /// Don't be so strict.
+    #[argh(option)]
+    x: u8,
+
+    /// don't be so strict.
+    #[argh(option)]
+    y: u8,
+}
+
 #[test]
 fn default_number() {
     #[derive(FromArgs)]

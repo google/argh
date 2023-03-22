@@ -14,15 +14,15 @@ pub struct Errors {
     errors: RefCell<Vec<syn::Error>>,
 }
 
-/// Produce functions to expect particular variants of `syn::Lit`
+/// Produce functions to expect particular literals in `syn::Expr`
 macro_rules! expect_lit_fn {
     ($(($fn_name:ident, $syn_type:ident, $variant:ident, $lit_name:literal),)*) => {
         $(
-            pub fn $fn_name<'a>(&self, lit: &'a syn::Lit) -> Option<&'a syn::$syn_type> {
-                if let syn::Lit::$variant(inner) = lit {
+            pub fn $fn_name<'a>(&self, e: &'a syn::Expr) -> Option<&'a syn::$syn_type> {
+                if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::$variant(inner), .. }) = e {
                     Some(inner)
                 } else {
-                    self.unexpected_lit($lit_name, lit);
+                    self.unexpected_lit($lit_name, e);
                     None
                 }
             }
@@ -65,28 +65,6 @@ impl Errors {
         self.err_span(first, &["First ", attr_kind, " attribute here"].concat());
     }
 
-    /// Error on literals, expecting attribute syntax.
-    pub fn expect_nested_meta<'a>(&self, nm: &'a syn::NestedMeta) -> Option<&'a syn::Meta> {
-        match nm {
-            syn::NestedMeta::Lit(l) => {
-                self.err(l, "Unexpected literal");
-                None
-            }
-            syn::NestedMeta::Meta(m) => Some(m),
-        }
-    }
-
-    /// Error on attribute syntax, expecting literals
-    pub fn expect_nested_lit<'a>(&self, nm: &'a syn::NestedMeta) -> Option<&'a syn::Lit> {
-        match nm {
-            syn::NestedMeta::Meta(m) => {
-                self.err(m, "Expected literal");
-                None
-            }
-            syn::NestedMeta::Lit(l) => Some(l),
-        }
-    }
-
     expect_lit_fn![
         (expect_lit_str, LitStr, Str, "string"),
         (expect_lit_char, LitChar, Char, "character"),
@@ -99,7 +77,7 @@ impl Errors {
         (expect_meta_name_value, MetaNameValue, NameValue, "name-value pair"),
     ];
 
-    fn unexpected_lit(&self, expected: &str, found: &syn::Lit) {
+    fn unexpected_lit(&self, expected: &str, found: &syn::Expr) {
         fn lit_kind(lit: &syn::Lit) -> &'static str {
             use syn::Lit::{Bool, Byte, ByteStr, Char, Float, Int, Str, Verbatim};
             match lit {
@@ -111,13 +89,21 @@ impl Errors {
                 Float(_) => "float",
                 Bool(_) => "boolean",
                 Verbatim(_) => "unknown (possibly extra-large integer)",
+                _ => "unknown literal kind",
             }
         }
 
-        self.err(
-            found,
-            &["Expected ", expected, " literal, found ", lit_kind(found), " literal"].concat(),
-        )
+        if let syn::Expr::Lit(syn::ExprLit { lit, .. }) = found {
+            self.err(
+                found,
+                &["Expected ", expected, " literal, found ", lit_kind(lit), " literal"].concat(),
+            )
+        } else {
+            self.err(
+                found,
+                &["Expected ", expected, " literal, found non-literal expression."].concat(),
+            )
+        }
     }
 
     fn unexpected_meta(&self, expected: &str, found: &syn::Meta) {
@@ -154,6 +140,17 @@ impl Errors {
     /// Push a `syn::Error` onto the list of errors to issue.
     pub fn push(&self, err: syn::Error) {
         self.errors.borrow_mut().push(err);
+    }
+
+    /// Convert a `syn::Result` to an `Option`, logging the error if present.
+    pub fn ok<T>(&self, r: syn::Result<T>) -> Option<T> {
+        match r {
+            Ok(v) => Some(v),
+            Err(e) => {
+                self.push(e);
+                None
+            }
+        }
     }
 }
 

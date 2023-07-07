@@ -21,6 +21,7 @@ use {
 
 mod args_info;
 mod errors;
+#[cfg(feature = "help")]
 mod help;
 mod parse_attrs;
 
@@ -363,9 +364,13 @@ fn impl_from_args_struct_from_args<'a>(
         quote_spanned! { impl_span => None }
     };
 
-    // Identifier referring to a value containing the name of the current command as an `&[&str]`.
-    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
+    let help = if cfg!(feature = "help") {
+        // Identifier referring to a value containing the name of the current command as an `&[&str]`.
+        let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
+        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand)
+    } else {
+        quote! { String::new() }
+    };
 
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
@@ -483,9 +488,13 @@ fn impl_from_args_struct_redact_arg_values<'a>(
         quote! { "no subcommand name" }
     };
 
-    // Identifier referring to a value containing the name of the current command as an `&[&str]`.
-    let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-    let help = help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand);
+    let help = if cfg!(feature = "help") {
+        // Identifier referring to a value containing the name of the current command as an `&[&str]`.
+        let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
+        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand)
+    } else {
+        quote! { String::new() }
+    };
 
     let method_impl = quote_spanned! { impl_span =>
         fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
@@ -597,8 +606,11 @@ fn top_or_sub_cmd_impl(
     type_attrs: &TypeAttrs,
     generic_args: &syn::Generics,
 ) -> TokenStream {
-    let description =
-        help::require_description(errors, name.span(), &type_attrs.description, "type");
+    let description = if cfg!(feature = "help") {
+        help::require_description(errors, name.span(), &type_attrs.description, "type")
+    } else {
+        String::new()
+    };
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     if type_attrs.is_subcommand.is_none() {
         // Not a subcommand

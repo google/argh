@@ -318,10 +318,29 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::FromArgs;
+pub use argh_derive::{ArgsInfo,FromArgs};
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;
+
+/// Information about the command including the options and arguments.
+pub type CommandInfoWithArgs = argh_shared::CommandInfoWithArgs<'static>;
+
+/// Information about a subcommand.
+pub type SubCommandInfo = argh_shared::SubCommandInfo<'static>;
+
+pub use argh_shared::{ErrorCodeInfo,FlagInfo, FlagInfoKind, Optionality, PositionalInfo};
+
+/// Structured information about the command line arguments.
+pub trait ArgsInfo {
+    /// Returns the argument info.
+    fn get_args_info() -> CommandInfoWithArgs;
+
+    /// Returns the list of subcommands
+    fn get_subcommands() -> Vec<SubCommandInfo> {
+        Self::get_args_info().commands
+    }
+}
 
 /// Types which can be constructed from a set of commandline arguments.
 pub trait FromArgs: Sized {

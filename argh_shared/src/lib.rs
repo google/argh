@@ -14,6 +14,115 @@ pub struct CommandInfo<'a> {
     pub description: &'a str,
 }
 
+/// Information about the command line arguments for a given command.
+#[derive(Debug,Default, PartialEq, Eq, Clone, serde::Serialize)]
+pub struct CommandInfoWithArgs<'a> {
+        /// The name of the command.
+        pub name: &'a str,
+        /// A short description of the command's functionality.
+        pub description: &'a str,
+        /// Examples of usage
+        pub examples: &'a [&'a str],
+        /// Flags
+        pub flags: &'a[FlagInfo<'a>],
+        /// Notes about usage
+        pub notes:&'a [&'a str],
+        /// The subcommands.
+        pub commands: Vec<SubCommandInfo<'a>>,
+        /// Positional args
+        pub positionals: &'a [PositionalInfo<'a>],
+        /// Error code information
+        pub error_codes: &'a [ErrorCodeInfo<'a>]
+}
+
+/// Information about a documented error code.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct ErrorCodeInfo<'a>
+{
+    /// The code value.
+    pub code: i32,
+    /// Short description about what this code indicates.
+    pub description: &'a str
+}
+
+/// Information about positional arguments
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+pub struct PositionalInfo<'a> {
+    /// Name of the argument.
+   pub name: &'a str,
+   /// Description of the argument.
+   pub description: &'a str,
+   /// Optionality of the argument.
+   pub optionality: Optionality,
+   /// Visibility in the help for this argument.
+   /// `false` indicates this argument will not appear
+   /// in the help message.
+   pub hidden: bool,
+}
+
+/// Information about a subcommand.
+/// Dynamic subcommands do not implement
+/// get_args_info(), so the command field
+/// only contains the name and description.
+#[derive(Debug,Default, PartialEq, Eq, Clone, serde::Serialize)]
+pub struct SubCommandInfo<'a> {
+    /// The subcommand name.
+    pub name:&'a str,
+    /// The information about the subcommand.
+    pub command: CommandInfoWithArgs<'a>
+}
+
+/// Information about a flag or option.
+#[derive(Debug,Default, PartialEq, Eq, serde::Serialize)]
+pub struct FlagInfo<'a> {
+    /// The kind of flag.
+    pub kind: FlagInfoKind<'a>,
+    /// The optionality of the flag.
+    pub optionality: Optionality,
+    /// The long string of the flag.
+    pub long: &'a str,
+    /// The single character short indicator
+    /// for trhis flag.
+    pub short: Option<char>,
+    /// The description of the flag.
+    pub description: &'a str,
+    /// Visibility in the help for this argument.
+    /// `false` indicates this argument will not appear
+    /// in the help message.
+    pub hidden: bool,
+}
+
+/// The kind of flags.
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
+pub enum FlagInfoKind<'a> {
+    /// switch represents a boolean flag,
+    #[default]
+    Switch,
+    /// option is a flag that also has an associated
+    /// value. This value is named `arg_name`.
+    Option { arg_name: &'a str},
+}
+
+/// The optionality defines the requirments related
+/// to the presence of the argument on the command line.
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
+pub enum Optionality {
+    /// Required indicates the argument is required
+    /// exactly once.
+    #[default]
+    Required,
+    /// Optional indicates the argument may or may not
+    /// be present.
+    Optional,
+    /// Repeating indicates the argument may appear zero
+    /// or more times.
+    Repeating,
+    /// Greedy is used for positional arguments which
+    /// capture the all command line input upto the next flag or
+    /// the end of the input.
+    Greedy
+}
+
 pub const INDENT: &str = "  ";
 const DESCRIPTION_INDENT: usize = 20;
 const WRAP_WIDTH: usize = 80;

@@ -7,3 +7,6 @@ license = "BSD-3-Clause"
 description = "Derive-based argument parsing optimized for code size"
 repository = "https://github.com/google/argh"
 readme = "README.md"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

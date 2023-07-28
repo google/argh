@@ -22,6 +22,7 @@ use {
 mod errors;
 mod help;
 mod parse_attrs;
+mod args_info;
 
 /// Entrypoint for `#[derive(FromArgs)]`.
 #[proc_macro_derive(FromArgs, attributes(argh))]
@@ -30,6 +31,15 @@ pub fn argh_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let gen = impl_from_args(&ast);
     gen.into()
 }
+
+/// Entrypoint for `#[derive(ArgsInfo)]`.
+#[proc_macro_derive(ArgsInfo, attributes(argh))]
+pub fn args_info_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input!(input as syn::DeriveInput);
+    let gen = args_info::impl_args_info(&ast);
+    gen.into()
+}
+
 
 /// Transform the input into a token stream containing any generated implementations,
 /// as well as all errors that occurred.

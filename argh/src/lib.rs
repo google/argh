@@ -318,7 +318,7 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::{ArgsInfo,FromArgs};
+pub use argh_derive::{ArgsInfo, FromArgs};
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;
@@ -329,7 +329,7 @@ pub type CommandInfoWithArgs = argh_shared::CommandInfoWithArgs<'static>;
 /// Information about a subcommand.
 pub type SubCommandInfo = argh_shared::SubCommandInfo<'static>;
 
-pub use argh_shared::{ErrorCodeInfo,FlagInfo, FlagInfoKind, Optionality, PositionalInfo};
+pub use argh_shared::{ErrorCodeInfo, FlagInfo, FlagInfoKind, Optionality, PositionalInfo};
 
 /// Structured information about the command line arguments.
 pub trait ArgsInfo {

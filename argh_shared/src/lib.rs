@@ -15,65 +15,64 @@ pub struct CommandInfo<'a> {
 }
 
 /// Information about the command line arguments for a given command.
-#[derive(Debug,Default, PartialEq, Eq, Clone, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, serde::Serialize)]
 pub struct CommandInfoWithArgs<'a> {
-        /// The name of the command.
-        pub name: &'a str,
-        /// A short description of the command's functionality.
-        pub description: &'a str,
-        /// Examples of usage
-        pub examples: &'a [&'a str],
-        /// Flags
-        pub flags: &'a[FlagInfo<'a>],
-        /// Notes about usage
-        pub notes:&'a [&'a str],
-        /// The subcommands.
-        pub commands: Vec<SubCommandInfo<'a>>,
-        /// Positional args
-        pub positionals: &'a [PositionalInfo<'a>],
-        /// Error code information
-        pub error_codes: &'a [ErrorCodeInfo<'a>]
+    /// The name of the command.
+    pub name: &'a str,
+    /// A short description of the command's functionality.
+    pub description: &'a str,
+    /// Examples of usage
+    pub examples: &'a [&'a str],
+    /// Flags
+    pub flags: &'a [FlagInfo<'a>],
+    /// Notes about usage
+    pub notes: &'a [&'a str],
+    /// The subcommands.
+    pub commands: Vec<SubCommandInfo<'a>>,
+    /// Positional args
+    pub positionals: &'a [PositionalInfo<'a>],
+    /// Error code information
+    pub error_codes: &'a [ErrorCodeInfo<'a>],
 }
 
 /// Information about a documented error code.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
-pub struct ErrorCodeInfo<'a>
-{
+pub struct ErrorCodeInfo<'a> {
     /// The code value.
     pub code: i32,
     /// Short description about what this code indicates.
-    pub description: &'a str
+    pub description: &'a str,
 }
 
 /// Information about positional arguments
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct PositionalInfo<'a> {
     /// Name of the argument.
-   pub name: &'a str,
-   /// Description of the argument.
-   pub description: &'a str,
-   /// Optionality of the argument.
-   pub optionality: Optionality,
-   /// Visibility in the help for this argument.
-   /// `false` indicates this argument will not appear
-   /// in the help message.
-   pub hidden: bool,
+    pub name: &'a str,
+    /// Description of the argument.
+    pub description: &'a str,
+    /// Optionality of the argument.
+    pub optionality: Optionality,
+    /// Visibility in the help for this argument.
+    /// `false` indicates this argument will not appear
+    /// in the help message.
+    pub hidden: bool,
 }
 
 /// Information about a subcommand.
 /// Dynamic subcommands do not implement
 /// get_args_info(), so the command field
 /// only contains the name and description.
-#[derive(Debug,Default, PartialEq, Eq, Clone, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, serde::Serialize)]
 pub struct SubCommandInfo<'a> {
     /// The subcommand name.
-    pub name:&'a str,
+    pub name: &'a str,
     /// The information about the subcommand.
-    pub command: CommandInfoWithArgs<'a>
+    pub command: CommandInfoWithArgs<'a>,
 }
 
 /// Information about a flag or option.
-#[derive(Debug,Default, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct FlagInfo<'a> {
     /// The kind of flag.
     pub kind: FlagInfoKind<'a>,
@@ -100,7 +99,7 @@ pub enum FlagInfoKind<'a> {
     Switch,
     /// option is a flag that also has an associated
     /// value. This value is named `arg_name`.
-    Option { arg_name: &'a str},
+    Option { arg_name: &'a str },
 }
 
 /// The optionality defines the requirments related
@@ -120,7 +119,7 @@ pub enum Optionality {
     /// Greedy is used for positional arguments which
     /// capture the all command line input upto the next flag or
     /// the end of the input.
-    Greedy
+    Greedy,
 }
 
 pub const INDENT: &str = "  ";

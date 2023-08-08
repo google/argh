@@ -13,7 +13,7 @@ use {
 pub struct FieldAttrs {
     pub default: Option<syn::LitStr>,
     pub description: Option<Description>,
-    pub from_str_fn: Option<syn::Ident>,
+    pub from_str_fn: Option<syn::ExprPath>,
     pub field_type: Option<FieldType>,
     pub long: Option<syn::LitStr>,
     pub short: Option<syn::LitChar>,
@@ -209,7 +209,7 @@ fn parse_attr_fn_name(
     errors: &Errors,
     m: &syn::MetaList,
     attr_name: &str,
-    slot: &mut Option<syn::Ident>,
+    slot: &mut Option<syn::ExprPath>,
 ) {
     if let Some(first) = slot {
         errors.duplicate_attrs(attr_name, first, m);

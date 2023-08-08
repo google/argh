@@ -82,6 +82,48 @@ fn custom_from_str_example() {
 }
 
 #[test]
+fn nested_from_str_example() {
+    #[derive(FromArgs)]
+    /// Goofy thing.
+    struct FiveStruct {
+        /// always five
+        #[argh(option, from_str_fn(nested::always_five))]
+        five: usize,
+    }
+
+    pub mod nested {
+        pub fn always_five(_value: &str) -> Result<usize, String> {
+            Ok(5)
+        }
+    }
+
+    let f = FiveStruct::from_args(&["cmdname"], &["--five", "woot"]).expect("failed to five");
+    assert_eq!(f.five, 5);
+}
+
+#[test]
+fn method_from_str_example() {
+    #[derive(FromArgs)]
+    /// Goofy thing.
+    struct FiveStruct {
+        /// always five
+        #[argh(option, from_str_fn(AlwaysFive::<usize>::always_five))]
+        five: usize,
+    }
+
+    struct AlwaysFive<T>(T);
+
+    impl AlwaysFive<usize> {
+        fn always_five(_value: &str) -> Result<usize, String> {
+            Ok(5)
+        }
+    }
+
+    let f = FiveStruct::from_args(&["cmdname"], &["--five", "woot"]).expect("failed to five");
+    assert_eq!(f.five, 5);
+}
+
+#[test]
 fn subcommand_example() {
     #[derive(FromArgs, PartialEq, Debug)]
     /// Top-level command.

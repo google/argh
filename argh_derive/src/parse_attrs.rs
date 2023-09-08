@@ -467,11 +467,52 @@ fn check_option_description(errors: &Errors, desc: &str, span: Span) {
         (Some(x), _) if x.is_lowercase() => {}
         // If both the first and second letter are not lowercase,
         // this is likely an initialism which should be allowed.
-        (Some(x), Some(y)) if !x.is_lowercase() && !y.is_lowercase() => {}
+        (Some(x), Some(y)) if !x.is_lowercase() && (y.is_alphanumeric() && !y.is_lowercase()) => {}
         _ => {
             errors.err_span(span, "Descriptions must begin with a lowercase letter");
         }
     }
+}
+
+#[test]
+fn test_initialisms() {
+    use proc_macro2::TokenStream;
+    use quote::ToTokens;
+    use std::panic::Location;
+
+    #[track_caller]
+    fn check(s: &str, should_succeed: bool) {
+        let errors = Errors::default();
+        check_option_description(&errors, s, Span::call_site());
+
+        let description_accepted = {
+            let mut stream = TokenStream::new();
+            errors.to_tokens(&mut stream);
+            stream.is_empty()
+        };
+
+        assert!(
+            description_accepted == should_succeed,
+            "Assertion at {} failed",
+            Location::caller(),
+        );
+    }
+
+    check("Descriptions can't begin with an uppercase letter", false);
+    check("descriptions must begin with a lowercase letter unless it's an initialism", true);
+    check("HTTP is OK", true);
+    check("I2C is OK", true);
+    check("A sentence starting with a single-letter uppercase letter is bad even though it looks like an initialism", false);
+    check("a sentence starting with a lowercase letter is good", true);
+    check("非ラテン文字は常に受け入れられるべきです", true);
+
+    // NOTE: Not so clear what should be done with this one, but I don't think anyone will ever
+    // want to use I as the first word of a description anyway
+    check(
+        "I don't think 'I' should be accepted even though it's always grammatically expected to be
+uppercase, like an initialism",
+        false,
+    );
 }
 
 fn parse_attr_single_string(

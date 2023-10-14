@@ -526,9 +526,13 @@ fn unescape_doc(s: String) -> String {
 
     let mut characters = s.chars().peekable();
     while let Some(mut character) = characters.next() {
-        if character == '\\' && characters.peek().map_or(false, |next| next.is_ascii_punctuation())
-        {
-            character = characters.next().unwrap()
+        if character == '\\' {
+            if let Some(next_character) = characters.peek() {
+                if next_character.is_ascii_punctuation() {
+                    character = *next_character;
+                    characters.next();
+                }
+            }
         }
 
         // Braces must be escaped as this string will be used as a format string

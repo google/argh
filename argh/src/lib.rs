@@ -720,7 +720,7 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 /// Create a `FromArgs` type from the current process's `env::args`.
 ///
 /// This special cases usages where argh is being used in an environment where cargo is
-/// driving the build. We skip the second env variable.
+/// driving the build. We skip the second env argument.
 ///
 /// This function will exit early from the current process if argument parsing
 /// was unsuccessful or if information like `--help` was requested. Error messages will be printed

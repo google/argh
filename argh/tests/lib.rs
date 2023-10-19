@@ -304,6 +304,30 @@ Options:
 }
 
 #[test]
+fn escaped_doc_comment_description() {
+    #[derive(FromArgs)]
+    /// A \description\:
+    /// \!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~\
+    struct Cmd {
+        #[argh(switch)]
+        /// a \description\:
+        /// \!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~\
+        _s: bool,
+    }
+
+    assert_help_string::<Cmd>(
+        r###"Usage: test_arg_0 [--s]
+
+A \description: !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~\
+
+Options:
+  --s               a \description: !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~\
+  --help            display usage information
+"###,
+    );
+}
+
+#[test]
 fn explicit_long_value_for_option() {
     #[derive(FromArgs, Debug)]
     /// Short description

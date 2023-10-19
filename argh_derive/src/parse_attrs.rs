@@ -500,7 +500,7 @@ fn parse_attr_doc(errors: &Errors, attr: &syn::Attribute, slot: &mut Option<Desc
         return;
     };
 
-    // Don't replace an existing description.
+    // Don't replace an existing explicit description.
     if slot.as_ref().map(|d| d.explicit).unwrap_or(false) {
         return;
     }
@@ -509,12 +509,41 @@ fn parse_attr_doc(errors: &Errors, attr: &syn::Attribute, slot: &mut Option<Desc
         let lit_str = if let Some(previous) = slot {
             let previous = &previous.content;
             let previous_span = previous.span();
-            syn::LitStr::new(&(previous.value() + &*lit_str.value()), previous_span)
+            syn::LitStr::new(&(previous.value() + &unescape_doc(lit_str.value())), previous_span)
         } else {
-            lit_str.clone()
+            syn::LitStr::new(&unescape_doc(lit_str.value()), lit_str.span())
         };
         *slot = Some(Description { explicit: false, content: lit_str });
     }
+}
+
+/// Replaces escape sequences in doc-comments with the characters they represent.
+///
+/// Rustdoc understands CommonMark escape sequences consisting of a backslash followed by an ASCII
+/// punctuation character. Any other backslash is treated as a literal backslash.
+fn unescape_doc(s: String) -> String {
+    let mut result = String::with_capacity(s.len());
+
+    let mut characters = s.chars().peekable();
+    while let Some(mut character) = characters.next() {
+        if character == '\\' {
+            if let Some(next_character) = characters.peek() {
+                if next_character.is_ascii_punctuation() {
+                    character = *next_character;
+                    characters.next();
+                }
+            }
+        }
+
+        // Braces must be escaped as this string will be used as a format string
+        if character == '{' || character == '}' {
+            result.push(character);
+        }
+
+        result.push(character);
+    }
+
+    result
 }
 
 fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Option<Description>) {

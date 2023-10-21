@@ -5,9 +5,9 @@ struct Cmd {
     /// non-ascii
     привет: bool,
     #[argh(switch)]
-    /// uppercase
+    /// invalid character
     XMLHTTPRequest: bool,
-    #[argh(switch, long = "not really")]
+    #[argh(switch, long = "invalid_character")]
     /// bad attr
     ok: bool,
 }

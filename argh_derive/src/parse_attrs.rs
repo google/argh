@@ -201,7 +201,7 @@ pub(crate) fn check_long_name(errors: &Errors, spanned: &impl syn::spanned::Span
         errors.err(spanned, "Long names must be ASCII");
     }
     if !value.chars().all(|c| c.is_lowercase() || c == '-' || c.is_ascii_digit()) {
-        errors.err(spanned, "Long names must be lowercase");
+        errors.err(spanned, "Long names may only contain lowercase letters, digits, and dashes");
     }
 }
 

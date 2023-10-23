@@ -21,7 +21,6 @@ use {
 
 mod args_info;
 mod errors;
-#[cfg(feature = "help")]
 mod help;
 mod parse_attrs;
 

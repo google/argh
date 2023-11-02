@@ -833,6 +833,14 @@ impl<T> ParseValueSlot for ParseValueSlotTy<Vec<T>, T> {
     }
 }
 
+// `ParseValueSlotTy<Option<Vec<T>>, T>` is used as the slot for optional repeating arguments.
+impl<T> ParseValueSlot for ParseValueSlotTy<Option<Vec<T>>, T> {
+    fn fill_slot(&mut self, arg: &str, value: &str) -> Result<(), String> {
+        self.slot.get_or_insert_with(Vec::new).push((self.parse_func)(arg, value)?);
+        Ok(())
+    }
+}
+
 /// A type which can be the receiver of a `Flag`.
 pub trait Flag {
     /// Creates a default instance of the flag value;

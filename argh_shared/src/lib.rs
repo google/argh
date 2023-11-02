@@ -81,7 +81,7 @@ pub struct FlagInfo<'a> {
     /// The long string of the flag.
     pub long: &'a str,
     /// The single character short indicator
-    /// for trhis flag.
+    /// for this flag.
     pub short: Option<char>,
     /// The description of the flag.
     pub description: &'a str,
@@ -102,7 +102,7 @@ pub enum FlagInfoKind<'a> {
     Option { arg_name: &'a str },
 }
 
-/// The optionality defines the requirments related
+/// The optionality defines the requirements related
 /// to the presence of the argument on the command line.
 #[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub enum Optionality {
@@ -117,7 +117,7 @@ pub enum Optionality {
     /// or more times.
     Repeating,
     /// Greedy is used for positional arguments which
-    /// capture the all command line input upto the next flag or
+    /// capture the all command line input up to the next flag or
     /// the end of the input.
     Greedy,
 }

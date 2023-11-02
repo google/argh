@@ -234,10 +234,14 @@ fn impl_args_info_data<'a>(
             Optionality::None => quote! { argh::Optionality::Required },
             Optionality::Defaulted(_) => quote! { argh::Optionality::Optional },
             Optionality::Optional => quote! { argh::Optionality::Optional },
-            Optionality::Repeating if field.attrs.greedy.is_some() => {
+            Optionality::Repeating | Optionality::DefaultedRepeating(_)
+                if field.attrs.greedy.is_some() =>
+            {
                 quote! { argh::Optionality::Greedy }
             }
-            Optionality::Repeating => quote! { argh::Optionality::Repeating },
+            Optionality::Repeating | Optionality::DefaultedRepeating(_) => {
+                quote! { argh::Optionality::Repeating }
+            }
         };
 
         match field.kind {

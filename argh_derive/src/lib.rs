@@ -67,6 +67,7 @@ enum Optionality {
     Defaulted(TokenStream),
     Optional,
     Repeating,
+    DefaultedRepeating(TokenStream),
 }
 
 impl PartialEq<Optionality> for Optionality {
@@ -159,8 +160,14 @@ impl<'a> StructField<'a> {
                             tree
                         })
                         .collect();
-                    optionality = Optionality::Defaulted(tokens);
-                    ty_without_wrapper = &field.ty;
+                    let inner = if let Some(x) = ty_inner(&["Vec"], &field.ty) {
+                        optionality = Optionality::DefaultedRepeating(tokens);
+                        x
+                    } else {
+                        optionality = Optionality::Defaulted(tokens);
+                        &field.ty
+                    };
+                    ty_without_wrapper = inner;
                 } else {
                     let mut inner = None;
                     optionality = if let Some(x) = ty_inner(&["Option"], &field.ty) {
@@ -653,6 +660,9 @@ fn declare_local_storage_for_from_args_fields<'a>(
             Optionality::None | Optionality::Defaulted(_) => {
                 quote! { std::option::Option<#field_type> }
             }
+            Optionality::DefaultedRepeating(_) => {
+                quote! { std::option::Option<std::vec::Vec<#field_type>> }
+            }
         };
 
         match field.kind {
@@ -698,7 +708,7 @@ fn unwrap_from_args_fields<'a>(
                 Optionality::Optional | Optionality::Repeating => {
                     quote! { #field_name: #field_name.slot }
                 }
-                Optionality::Defaulted(tokens) => {
+                Optionality::Defaulted(tokens) | Optionality::DefaultedRepeating(tokens) => {
                     quote! {
                         #field_name: #field_name.slot.unwrap_or_else(|| #tokens)
                     }
@@ -708,7 +718,7 @@ fn unwrap_from_args_fields<'a>(
             FieldKind::SubCommand => match field.optionality {
                 Optionality::None => quote! { #field_name: #field_name.unwrap() },
                 Optionality::Optional | Optionality::Repeating => field_name.into_token_stream(),
-                Optionality::Defaulted(_) => unreachable!(),
+                Optionality::Defaulted(_) | Optionality::DefaultedRepeating(_) => unreachable!(),
             },
         }
     })
@@ -738,6 +748,9 @@ fn declare_local_storage_for_redacted_fields<'a>(
                     Optionality::Repeating => {
                         quote! { std::vec::Vec<String> }
                     }
+                    Optionality::DefaultedRepeating(_) => {
+                        quote! { std::option::Option<std::vec::Vec<String>> }
+                    }
                     Optionality::None | Optionality::Optional | Optionality::Defaulted(_) => {
                         quote! { std::option::Option<String> }
                     }
@@ -755,6 +768,9 @@ fn declare_local_storage_for_redacted_fields<'a>(
                 let field_slot_type = match field.optionality {
                     Optionality::Repeating => {
                         quote! { std::vec::Vec<String> }
+                    }
+                    Optionality::DefaultedRepeating(_) => {
+                        quote! { std::option::Option<std::vec::Vec<String>> }
                     }
                     Optionality::None | Optionality::Optional | Optionality::Defaulted(_) => {
                         quote! { std::option::Option<String> }
@@ -796,6 +812,13 @@ fn unwrap_redacted_fields<'a>(
                 Optionality::Repeating => {
                     quote! {
                         __redacted.extend(#field_name.slot.into_iter());
+                    }
+                }
+                Optionality::DefaultedRepeating(_) => {
+                    quote! {
+                        if let Some(__field_name) = #field_name.slot {
+                            __redacted.extend(__field_name.into_iter());
+                        }
                     }
                 }
                 Optionality::None | Optionality::Optional | Optionality::Defaulted(_) => {

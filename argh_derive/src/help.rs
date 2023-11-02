@@ -157,7 +157,7 @@ fn positional_usage(out: &mut String, field: &StructField<'_>) {
     }
     let name = field.positional_arg_name();
     out.push_str(&name);
-    if field.optionality == Optionality::Repeating {
+    if matches!(field.optionality, Optionality::Repeating | Optionality::DefaultedRepeating(_)) {
         out.push_str("...");
     }
     if field.attrs.greedy.is_none() {
@@ -194,7 +194,10 @@ fn option_usage(out: &mut String, field: &StructField<'_>) {
             } else {
                 out.push_str(long_name.trim_start_matches("--"));
             }
-            if field.optionality == Optionality::Repeating {
+            if matches!(
+                field.optionality,
+                Optionality::Repeating | Optionality::DefaultedRepeating(_)
+            ) {
                 out.push_str("...");
             }
             out.push('>');

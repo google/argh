@@ -313,6 +313,24 @@
 //!     real_first_arg: String,
 //! }
 //! ```
+//! 
+//! Programs that are not designed to conform to the Fuchsia commandline tools
+//! specification may find the requirement for descriptions to begin with a
+//! lowercase letter too restrictive. This can be disabled by adding the
+//! `lax_descriptions` attribute to the type:
+//! 
+//! ```rust,no_run
+//! use argh::FromArgs;
+//!
+//! #[derive(FromArgs)]
+//! #[argh(lax_descriptions)]
+//! /// Reach new heights.
+//! struct GoUp {
+//!     /// Now you can capitalize descriptions.
+//!     #[argh(switch, short = 'j')]
+//!     jump: bool,
+//! }
+//! ```
 
 #![deny(missing_docs)]
 

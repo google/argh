@@ -982,7 +982,7 @@ impl<'a> ParseStructOptions<'a> {
                 unrecognized_argument(
                     arg,
                     self.arg_to_slot,
-                    &vec!["--help".to_owned(), "help".to_owned()],
+                    &["--help".to_owned(), "help".to_owned()],
                 )
             })?;
 
@@ -1017,11 +1017,11 @@ fn unrecognized_argument(
         .collect::<Vec<&str>>();
 
     if available.is_empty() {
-        return format!("Unrecognized argument: \"{}\"", given);
+        return format!("Unrecognized argument: \"{}\"\n", given);
     }
 
     let suggestions = fuzzy_search_best_n(given, &available, 1);
-    format!("Unrecognized argument: \"{}\". Did you mean \"{}\"?", given, suggestions[0].0)
+    format!("Unrecognized argument: \"{}\". Did you mean \"{}\"?\n", given, suggestions[0].0)
 }
 
 // `--` or `-` options, including a mutable reference to their value.

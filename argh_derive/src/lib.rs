@@ -370,10 +370,12 @@ fn impl_from_args_struct_from_args<'a>(
         quote_spanned! { impl_span => None }
     };
 
+    let help_triggers = get_help_triggers(type_attrs);
+
     let help = if cfg!(feature = "help") {
         // Identifier referring to a value containing the name of the current command as an `&[&str]`.
         let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand)
+        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand, &help_triggers)
     } else {
         quote! { String::new() }
     };
@@ -392,6 +394,7 @@ fn impl_from_args_struct_from_args<'a>(
                 argh::ParseStructOptions {
                     arg_to_slot: &[ #( #flag_str_to_output_table_map ,)* ],
                     slots: &mut [ #( #flag_output_table, )* ],
+                    help_triggers: &[ #( #help_triggers ),* ],
                 },
                 argh::ParseStructPositionals {
                     positionals: &mut [
@@ -422,6 +425,29 @@ fn impl_from_args_struct_from_args<'a>(
     };
 
     method_impl
+}
+
+/// get help triggers vector from type_attrs.help_triggers as a [`Vec<String>`]
+///
+/// Defaults to vec!["--help", "help"] if type_attrs.help_triggers is None
+fn get_help_triggers(type_attrs: &TypeAttrs) -> Vec<String> {
+    let help_triggers = type_attrs.help_triggers.as_ref().map_or_else(
+        || vec!["--help".to_owned(), "help".to_owned()],
+        |s| {
+            s.iter()
+                .filter_map(|s| {
+                    let trigger = s.value();
+                    let trigger_trimmed = trigger.trim().to_owned();
+                    if trigger_trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(trigger_trimmed)
+                    }
+                })
+                .collect::<Vec<_>>()
+        },
+    );
+    help_triggers
 }
 
 fn impl_from_args_struct_redact_arg_values<'a>(
@@ -494,10 +520,12 @@ fn impl_from_args_struct_redact_arg_values<'a>(
         quote! { "no subcommand name" }
     };
 
+    let help_triggers = get_help_triggers(type_attrs);
+
     let help = if cfg!(feature = "help") {
         // Identifier referring to a value containing the name of the current command as an `&[&str]`.
         let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand)
+        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand, &help_triggers)
     } else {
         quote! { String::new() }
     };
@@ -512,6 +540,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                 argh::ParseStructOptions {
                     arg_to_slot: &[ #( #flag_str_to_output_table_map ,)* ],
                     slots: &mut [ #( #flag_output_table, )* ],
+                    help_triggers: &[ #( #help_triggers ),* ],
                 },
                 argh::ParseStructPositionals {
                     positionals: &mut [

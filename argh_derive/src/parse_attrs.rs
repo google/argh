@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+use syn::{parse::Parser, punctuated::Punctuated};
+
 use {
     crate::errors::Errors,
     proc_macro2::Span,
@@ -271,6 +273,8 @@ pub struct TypeAttrs {
     pub examples: Vec<syn::LitStr>,
     pub notes: Vec<syn::LitStr>,
     pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
+    /// Arguments that trigger printing of the help message
+    pub help_triggers: Option<Vec<syn::LitStr>>,
 }
 
 impl TypeAttrs {
@@ -316,6 +320,10 @@ impl TypeAttrs {
                     if let Some(ident) = errors.expect_meta_word(&meta).and_then(|p| p.get_ident())
                     {
                         this.parse_attr_subcommand(errors, ident);
+                    }
+                } else if name.is_ident("help_triggers") {
+                    if let Some(m) = errors.expect_meta_list(&meta) {
+                        Self::parse_help_triggers(m, errors, &mut this);
                     }
                 } else {
                     errors.err(
@@ -403,6 +411,24 @@ impl TypeAttrs {
             errors.duplicate_attrs("subcommand", first, ident);
         } else {
             self.is_subcommand = Some(ident.clone());
+        }
+    }
+
+    // get the list of arguments that trigger printing of the help message as a vector of strings (help_arguments("-h", "--help", "help"))
+    fn parse_help_triggers(m: &syn::MetaList, errors: &Errors, this: &mut TypeAttrs) {
+        let parser = Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated;
+        match parser.parse(m.tokens.clone().into()) {
+            Ok(args) => {
+                let mut triggers = Vec::new();
+                for arg in args {
+                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(lit_str), .. }) = arg {
+                        triggers.push(lit_str);
+                    }
+                }
+
+                this.help_triggers = Some(triggers);
+            }
+            Err(err) => errors.push(err),
         }
     }
 }
@@ -604,7 +630,8 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
 /// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
 /// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
 pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes } = type_attrs;
+    let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes, help_triggers } =
+        type_attrs;
 
     // Ensure that `#[argh(subcommand)]` is present.
     if is_subcommand.is_none() {
@@ -634,6 +661,11 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
     if let Some(err_code) = error_codes.first() {
         err_unused_enum_attr(errors, &err_code.0);
+    }
+    if let Some(triggers) = help_triggers {
+        if let Some(trigger) = triggers.first() {
+            err_unused_enum_attr(errors, trigger);
+        }
     }
 }
 

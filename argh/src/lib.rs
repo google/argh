@@ -978,13 +978,7 @@ impl<'a> ParseStructOptions<'a> {
             .arg_to_slot
             .iter()
             .find_map(|&(name, pos)| if name == arg { Some(pos) } else { None })
-            .ok_or_else(|| {
-                unrecognized_argument(
-                    arg,
-                    self.arg_to_slot,
-                    &["--help".to_owned(), "help".to_owned()],
-                )
-            })?;
+            .ok_or_else(|| unrecognized_argument(arg, self.arg_to_slot, self.help_triggers))?;
 
         match self.slots[pos] {
             ParseStructOption::Flag(ref mut b) => b.set_flag(arg),
@@ -1007,13 +1001,13 @@ impl<'a> ParseStructOptions<'a> {
 fn unrecognized_argument(
     given: &str,
     arg_to_slot: &[(&str, usize)],
-    extra_suggestions: &[String],
+    extra_suggestions: &[&str],
 ) -> String {
     // get the list of available arguments
     let available = arg_to_slot
         .iter()
         .map(|(name, _pos)| *name)
-        .chain(extra_suggestions.iter().map(|s| s.as_str()))
+        .chain(extra_suggestions.iter().copied())
         .collect::<Vec<&str>>();
 
     if available.is_empty() {

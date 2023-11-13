@@ -51,7 +51,7 @@ Options:
   -j, --jump        whether or not to jump
   --height          how high to go
   --pilot-nickname  an optional nickname for the pilot
-  --help            display usage information
+  --help, help      display usage information
 ```
 
 The resulting program can then be used in any of these ways:

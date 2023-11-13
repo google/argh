@@ -911,7 +911,7 @@ mod fuchsia_commandline_tools_rubric {
 
         let e = OneOption::from_args(&["cmdname"], &["--foo=bar"])
             .expect_err("Parsing option value using `=` should fail");
-        assert_eq!(e.output, "Unrecognized argument: --foo=bar\n");
+        assert_eq!(e.output, "Unrecognized argument: \"--foo=bar\". Did you mean \"--foo\"?\n");
         assert!(e.status.is_err());
     }
 

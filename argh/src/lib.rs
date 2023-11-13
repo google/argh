@@ -332,6 +332,8 @@ pub type SubCommandInfo = argh_shared::SubCommandInfo<'static>;
 
 pub use argh_shared::{ErrorCodeInfo, FlagInfo, FlagInfoKind, Optionality, PositionalInfo};
 
+use rust_fuzzy_search::fuzzy_search_best_n;
+
 /// Structured information about the command line arguments.
 pub trait ArgsInfo {
     /// Returns the argument info.
@@ -976,7 +978,7 @@ impl<'a> ParseStructOptions<'a> {
             .arg_to_slot
             .iter()
             .find_map(|&(name, pos)| if name == arg { Some(pos) } else { None })
-            .ok_or_else(|| unrecognized_argument(arg))?;
+            .ok_or_else(|| unrecognized_argument(arg, self.arg_to_slot, self.help_triggers))?;
 
         match self.slots[pos] {
             ParseStructOption::Flag(ref mut b) => b.set_flag(arg),
@@ -996,8 +998,24 @@ impl<'a> ParseStructOptions<'a> {
     }
 }
 
-fn unrecognized_argument(x: &str) -> String {
-    ["Unrecognized argument: ", x, "\n"].concat()
+fn unrecognized_argument(
+    given: &str,
+    arg_to_slot: &[(&str, usize)],
+    extra_suggestions: &[&str],
+) -> String {
+    // get the list of available arguments
+    let available = arg_to_slot
+        .iter()
+        .map(|(name, _pos)| *name)
+        .chain(extra_suggestions.iter().copied())
+        .collect::<Vec<&str>>();
+
+    if available.is_empty() {
+        return format!("Unrecognized argument: \"{}\"\n", given);
+    }
+
+    let suggestions = fuzzy_search_best_n(given, &available, 1);
+    format!("Unrecognized argument: \"{}\". Did you mean \"{}\"?\n", given, suggestions[0].0)
 }
 
 // `--` or `-` options, including a mutable reference to their value.

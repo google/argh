@@ -310,19 +310,49 @@ fn multiline_doc_comment_description() {
         /// that is spread across
         /// a number of
         /// lines of comments.
+        ///
+        /// It can have multiple paragraphs
+        /// too and those should be
+        /// collapsed into one line and
+        /// reflowed.
+        ///
+        /// * It can also:         have lists
+        /// * That are:            not reflowed
+        ///
+        /// | And  | Tables |
+        /// |------|--------|
+        /// | work | too    |
+        ///
+        /// The basic rule is that lines that start with
+        /// an alphabetic character (a-zA-Z) are joined
+        /// to the previous line.
         _s: bool,
     }
 
+    // The \x20s are so that editors don't strip the trailing spaces.
     assert_help_string::<Cmd>(
-        r###"Usage: test_arg_0 [--s]
+        "Usage: test_arg_0 [--s]
 
 Short description
 
 Options:
   --s               a switch with a description that is spread across a number
                     of lines of comments.
+                   \x20
+                    It can have multiple paragraphs too and those should be
+                    collapsed into one line and reflowed.
+                   \x20
+                    * It can also:         have lists
+                    * That are:            not reflowed
+                   \x20
+                    | And  | Tables |
+                    |------|--------|
+                    | work | too    |
+                   \x20
+                    The basic rule is that lines that start with an alphabetic
+                    character (a-zA-Z) are joined to the previous line.
   --help, help      display usage information
-"###,
+",
     );
 }
 

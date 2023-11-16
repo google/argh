@@ -560,6 +560,36 @@ fn parse_attr_multi_string(errors: &Errors, m: &syn::MetaNameValue, list: &mut V
     }
 }
 
+/// Extend the string `value` with the `new_line`. `new_line` is expected to
+/// not end with a newline.
+///
+/// This is used for constructing a description of some command/options from
+/// its docstring by processing the docstring lines one at a time (because
+/// single-line docstring comments get converted to separate attributes).
+///
+/// The logic implemented here is intended to join paragraphs into a single
+/// line, while leaving other content like indented code, lists, tables, etc.
+/// untouched. Roughly like Markdown.
+///
+fn extend_docstring(doc: &mut String, new_line: &str) {
+    // Skip the space immediately after the `///` if present.
+    let new_line = new_line.strip_prefix(' ').unwrap_or(new_line);
+
+    if new_line.starts_with(|c: char| c.is_alphanumeric()) {
+        if !doc.is_empty() {
+            if doc.ends_with('\n') {
+                doc.push('\n');
+            } else {
+                doc.push(' ');
+            }
+        }
+    } else {
+        doc.push('\n');
+    }
+
+    doc.push_str(new_line);
+}
+
 fn parse_attr_doc(errors: &Errors, attr: &syn::Attribute, slot: &mut Option<Description>) {
     let nv = if let Some(nv) = errors.expect_meta_name_value(&attr.meta) {
         nv
@@ -574,9 +604,10 @@ fn parse_attr_doc(errors: &Errors, attr: &syn::Attribute, slot: &mut Option<Desc
 
     if let Some(lit_str) = errors.expect_lit_str(&nv.value) {
         let lit_str = if let Some(previous) = slot {
-            let previous = &previous.content;
-            let previous_span = previous.span();
-            syn::LitStr::new(&(previous.value() + &unescape_doc(lit_str.value())), previous_span)
+            let mut doc = previous.content.value();
+            extend_docstring(&mut doc, &unescape_doc(lit_str.value()));
+            // This is N^2 unfortunately but hopefully N won't become too large!
+            syn::LitStr::new(&doc, previous.content.span())
         } else {
             syn::LitStr::new(&unescape_doc(lit_str.value()), lit_str.span())
         };

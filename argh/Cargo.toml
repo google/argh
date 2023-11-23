@@ -3,6 +3,7 @@ name = "argh"
 version = "0.1.12"
 authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
 edition = "2018"
+categories = ["command-line-interface"]
 keywords = ["args", "arguments", "derive", "cli"]
 license = "BSD-3-Clause"
 description = "Derive-based argument parser optimized for code size"

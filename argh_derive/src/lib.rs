@@ -3,6 +3,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+use syn::ext::IdentExt as _;
+
 /// Implementation of the `FromArgs` and `argh(...)` derive attributes.
 ///
 /// For more thorough documentation, see the `argh` crate itself.
@@ -188,7 +190,7 @@ impl<'a> StructField<'a> {
         let long_name = match kind {
             FieldKind::Switch | FieldKind::Option => {
                 let long_name = attrs.long.as_ref().map(syn::LitStr::value).unwrap_or_else(|| {
-                    let kebab_name = to_kebab_case(&name.to_string());
+                    let kebab_name = to_kebab_case(&name.unraw().to_string());
                     check_long_name(errors, name, &kebab_name);
                     kebab_name
                 });

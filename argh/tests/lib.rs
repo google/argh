@@ -364,6 +364,20 @@ fn explicit_long_value_for_option() {
     assert_eq!(cmd.x, 5);
 }
 
+#[test]
+fn raw_identifier() {
+    #[derive(FromArgs, Debug)]
+    /// Short description
+    struct Cmd {
+        #[argh(switch)]
+        /// whether to move the file
+        r#move: bool,
+    }
+
+    let cmd = Cmd::from_args(&["cmdname"], &["--move"]).unwrap();
+    assert!(cmd.r#move);
+}
+
 /// Test that descriptions can start with an initialism despite
 /// usually being required to start with a lowercase letter.
 #[derive(FromArgs)]

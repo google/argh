@@ -142,24 +142,26 @@ pub fn write_description(out: &mut String, cmd: &CommandInfo<'_>) {
         new_line(&mut current_line, out);
     }
 
-    let mut words = cmd.description.split(' ').peekable();
-    while let Some(first_word) = words.next() {
-        indent_description(&mut current_line);
-        current_line.push_str(first_word);
+    for line in cmd.description.lines() {
+        let mut words = line.split(' ').peekable();
+        while let Some(first_word) = words.next() {
+            indent_description(&mut current_line);
+            current_line.push_str(first_word);
 
-        'inner: while let Some(&word) = words.peek() {
-            if (char_len(&current_line) + char_len(word) + 1) > WRAP_WIDTH {
-                new_line(&mut current_line, out);
-                break 'inner;
-            } else {
-                // advance the iterator
-                let _ = words.next();
-                current_line.push(' ');
-                current_line.push_str(word);
+            while let Some(&word) = words.peek() {
+                if (char_len(&current_line) + char_len(word) + 1) > WRAP_WIDTH {
+                    new_line(&mut current_line, out);
+                    break;
+                } else {
+                    // advance the iterator
+                    let _ = words.next();
+                    current_line.push(' ');
+                    current_line.push_str(word);
+                }
             }
         }
+        new_line(&mut current_line, out);
     }
-    new_line(&mut current_line, out);
 }
 
 // Indent the current line in to DESCRIPTION_INDENT chars.

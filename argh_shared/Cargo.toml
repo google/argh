@@ -9,4 +9,4 @@ repository = "https://github.com/google/argh"
 readme = "README.md"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", optional = true, features = ["derive"] }

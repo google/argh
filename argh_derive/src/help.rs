@@ -130,10 +130,10 @@ pub(crate) fn help(
 
     format_lit.push('\n');
 
-    quote! { {
+    quote! {
         #subcommand_calculation
-        format!(#format_lit, command_name = #cmd_name_str_array_ident.join(" "), #subcommand_format_arg)
-    } }
+        Some(format!(#format_lit, command_name = #cmd_name_str_array_ident.join(" "), #subcommand_format_arg))
+    }
 }
 
 /// A section composed of exactly just the literals provided to the program.
@@ -190,7 +190,10 @@ fn option_usage(out: &mut String, field: &StructField<'_>) {
     }
 
     match field.kind {
-        FieldKind::SubCommand | FieldKind::Positional => unreachable!(), // don't have long_name
+        FieldKind::SubCommand 
+            | FieldKind::HelpText
+            | FieldKind::Positional 
+                => unreachable!("subcommand, help_text and positional have no long names"),
         FieldKind::Switch => {}
         FieldKind::Option => {
             out.push_str(" <");

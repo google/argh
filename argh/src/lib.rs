@@ -603,6 +603,11 @@ pub trait FromArgs: Sized {
     fn redact_arg_values(_command_name: &[&str], _args: &[&str]) -> Result<Vec<String>, EarlyExit> {
         Ok(vec!["<<REDACTED>>".into()])
     }
+
+    #[doc(hidden)]
+    fn cook_help_text(_command_name: &[&str]) -> Option<String> {
+        None
+    }
 }
 
 /// A top-level `FromArgs` implementation that is not a subcommand.

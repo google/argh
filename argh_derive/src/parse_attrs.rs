@@ -41,6 +41,8 @@ pub enum FieldKind {
     /// They are parsed in declaration order, and only the last positional
     /// argument in a type may be an `Option`, `Vec`, or have a default value.
     Positional,
+    /// Pseudo-argument to store generated help message.
+    HelpText,
 }
 
 /// The type of a field on a `#![derive(FromArgs)]` struct.
@@ -101,7 +103,12 @@ impl FieldAttrs {
                         this.parse_attr_long(errors, m);
                     }
                 } else if name.is_ident("option") {
-                    parse_attr_field_type(errors, &meta, FieldKind::Option, &mut this.field_type);
+                    parse_attr_field_type(
+                        errors, 
+                        &meta, 
+                        FieldKind::Option, 
+                        &mut this.field_type
+                    );
                 } else if name.is_ident("short") {
                     if let Some(m) = errors.expect_meta_name_value(&meta) {
                         this.parse_attr_short(errors, m);
@@ -114,7 +121,12 @@ impl FieldAttrs {
                         &mut this.field_type,
                     );
                 } else if name.is_ident("switch") {
-                    parse_attr_field_type(errors, &meta, FieldKind::Switch, &mut this.field_type);
+                    parse_attr_field_type(
+                        errors, 
+                        &meta, 
+                        FieldKind::Switch, 
+                        &mut this.field_type
+                    );
                 } else if name.is_ident("positional") {
                     parse_attr_field_type(
                         errors,
@@ -126,13 +138,20 @@ impl FieldAttrs {
                     this.greedy = Some(name.clone());
                 } else if name.is_ident("hidden_help") {
                     this.hidden_help = true;
+                } else if name.is_ident("help_text") {
+                    parse_attr_field_type(
+                        errors,
+                        &meta,
+                        FieldKind::HelpText,
+                        &mut this.field_type,
+                    );
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
                             "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `greedy`, ",
-                            "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`",
+                            "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`, `help_text`",
                         ),
                     );
                 }
@@ -142,7 +161,9 @@ impl FieldAttrs {
         if let (Some(default), Some(field_type)) = (&this.default, &this.field_type) {
             match field_type.kind {
                 FieldKind::Option | FieldKind::Positional => {}
-                FieldKind::SubCommand | FieldKind::Switch => errors.err(
+                FieldKind::SubCommand 
+                    | FieldKind::HelpText
+                    | FieldKind::Switch => errors.err(
                     default,
                     "`default` may only be specified on `#[argh(option)]` \
                      or `#[argh(positional)]` fields",

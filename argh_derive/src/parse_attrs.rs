@@ -22,6 +22,7 @@ pub struct FieldAttrs {
     pub arg_name: Option<syn::LitStr>,
     pub greedy: Option<syn::Path>,
     pub hidden_help: bool,
+    pub verbose_error: bool,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -296,6 +297,7 @@ pub struct TypeAttrs {
     pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
     /// Arguments that trigger printing of the help message
     pub help_triggers: Option<Vec<syn::LitStr>>,
+    pub verbose_error: bool,
 }
 
 impl TypeAttrs {
@@ -346,6 +348,8 @@ impl TypeAttrs {
                     if let Some(m) = errors.expect_meta_list(&meta) {
                         Self::parse_help_triggers(m, errors, &mut this);
                     }
+                } else if name.is_ident("verbose_error") {
+                    this.verbose_error = true;
                 } else {
                     errors.err(
                         &meta,
@@ -651,8 +655,16 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
 /// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
 /// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
 pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    let TypeAttrs { is_subcommand, name, description, examples, notes, error_codes, help_triggers } =
-        type_attrs;
+    let TypeAttrs { 
+        is_subcommand, 
+        name, 
+        description, 
+        examples, 
+        notes, 
+        error_codes, 
+        help_triggers, 
+        verbose_error,
+    } = type_attrs;
 
     // Ensure that `#[argh(subcommand)]` is present.
     if is_subcommand.is_none() {
@@ -687,6 +699,10 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
         if let Some(trigger) = triggers.first() {
             err_unused_enum_attr(errors, trigger);
         }
+    }
+    // TODO: Test
+    if *verbose_error {
+        err_unused_enum_attr(errors, verbose_error);
     }
 }
 

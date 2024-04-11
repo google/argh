@@ -316,6 +316,7 @@ fn impl_from_args_struct(
 
         #top_or_sub_cmd_impl
     };
+
     trait_impl
 }
 
@@ -365,6 +366,34 @@ fn impl_cook_help_text<'a>(
     method_impl
 }
 
+fn impl_report_error(
+    type_attrs: &TypeAttrs,
+) -> TokenStream {
+    let method_impl = if type_attrs.verbose_error {
+        quote! {
+            fn report_error(_bin_name: &str, msg: &str){
+                let help_text = Self::cook_help_text(&[_bin_name]);
+                eprintln!(
+                    "Error: {}\n{}", 
+                    msg, 
+                    help_text.unwrap_or(String::from("Run with --help for more information.")),
+                );
+            }
+        }
+    } else {
+        quote! {
+            fn report_error(_bin_name: &str, msg: &str){
+                eprintln!(
+                    "{}\nRun {} --help for more information.", 
+                    msg, 
+                    _bin_name,
+                );
+            }
+        }
+    };
+
+    method_impl
+}
 
 fn impl_from_args_struct_from_args<'a>(
     errors: &Errors,
@@ -702,9 +731,12 @@ fn top_or_sub_cmd_impl(
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     if type_attrs.is_subcommand.is_none() {
         // Not a subcommand
+        let report_error_method = impl_report_error(type_attrs);
         quote! {
             #[automatically_derived]
-            impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {}
+            impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {
+                #report_error_method
+            }
         }
     } else {
         let empty_str = syn::LitStr::new("", Span::call_site());

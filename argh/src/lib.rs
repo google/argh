@@ -611,7 +611,10 @@ pub trait FromArgs: Sized {
 }
 
 /// A top-level `FromArgs` implementation that is not a subcommand.
-pub trait TopLevelCommand: FromArgs {}
+pub trait TopLevelCommand: FromArgs {
+    #[doc(hidden)]
+    fn report_error(_bin_name: &str, msg: &str);    
+}
 
 /// A `FromArgs` implementation that can parse into one or more subcommands.
 pub trait SubCommands: FromArgs {
@@ -718,7 +721,7 @@ pub fn from_env<T: TopLevelCommand>() -> T {
                 0
             }
             Err(()) => {
-                eprintln!("{}\nRun {} --help for more information.", early_exit.output, cmd);
+                T::report_error(cmd, &early_exit.output);
                 1
             }
         })
@@ -744,7 +747,7 @@ pub fn cargo_from_env<T: TopLevelCommand>() -> T {
                 0
             }
             Err(()) => {
-                eprintln!("{}\nRun --help for more information.", early_exit.output);
+                T::report_error(cmd, &early_exit.output);
                 1
             }
         })

@@ -312,7 +312,8 @@ fn impl_args_info_data<'a>(
                     }
                 });
             }
-            FieldKind::SubCommand => {}
+            FieldKind::SubCommand 
+                | FieldKind::HelpText => {}
         }
     }
 

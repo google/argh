@@ -128,7 +128,7 @@ impl<'a> StructField<'a> {
                 field,
                 concat!(
                     "Missing `argh` field kind attribute.\n",
-                    "Expected one of: `switch`, `option`, `remaining`, `subcommand`, `positional`",
+                    "Expected one of: `switch`, `option`, `remaining`, `subcommand`, `positional`, `help_text`",
                 ),
             );
             return None;
@@ -190,6 +190,10 @@ impl<'a> StructField<'a> {
                     if inner.is_some() { Optionality::Optional } else { Optionality::None };
                 ty_without_wrapper = inner.unwrap_or(&field.ty);
             }
+            FieldKind::HelpText => {
+                optionality = Optionality::Optional;
+                ty_without_wrapper = &field.ty;
+            }
         }
 
         // Determine the "long" name of options and switches.
@@ -207,7 +211,9 @@ impl<'a> StructField<'a> {
                 let long_name = format!("--{}", long_name);
                 Some(long_name)
             }
-            FieldKind::SubCommand | FieldKind::Positional => None,
+            FieldKind::SubCommand 
+                | FieldKind::HelpText
+                | FieldKind::Positional => None,
         };
 
         Some(StructField { field, attrs, kind, optionality, ty_without_wrapper, name, long_name })
@@ -287,12 +293,15 @@ fn impl_from_args_struct(
 
     let impl_span = Span::call_site();
 
-    let from_args_method = impl_from_args_struct_from_args(errors, type_attrs, &fields);
+    let from_args_method = 
+        impl_from_args_struct_from_args(errors, type_attrs, &fields);
 
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
 
-    let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs, generic_args);
+    let cook_help_text_method = impl_cook_help_text(errors, type_attrs, &fields);
+
+    let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs, generic_args, &fields);
 
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     let trait_impl = quote_spanned! { impl_span =>
@@ -301,12 +310,127 @@ fn impl_from_args_struct(
             #from_args_method
 
             #redact_arg_values_method
+
+            #cook_help_text_method
         }
 
         #top_or_sub_cmd_impl
     };
 
     trait_impl
+}
+
+fn impl_cook_help_text<'a>(
+    errors: &Errors,
+    type_attrs: &TypeAttrs,
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let mut subcommands_iter =
+        fields
+            .iter()
+            .filter(
+                |field| 
+                    field.kind == FieldKind::SubCommand
+            ).fuse();
+
+    let subcommand: Option<&StructField<'_>> = subcommands_iter.next();
+
+    let impl_span = Span::call_site();
+
+    let help_triggers = get_help_triggers(type_attrs);
+
+    let help = if cfg!(feature = "help") {
+        // Identifier referring to a value containing the name of the current command as an `&[&str]`.
+        let cmd_name_str_array_ident = syn::Ident::new(
+            "__cmd_name", 
+            impl_span, 
+        );
+        help::help(
+            errors, // a
+            cmd_name_str_array_ident, // l
+            type_attrs, // a
+            fields, // a
+            subcommand, // l?
+            &help_triggers, // l
+        )
+    } else {
+        quote! { String::new() }
+    };
+
+    let method_impl = quote! {
+        fn cook_help_text(__cmd_name: &[&str]) -> Option<String> {
+            #help
+        }
+    };
+
+    method_impl
+}
+
+fn impl_report_error(
+    type_attrs: &TypeAttrs,
+) -> TokenStream {
+    let method_impl = if type_attrs.verbose_error {
+        quote! {
+            fn cook_error_report(_bin_name: &str, msg: &str) -> String {
+                let help_text = Self::cook_help_text(&[_bin_name]);
+                String::from(format!(
+                    "Error: {}\n{}", 
+                    msg, 
+                    help_text.unwrap_or(String::from("Run with --help for more information.")),
+                ))
+            }
+        }
+    } else {
+        quote! {
+            fn cook_error_report(_bin_name: &str, msg: &str) -> String {
+                String::from(format!(
+                    "{}\nRun {} --help for more information.", 
+                    msg, 
+                    _bin_name,
+                ))
+            }
+        }
+    };
+
+    method_impl
+}
+
+fn impl_report_error_and_exit<'a>(
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let method_impl = if let Some(field) = fields.iter().find(
+        |&field| 
+            field.kind == FieldKind::HelpText
+    ) {
+        let field_name = &field.field.ident;
+        quote! {
+            fn report_error_and_exit(&self, msg: &str){
+                let help_text = if let Some(help_text) = &self.#field_name {
+                    &help_text
+                } else {
+                    "Run with --help for more information."
+                };
+                eprintln!(
+                    "Error: {}\n\n{}", 
+                    msg, 
+                    &help_text,
+                );
+                std::process::exit(1);
+            }
+        }
+    } else {
+        quote! {
+            fn report_error_and_exit(&self, msg: &str){
+                eprintln!(
+                    "Error: {}\n\nRun with --help for more information.", 
+                    msg, 
+                );
+                std::process::exit(1);
+            }
+        }
+    };
+
+    method_impl
 }
 
 fn impl_from_args_struct_from_args<'a>(
@@ -334,7 +458,9 @@ fn impl_from_args_struct_from_args<'a>(
         match field.kind {
             FieldKind::Option => Some(quote! { argh::ParseStructOption::Value(&mut #field_name) }),
             FieldKind::Switch => Some(quote! { argh::ParseStructOption::Flag(&mut #field_name) }),
-            FieldKind::SubCommand | FieldKind::Positional => None,
+            FieldKind::SubCommand 
+                | FieldKind::HelpText
+                | FieldKind::Positional => None,
         }
     });
 
@@ -374,14 +500,6 @@ fn impl_from_args_struct_from_args<'a>(
 
     let help_triggers = get_help_triggers(type_attrs);
 
-    let help = if cfg!(feature = "help") {
-        // Identifier referring to a value containing the name of the current command as an `&[&str]`.
-        let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand, &help_triggers)
-    } else {
-        quote! { String::new() }
-    };
-
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
             -> std::result::Result<Self, argh::EarlyExit>
@@ -411,7 +529,10 @@ fn impl_from_args_struct_from_args<'a>(
                     last_is_greedy: #last_positional_is_greedy,
                 },
                 #parse_subcommands,
-                &|| #help,
+                &|| { 
+                    Self::cook_help_text(__cmd_name)
+                        .unwrap_or(String::from("Help is not available.")) 
+                },
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -478,7 +599,9 @@ fn impl_from_args_struct_redact_arg_values<'a>(
         match field.kind {
             FieldKind::Option => Some(quote! { argh::ParseStructOption::Value(&mut #field_name) }),
             FieldKind::Switch => Some(quote! { argh::ParseStructOption::Flag(&mut #field_name) }),
-            FieldKind::SubCommand | FieldKind::Positional => None,
+            FieldKind::SubCommand 
+                | FieldKind::HelpText
+                | FieldKind::Positional => None,
         }
     });
 
@@ -524,14 +647,6 @@ fn impl_from_args_struct_redact_arg_values<'a>(
 
     let help_triggers = get_help_triggers(type_attrs);
 
-    let help = if cfg!(feature = "help") {
-        // Identifier referring to a value containing the name of the current command as an `&[&str]`.
-        let cmd_name_str_array_ident = syn::Ident::new("__cmd_name", impl_span);
-        help::help(errors, cmd_name_str_array_ident, type_attrs, fields, subcommand, &help_triggers)
-    } else {
-        quote! { String::new() }
-    };
-
     let method_impl = quote_spanned! { impl_span =>
         fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
             #( #init_fields )*
@@ -557,7 +672,10 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                     last_is_greedy: #last_positional_is_greedy,
                 },
                 #redact_subcommands,
-                &|| #help,
+                &|| { 
+                    Self::cook_help_text(__cmd_name)
+                        .unwrap_or(String::from("Help is not available.")) 
+                },
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -637,11 +755,12 @@ fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
 }
 
 /// Implement `argh::TopLevelCommand` or `argh::SubCommand` as appropriate.
-fn top_or_sub_cmd_impl(
+fn top_or_sub_cmd_impl<'a>(
     errors: &Errors,
     name: &syn::Ident,
     type_attrs: &TypeAttrs,
     generic_args: &syn::Generics,
+    fields: &'a [StructField<'a>],
 ) -> TokenStream {
     let description = if cfg!(feature = "help") {
         help::require_description(errors, name.span(), &type_attrs.description, "type")
@@ -651,9 +770,14 @@ fn top_or_sub_cmd_impl(
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     if type_attrs.is_subcommand.is_none() {
         // Not a subcommand
+        let report_error_method = impl_report_error(type_attrs);
+        let report_error_and_exit_method = impl_report_error_and_exit(fields);
         quote! {
             #[automatically_derived]
-            impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {}
+            impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {
+                #report_error_method
+                #report_error_and_exit_method
+            }
         }
     } else {
         let empty_str = syn::LitStr::new("", Span::call_site());
@@ -721,6 +845,9 @@ fn declare_local_storage_for_from_args_fields<'a>(
             FieldKind::Switch => {
                 quote! { let mut #field_name: #field_slot_type = argh::Flag::default(); }
             }
+            FieldKind::HelpText => {
+                quote! { let mut #field_name: #field_slot_type = Self::cook_help_text(__cmd_name); }
+            }
         }
     })
 }
@@ -751,6 +878,9 @@ fn unwrap_from_args_fields<'a>(
                 Optionality::Optional | Optionality::Repeating => field_name.into_token_stream(),
                 Optionality::Defaulted(_) | Optionality::DefaultedRepeating(_) => unreachable!(),
             },
+            FieldKind::HelpText => {
+                quote! { #field_name }
+            }
         }
     })
 }
@@ -763,16 +893,16 @@ fn unwrap_from_args_fields<'a>(
 fn declare_local_storage_for_redacted_fields<'a>(
     fields: &'a [StructField<'a>],
 ) -> impl Iterator<Item = TokenStream> + 'a {
-    fields.iter().map(|field| {
+    fields.iter().filter_map(|field| {
         let field_name = &field.field.ident;
 
         match field.kind {
             FieldKind::Switch => {
-                quote! {
+                Some(quote! {
                     let mut #field_name = argh::RedactFlag {
                         slot: None,
                     };
-                }
+                })
             }
             FieldKind::Option => {
                 let field_slot_type = match field.optionality {
@@ -787,13 +917,13 @@ fn declare_local_storage_for_redacted_fields<'a>(
                     }
                 };
 
-                quote! {
+                Some(quote! {
                     let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
                         parse_func: |arg, _| { Ok(arg.to_owned()) },
                     };
-                }
+                })
             }
             FieldKind::Positional => {
                 let field_slot_type = match field.optionality {
@@ -809,17 +939,18 @@ fn declare_local_storage_for_redacted_fields<'a>(
                 };
 
                 let arg_name = field.positional_arg_name();
-                quote! {
+                Some(quote! {
                     let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
                         parse_func: |_, _| { Ok(#arg_name.to_owned()) },
                     };
-                }
+                })
             }
             FieldKind::SubCommand => {
-                quote! { let mut #field_name: std::option::Option<std::vec::Vec<String>> = None; }
+                Some(quote! { let mut #field_name: std::option::Option<std::vec::Vec<String>> = None; })
             }
+            FieldKind::HelpText => None
         }
     })
 }
@@ -828,50 +959,51 @@ fn declare_local_storage_for_redacted_fields<'a>(
 fn unwrap_redacted_fields<'a>(
     fields: &'a [StructField<'a>],
 ) -> impl Iterator<Item = TokenStream> + 'a {
-    fields.iter().map(|field| {
+    fields.iter().filter_map(|field| {
         let field_name = field.name;
 
         match field.kind {
             FieldKind::Switch => {
-                quote! {
+                Some(quote! {
                     if let Some(__field_name) = #field_name.slot {
                         __redacted.push(__field_name);
                     }
-                }
+                })
             }
             FieldKind::Option => match field.optionality {
                 Optionality::Repeating => {
-                    quote! {
+                    Some(quote! {
                         __redacted.extend(#field_name.slot.into_iter());
-                    }
+                    })
                 }
                 Optionality::DefaultedRepeating(_) => {
-                    quote! {
+                    Some(quote! {
                         if let Some(__field_name) = #field_name.slot {
                             __redacted.extend(__field_name.into_iter());
                         }
-                    }
+                    })
                 }
                 Optionality::None | Optionality::Optional | Optionality::Defaulted(_) => {
-                    quote! {
+                    Some(quote! {
                         if let Some(__field_name) = #field_name.slot {
                             __redacted.push(__field_name);
                         }
-                    }
-                }
-            },
-            FieldKind::Positional => {
-                quote! {
-                    __redacted.extend(#field_name.slot.into_iter());
+                    })
                 }
             }
+            FieldKind::Positional => {
+                Some(quote! {
+                    __redacted.extend(#field_name.slot.into_iter());
+                })
+            }
             FieldKind::SubCommand => {
-                quote! {
+                Some(quote! {
                     if let Some(__subcommand_args) = #field_name {
                         __redacted.extend(__subcommand_args.into_iter());
                     }
-                }
+                })
             }
+            FieldKind::HelpText => None
         }
     })
 }
@@ -939,6 +1071,7 @@ fn append_missing_requirements<'a>(
                     }
                 }
             }
+            FieldKind::HelpText => unreachable!("help_text is always optional")
         }
     })
 }

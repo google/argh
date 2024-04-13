@@ -700,7 +700,6 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
             err_unused_enum_attr(errors, trigger);
         }
     }
-    // TODO: Test
     if *verbose_error {
         err_unused_enum_attr(errors, verbose_error);
     }

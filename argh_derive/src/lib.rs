@@ -301,7 +301,7 @@ fn impl_from_args_struct(
 
     let cook_help_text_method = impl_cook_help_text(errors, type_attrs, &fields);
 
-    let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs, generic_args);
+    let top_or_sub_cmd_impl = top_or_sub_cmd_impl(errors, name, type_attrs, generic_args, &fields);
 
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     let trait_impl = quote_spanned! { impl_span =>
@@ -371,23 +371,61 @@ fn impl_report_error(
 ) -> TokenStream {
     let method_impl = if type_attrs.verbose_error {
         quote! {
-            fn report_error(_bin_name: &str, msg: &str){
+            fn cook_error_report(_bin_name: &str, msg: &str) -> String {
                 let help_text = Self::cook_help_text(&[_bin_name]);
-                eprintln!(
+                String::from(format!(
                     "Error: {}\n{}", 
                     msg, 
                     help_text.unwrap_or(String::from("Run with --help for more information.")),
-                );
+                ))
             }
         }
     } else {
         quote! {
-            fn report_error(_bin_name: &str, msg: &str){
-                eprintln!(
+            fn cook_error_report(_bin_name: &str, msg: &str) -> String {
+                String::from(format!(
                     "{}\nRun {} --help for more information.", 
                     msg, 
                     _bin_name,
+                ))
+            }
+        }
+    };
+
+    method_impl
+}
+
+fn impl_report_error_and_exit<'a>(
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let method_impl = if let Some(field) = fields.iter().find(
+        |&field| 
+            field.kind == FieldKind::HelpText
+    ) {
+        let field_name = &field.field.ident;
+        quote! {
+            fn report_error_and_exit(&self, msg: &str){
+                let help_text = if let Some(help_text) = &self.#field_name {
+                    &help_text
+                } else {
+                    "Run with --help for more information."
+                };
+                eprintln!(
+                    "Error: {}\n\n{}", 
+                    msg, 
+                    &help_text,
                 );
+                std::process::exit(1);
+            }
+        }
+    } else {
+        quote! {
+            fn report_error_and_exit(&self, msg: &str){
+                eprintln!(
+                    "Error: {}\n\nRun with --help for more information.", 
+                    msg, 
+                );
+                std::process::exit(1);
             }
         }
     };
@@ -717,11 +755,12 @@ fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
 }
 
 /// Implement `argh::TopLevelCommand` or `argh::SubCommand` as appropriate.
-fn top_or_sub_cmd_impl(
+fn top_or_sub_cmd_impl<'a>(
     errors: &Errors,
     name: &syn::Ident,
     type_attrs: &TypeAttrs,
     generic_args: &syn::Generics,
+    fields: &'a [StructField<'a>],
 ) -> TokenStream {
     let description = if cfg!(feature = "help") {
         help::require_description(errors, name.span(), &type_attrs.description, "type")
@@ -732,10 +771,12 @@ fn top_or_sub_cmd_impl(
     if type_attrs.is_subcommand.is_none() {
         // Not a subcommand
         let report_error_method = impl_report_error(type_attrs);
+        let report_error_and_exit_method = impl_report_error_and_exit(fields);
         quote! {
             #[automatically_derived]
             impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {
                 #report_error_method
+                #report_error_and_exit_method
             }
         }
     } else {

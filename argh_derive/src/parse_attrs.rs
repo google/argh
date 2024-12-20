@@ -355,7 +355,7 @@ impl TypeAttrs {
                     continue;
                 }
             };
-            if value > (std::i32::MAX as u64) {
+            if value > (i32::MAX as u64) {
                 errors.err(lit_int, "Error code out of range for `i32`");
             }
             match map.entry(value) {

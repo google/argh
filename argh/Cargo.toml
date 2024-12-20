@@ -11,8 +11,8 @@ keywords = ["args", "arguments", "derive", "cli"]
 readme = "README.md"
 
 [dependencies]
-argh_shared = { version = "0.1.12", path = "../argh_shared" }
-argh_derive = { version = "0.1.12", path = "../argh_derive" }
+argh_shared.workspace = true
+argh_derive.workspace = true
 rust-fuzzy-search = "0.1.1"
 
 [dev-dependencies]

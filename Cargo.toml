@@ -12,3 +12,7 @@ members = [
     "argh_derive",
     "argh_shared",
 ]
+
+[workspace.dependencies]
+argh_shared = { version = "0.1.13", path = "argh_shared" }
+argh_derive = { version = "0.1.13", path = "argh_derive" }

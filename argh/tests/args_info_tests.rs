@@ -427,6 +427,7 @@ fn args_info_test_subcommands() {
     }
 
     #[derive(FromArgs, ArgsInfo)]
+    #[allow(dead_code)]
     #[argh(subcommand)]
     /// Doc comments for subcommand enums does not appear in the help text.
     enum SubcommandEnum {
@@ -600,6 +601,7 @@ fn args_info_test_subcommand_notes_examples() {
         cmd: SubcommandEnum,
     }
 
+    #[allow(dead_code)]
     #[derive(FromArgs, ArgsInfo)]
     #[argh(subcommand)]
     /// Doc comments for subcommand enums does not appear in the help text.

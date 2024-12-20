@@ -967,7 +967,7 @@ pub struct ParseStructOptions<'a> {
     pub help_triggers: &'a [&'a str],
 }
 
-impl<'a> ParseStructOptions<'a> {
+impl ParseStructOptions<'_> {
     /// Parse a commandline option.
     ///
     /// `arg`: the current option argument being parsed (e.g. `--foo`).
@@ -1035,7 +1035,7 @@ pub struct ParseStructPositionals<'a> {
     pub last_is_greedy: bool,
 }
 
-impl<'a> ParseStructPositionals<'a> {
+impl ParseStructPositionals<'_> {
     /// Parse the next positional argument.
     ///
     /// `arg`: the argument supplied by the user.
@@ -1072,7 +1072,7 @@ pub struct ParseStructPositional<'a> {
     pub slot: &'a mut dyn ParseValueSlot,
 }
 
-impl<'a> ParseStructPositional<'a> {
+impl ParseStructPositional<'_> {
     /// Parse a positional argument.
     ///
     /// `arg`: the argument supplied by the user.
@@ -1109,7 +1109,7 @@ pub struct ParseStructSubCommand<'a> {
     pub parse_func: &'a mut dyn FnMut(&[&str], &[&str]) -> Result<(), EarlyExit>,
 }
 
-impl<'a> ParseStructSubCommand<'a> {
+impl ParseStructSubCommand<'_> {
     fn parse(
         &mut self,
         help: bool,

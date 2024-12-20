@@ -1593,6 +1593,7 @@ fn redact_arg_values_subcommand() {
         _means: MeansSubcommand,
     }
 
+    #[allow(dead_code)]
     #[derive(FromArgs, Debug)]
     /// Short description
     #[argh(subcommand)]
@@ -1639,6 +1640,7 @@ fn redact_arg_values_subcommand_with_space_in_name() {
         _means: MeansSubcommand,
     }
 
+    #[allow(dead_code)]
     #[derive(FromArgs, Debug)]
     /// Short description
     #[argh(subcommand)]

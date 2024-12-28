@@ -206,7 +206,7 @@
 //! # use argh::DynamicSubCommand;
 //! # use argh::EarlyExit;
 //! # use argh::FromArgs;
-//! # use once_cell::sync::OnceCell;
+//! # use std::sync::LazyLock;
 //!
 //! #[derive(FromArgs, PartialEq, Debug)]
 //! /// Top-level command.
@@ -240,8 +240,7 @@
 //!
 //! impl DynamicSubCommand for Dynamic {
 //!     fn commands() -> &'static [&'static CommandInfo] {
-//!         static RET: OnceCell<Vec<&'static CommandInfo>> = OnceCell::new();
-//!         RET.get_or_init(|| {
+//!         static RET: LazyLock<Vec<&'static CommandInfo>> = LazyLock::new(|| {
 //!             let mut commands = Vec::new();
 //!
 //!             // argh needs the `CommandInfo` structs we generate to be valid
@@ -257,7 +256,8 @@
 //!             })));
 //!
 //!             commands
-//!         })
+//!         });
+//!         &RET
 //!     }
 //!
 //!     fn try_redact_arg_values(

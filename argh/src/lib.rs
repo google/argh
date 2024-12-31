@@ -930,7 +930,9 @@ pub fn parse_struct_args(
                 return Err("Trailing arguments are not allowed after `help`.".to_string().into());
             }
 
-            parse_options.parse(next_arg, &mut remaining_args)?;
+            if parse_options.parse(next_arg, &mut remaining_args).is_err() {
+                options_ended |= parse_positionals.parse(&mut positional_index, next_arg)?;
+            }
             continue;
         }
 

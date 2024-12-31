@@ -11,7 +11,7 @@
     clippy::unwrap_in_result
 )]
 
-use {argh::FromArgs, std::fmt::Debug};
+use {argh::{FromArgs, TopLevelCommand}, std::fmt::Debug};
 
 #[test]
 fn basic_example() {
@@ -101,6 +101,56 @@ Options:
   --height          how high to go
   -h, --help, help  display usage information
 "#,
+    );
+}
+
+#[allow(dead_code)]
+#[derive(FromArgs, Debug)]
+/// Depth options
+#[argh(verbose_error)] 
+struct Depth {
+    /// how deep the rabbit hole is
+    #[argh(option)]
+    depth: usize,
+
+    #[argh(help_text)]
+    help_text: Option<String>,
+}
+
+#[test]
+fn help_text_pseudo_argument() {
+    let depth = Depth::from_args(&["cmdname"], &["--depth", "23"]).expect("failed at help text");
+    let help_text = depth.help_text.expect("None in place of help text");
+
+    assert_eq!(
+        help_text, 
+        "Usage: cmdname --depth <depth>
+
+Depth options
+
+Options:
+  --depth           how deep the rabbit hole is
+  --help, help      display usage information
+",
+    );
+}
+
+#[test]
+fn verbose_error_report() {
+    // NB: Internal error messaages end with one LF.
+    let error_report = Depth::cook_error_report("cmdname", "<message>\n");
+    assert_eq!(
+        error_report, 
+        "Error: <message>
+
+Usage: cmdname --depth <depth>
+
+Depth options
+
+Options:
+  --depth           how deep the rabbit hole is
+  --help, help      display usage information
+",
     );
 }
 
@@ -474,7 +524,7 @@ mod options {
         assert_output(&["-n", "5"], Parsed { n: 5 });
         assert_error::<Parsed>(
             &["-n", "x"],
-            r###"Error parsing option '-n' with value 'x': invalid digit found in string
+            r###"Cannot parse option '-n' with value 'x': invalid digit found in string
 "###,
         );
     }
@@ -723,7 +773,7 @@ Options:
         assert_output(&["5"], Parsed { n: 5 });
         assert_error::<Parsed>(
             &["x"],
-            r###"Error parsing positional argument 'n' with value 'x': invalid digit found in string
+            r###"Cannot parse positional argument 'n' with value 'x': invalid digit found in string
 "###,
         );
     }

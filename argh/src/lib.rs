@@ -319,7 +319,7 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::{ArgsInfo, FromArgs};
+pub use argh_derive::{ArgsInfo, FromArgValue, FromArgs};
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;

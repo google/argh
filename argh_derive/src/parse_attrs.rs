@@ -264,6 +264,11 @@ fn argh_attr_to_meta_list(
     ))
 }
 
+/// Returns `true` if there are any `#[argh(...)]` attributes in the list.
+pub fn has_argh_attrs(attrs: &[syn::Attribute]) -> bool {
+    attrs.iter().any(is_argh_attr)
+}
+
 /// Represents a `#[derive(FromArgs)]` type's top-level attributes.
 #[derive(Default)]
 pub struct TypeAttrs {
@@ -433,7 +438,7 @@ impl TypeAttrs {
     }
 }
 
-/// Represents an enum variant's attributes.
+/// Represents a `FromArgs` enum variant's attributes.
 #[derive(Default)]
 pub struct VariantAttrs {
     pub is_dynamic: Option<syn::Path>,
@@ -477,7 +482,45 @@ impl VariantAttrs {
                     errors.err(
                         &meta,
                         "Invalid variant-level `argh` attribute\n\
-                         Variants can only have the #[argh(dynamic)] attribute.",
+                         Subcommand variants can only have the #[argh(dynamic)] attribute.",
+                    );
+                }
+            }
+        }
+
+        this
+    }
+}
+
+/// Represents the attributes of a variant in a choice enum (an enum with `#[derive(FromArgValue)]`).
+#[derive(Default)]
+pub struct ChoiceVariantAttrs {
+    pub name_override: Option<syn::LitStr>,
+}
+
+impl ChoiceVariantAttrs {
+    /// Parse choice enum variant `#[argh(...)]` attributes
+    pub fn parse(errors: &Errors, variant: &syn::Variant) -> Self {
+        let mut this = ChoiceVariantAttrs::default();
+
+        for attr in &variant.attrs {
+            let ml = if let Some(ml) = argh_attr_to_meta_list(errors, attr) {
+                ml
+            } else {
+                continue;
+            };
+
+            for meta in ml {
+                let name = meta.path();
+                if name.is_ident("name") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        parse_attr_single_string(errors, m, "name", &mut this.name_override);
+                    }
+                } else {
+                    errors.err(
+                        &meta,
+                        "Invalid variant-level `argh` attribute\n\
+                         Choice variants can only have the `name` attribute.",
                     );
                 }
             }
@@ -639,7 +682,8 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
             *type_span,
             concat!(
                 "`#![derive(FromArgs)]` on `enum`s can only be used to enumerate subcommands.\n",
-                "Consider adding `#[argh(subcommand)]` to the `enum` declaration.",
+                "To enumerate subcommands, add `#[argh(subcommand)]` to the `enum` declaration.\n",
+                "To declare a choice `enum` instead, use `#![derive(FromArgValue)]`."
             ),
         );
     }

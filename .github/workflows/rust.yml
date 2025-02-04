@@ -15,7 +15,7 @@ jobs:
       run: cargo test --workspace --verbose
 
     - name: Run simple_example
-      run: cargo run --package argh --example simple_example two --fooey
+      run: cargo run --package argh --example simple_example two --fooey --woot quiet
 
   rustfmt:
     name: rustfmt

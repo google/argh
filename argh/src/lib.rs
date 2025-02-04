@@ -118,14 +118,16 @@
 //! use argh::{FromArgs, FromArgValue};
 //!
 //! #[derive(FromArgValue)]
-//! struct Mode {
+//! enum Mode {
 //!     SoftCore,
 //!     HardCore,
 //! }
 //!
 //! #[derive(FromArgs)]
+//! /// Do the thing.
 //! struct DoIt {
 //!     #[argh(option)]
+//!     /// how to do it
 //!     how: Mode,
 //! }
 //!

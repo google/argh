@@ -546,6 +546,7 @@ Options:
     #[derive(FromArgValue, PartialEq, Debug)]
     enum ThreeChoices {
         FirstChoice,
+        #[argh(name = "に")]
         Two,
         Three,
     }
@@ -575,10 +576,18 @@ Options:
     }
 
     #[test]
+    fn with_name_override() {
+        assert_output(
+            &["--choice2", "に", "--choice1", "hola"],
+            WithChoices { choice1: TwoChoices::Hola, choice2: ThreeChoices::Two },
+        )
+    }
+
+    #[test]
     fn invalid_choice() {
         assert_error::<WithChoices>(
             &["--choice2", "something"],
-            r###"Error parsing option '--choice2' with value 'something': expected "first_choice", "two" or "three"
+            r###"Error parsing option '--choice2' with value 'something': expected "first_choice", "に" or "three"
 "###,
         )
     }

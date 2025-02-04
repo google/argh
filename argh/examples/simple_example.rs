@@ -34,6 +34,16 @@ struct SubCommandTwo {
     #[argh(switch)]
     /// whether to fooey
     fooey: bool,
+
+    #[argh(option)]
+    /// how to woot
+    woot: Woot,
+}
+
+#[derive(argh::FromArgValue, PartialEq, Debug)]
+enum Woot {
+    Quiet,
+    Loud,
 }
 
 fn main() {

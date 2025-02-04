@@ -111,6 +111,30 @@
 //! }
 //! ```
 //!
+//! `FromArgValue` can be automatically derived for `enum`s, with automatic
+//! error messages:
+//!
+//! ```
+//! use argh::{FromArgs, FromArgValue};
+//!
+//! #[derive(FromArgValue)]
+//! enum Mode {
+//!     SoftCore,
+//!     HardCore,
+//! }
+//!
+//! #[derive(FromArgs)]
+//! /// Do the thing.
+//! struct DoIt {
+//!     #[argh(option)]
+//!     /// how to do it
+//!     how: Mode,
+//! }
+//!
+//! // ./some_bin --how whatever
+//! // > Error parsing option '--how' with value 'whatever': expected "soft_core" or "hard_core"
+//! ```
+//!
 //! Positional arguments can be declared using `#[argh(positional)]`.
 //! These arguments will be parsed in order of their declaration in
 //! the structure:
@@ -319,7 +343,7 @@
 
 use std::str::FromStr;
 
-pub use argh_derive::{ArgsInfo, FromArgs};
+pub use argh_derive::{ArgsInfo, FromArgValue, FromArgs};
 
 /// Information about a particular command used for output.
 pub type CommandInfo = argh_shared::CommandInfo<'static>;
@@ -751,7 +775,7 @@ pub fn cargo_from_env<T: TopLevelCommand>() -> T {
 /// Any field type declared in a struct that derives `FromArgs` must implement
 /// this trait. A blanket implementation exists for types implementing
 /// `FromStr<Error: Display>`. Custom types can implement this trait
-/// directly.
+/// directly. It can also be derived on plain `enum`s without associated data.
 pub trait FromArgValue: Sized {
     /// Construct the type from a commandline value, returning an error string
     /// on failure.

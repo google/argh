@@ -11,7 +11,10 @@
     clippy::unwrap_in_result
 )]
 
-use {argh::FromArgs, std::fmt::Debug};
+use {
+    argh::{FromArgValue, FromArgs},
+    std::fmt::Debug,
+};
 
 #[test]
 fn basic_example() {
@@ -518,6 +521,87 @@ Woot
 
 Options:
   --option-name     fooey
+  --help, help      display usage information
+"###,
+        );
+    }
+
+    /// Test choices
+    #[derive(FromArgs, PartialEq, Debug)]
+    struct WithChoices {
+        /// first choice with a default
+        #[argh(option, default = "TwoChoices::Chao")]
+        choice1: TwoChoices,
+        /// second choice.
+        #[argh(option)]
+        choice2: ThreeChoices,
+    }
+
+    #[derive(FromArgValue, PartialEq, Debug)]
+    enum TwoChoices {
+        Hola,
+        Chao,
+    }
+
+    #[derive(FromArgValue, PartialEq, Debug)]
+    enum ThreeChoices {
+        FirstChoice,
+        #[argh(name = "に")]
+        Two,
+        Three,
+    }
+
+    #[test]
+    fn with_choices() {
+        assert_output(
+            &["--choice2", "three"],
+            WithChoices { choice1: TwoChoices::Chao, choice2: ThreeChoices::Three },
+        );
+    }
+
+    #[test]
+    fn with_choices_snake_case() {
+        assert_output(
+            &["--choice2", "first_choice"],
+            WithChoices { choice1: TwoChoices::Chao, choice2: ThreeChoices::FirstChoice },
+        )
+    }
+
+    #[test]
+    fn override_default() {
+        assert_output(
+            &["--choice2", "first_choice", "--choice1", "hola"],
+            WithChoices { choice1: TwoChoices::Hola, choice2: ThreeChoices::FirstChoice },
+        )
+    }
+
+    #[test]
+    fn with_name_override() {
+        assert_output(
+            &["--choice2", "に", "--choice1", "hola"],
+            WithChoices { choice1: TwoChoices::Hola, choice2: ThreeChoices::Two },
+        )
+    }
+
+    #[test]
+    fn invalid_choice() {
+        assert_error::<WithChoices>(
+            &["--choice2", "something"],
+            r###"Error parsing option '--choice2' with value 'something': expected "first_choice", "に" or "three"
+"###,
+        )
+    }
+
+    #[test]
+    fn choice_help() {
+        assert_help_string::<WithChoices>(
+            r###"Usage: test_arg_0 [--choice1 <choice1>] --choice2 <choice2>
+
+Test choices
+
+Options:
+  --choice1         first choice with a default
+  --choice2         second choice.
   --help, help      display usage information
 "###,
         );

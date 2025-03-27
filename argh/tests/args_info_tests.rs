@@ -1029,3 +1029,21 @@ fn test_dynamic_subcommand() {
         ..Default::default()
     })
 }
+
+#[test]
+fn ok_hygiene() {
+    #![allow(unused)]
+    enum Foo {
+        Ok,
+        Err,
+    }
+    use Foo::*;
+
+    #[derive(FromArgs)]
+    /// A simple CLI tool
+    struct Args {
+        /// the input file
+        #[argh(option)]
+        input: String,
+    }
+}

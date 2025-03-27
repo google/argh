@@ -392,7 +392,7 @@ fn impl_from_args_struct_from_args<'a>(
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
                 parse_func: &mut |__command, __remaining_args| {
                     #name = Some(<#ty as argh::FromArgs>::from_args(__command, __remaining_args)?);
-                    Ok(())
+                    ::core::result::Result::Ok(())
                 },
             })
         }
@@ -412,7 +412,7 @@ fn impl_from_args_struct_from_args<'a>(
 
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
-            -> std::result::Result<Self, argh::EarlyExit>
+            -> ::core::result::Result<Self, argh::EarlyExit>
         {
             #![allow(clippy::unwrap_in_result)]
 
@@ -448,7 +448,7 @@ fn impl_from_args_struct_from_args<'a>(
             )*
             #missing_requirements_ident.err_on_any()?;
 
-            Ok(Self {
+            ::core::result::Result::Ok(Self {
                 #( #unwrap_fields, )*
             })
         }
@@ -536,7 +536,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
                 parse_func: &mut |__command, __remaining_args| {
                     #name = Some(<#ty as argh::FromArgs>::redact_arg_values(__command, __remaining_args)?);
-                    Ok(())
+                    ::core::result::Result::Ok(())
                 },
             })
         }
@@ -598,13 +598,13 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                 if let Some(cmd_name) = __cmd_name.last() {
                     (*cmd_name).to_owned()
                 } else {
-                    return Err(argh::EarlyExit::from(#unwrap_cmd_name_err_string.to_owned()));
+                    return ::core::result::Result::Err(argh::EarlyExit::from(#unwrap_cmd_name_err_string.to_owned()));
                 }
             ];
 
             #( #unwrap_fields )*
 
-            Ok(__redacted)
+            ::core::result::Result::Ok(__redacted)
         }
     };
 
@@ -819,7 +819,7 @@ fn declare_local_storage_for_redacted_fields<'a>(
                     let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
-                        parse_func: |arg, _| { Ok(arg.to_owned()) },
+                        parse_func: |arg, _| { ::core::result::Result::Ok(arg.to_owned()) },
                     };
                 }
             }
@@ -841,7 +841,7 @@ fn declare_local_storage_for_redacted_fields<'a>(
                     let mut #field_name: argh::ParseValueSlotTy::<#field_slot_type, String> =
                         argh::ParseValueSlotTy {
                         slot: std::default::Default::default(),
-                        parse_func: |_, _| { Ok(#arg_name.to_owned()) },
+                        parse_func: |_, _| { ::core::result::Result::Ok(#arg_name.to_owned()) },
                     };
                 }
             }
@@ -1106,12 +1106,12 @@ fn impl_from_args_enum(
                 let subcommand_name = if let Some(subcommand_name) = command_name.last() {
                     *subcommand_name
                 } else {
-                    return Err(argh::EarlyExit::from("no subcommand name".to_owned()));
+                    return ::core::result::Result::Err(argh::EarlyExit::from("no subcommand name".to_owned()));
                 };
 
                 #(
                     if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
-                        return Ok(#name_repeating::#variant_names(
+                        return ::core::result::Result::Ok(#name_repeating::#variant_names(
                             <#variant_ty as argh::FromArgs>::from_args(command_name, args)?
                         ));
                     }
@@ -1119,14 +1119,14 @@ fn impl_from_args_enum(
 
                 #dynamic_from_args
 
-                Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+                ::core::result::Result::Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
             }
 
             fn redact_arg_values(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
                 let subcommand_name = if let Some(subcommand_name) = command_name.last() {
                     *subcommand_name
                 } else {
-                    return Err(argh::EarlyExit::from("no subcommand name".to_owned()));
+                    return ::core::result::Result::Err(argh::EarlyExit::from("no subcommand name".to_owned()));
                 };
 
                 #(
@@ -1137,7 +1137,7 @@ fn impl_from_args_enum(
 
                 #dynamic_redact_arg_values
 
-                Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
+                ::core::result::Result::Err(argh::EarlyExit::from("no subcommand matched".to_owned()))
             }
         }
 
@@ -1262,14 +1262,14 @@ fn impl_from_arg_value_enum(
     quote! {
         impl #impl_generics argh::FromArgValue for #name #ty_generics #where_clause {
             fn from_arg_value(value: &str)
-                -> std::result::Result<Self, String>
+                -> ::core::result::Result<Self, String>
             {
-                Ok(match value {
+                ::core::result::Result::Ok(match value {
                     #(
                         #variant_names => #name_repeating::#variant_idents,
                     )*
                     _ => {
-                        return Err(#err_literal.to_owned())
+                        return ::core::result::Result::Err(#err_literal.to_owned())
                     }
                 })
             }

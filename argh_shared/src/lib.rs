@@ -175,7 +175,7 @@ fn indent_description(line: &mut String) -> bool {
     let cur_len = char_len(line);
     if cur_len < DESCRIPTION_INDENT {
         let num_spaces = DESCRIPTION_INDENT - cur_len;
-        line.extend(std::iter::repeat(' ').take(num_spaces));
+        line.extend(std::iter::repeat_n(' ', num_spaces));
         true
     } else {
         false

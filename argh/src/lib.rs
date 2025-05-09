@@ -356,6 +356,7 @@ pub type SubCommandInfo = argh_shared::SubCommandInfo<'static>;
 
 pub use argh_shared::{ErrorCodeInfo, FlagInfo, FlagInfoKind, Optionality, PositionalInfo};
 
+#[cfg(feature = "rust-fuzzy-search")]
 use rust_fuzzy_search::fuzzy_search_best_n;
 
 /// Structured information about the command line arguments.
@@ -1038,8 +1039,17 @@ fn unrecognized_argument(
         return format!("Unrecognized argument: \"{}\"\n", given);
     }
 
-    let suggestions = fuzzy_search_best_n(given, &available, 1);
-    format!("Unrecognized argument: \"{}\". Did you mean \"{}\"?\n", given, suggestions[0].0)
+    #[cfg(feature = "rust-fuzzy-search")]
+    {
+        let suggestions = fuzzy_search_best_n(given, &available, 1);
+        return format!(
+            "Unrecognized argument: \"{}\". Did you mean \"{}\"?\n",
+            given, suggestions[0].0
+        );
+    }
+
+    #[cfg(not(feature = "rust-fuzzy-search"))]
+    ["Unrecognized argument: ", given, "\n"].concat()
 }
 
 // `--` or `-` options, including a mutable reference to their value.

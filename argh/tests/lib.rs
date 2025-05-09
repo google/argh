@@ -631,7 +631,7 @@ mod positional {
             LastRepeating { a: 5, b: vec!["foo".into(), "bar".into()] },
         );
         assert_help_string::<LastRepeating>(
-            r###"Usage: test_arg_0 <a> [<b...>]
+            r###"Usage: test_arg_0 [--] <a> [<b...>]
 
 Woot
 
@@ -714,7 +714,7 @@ Options:
             },
         );
         assert_help_string::<LastRepeatingGreedy>(
-            r###"Usage: test_arg_0 <a> [--b] [--c <c>] [d...]
+            r###"Usage: test_arg_0 [--b] [--c <c>] [--] <a> [d...]
 
 Woot
 
@@ -1368,7 +1368,7 @@ Error codes:
     #[test]
     fn with_arg_name() {
         assert_help_string::<WithArgName>(
-            r###"Usage: test_arg_0 <name>
+            r###"Usage: test_arg_0 [--] <name>
 
 Destroy the contents of <file>.
 
@@ -1398,7 +1398,7 @@ Options:
         }
 
         assert_help_string::<Cmd>(
-            r###"Usage: test_arg_0 <two>
+            r###"Usage: test_arg_0 [--] <two>
 
 Short description
 
@@ -1883,4 +1883,57 @@ fn long_alphanumeric() {
 
     let cmd = Cmd::from_args(&["cmdname"], &["--ac97", "bar"]).unwrap();
     assert_eq!(cmd.ac97, "bar");
+}
+
+#[test]
+fn override_usage() {
+    /// Height options
+    #[derive(FromArgs)]
+    #[argh(help_triggers("-h", "--help", "help"))]
+    #[argh(usage = "USAGE LINE")]
+    struct Height {
+        /// how high to go
+        #[argh(option)]
+        _height: usize,
+    }
+
+    assert_help_string::<Height>(
+        r#"Usage: test_arg_0 USAGE LINE
+
+Height options
+
+Options:
+  --height          how high to go
+  -h, --help, help  display usage information
+"#,
+    );
+}
+
+#[test]
+fn customize_usage() {
+    /// Height options
+    #[derive(FromArgs)]
+    #[argh(help_triggers("-h", "--help", "help"))]
+    struct Height {
+        /// how high to go
+        #[argh(option)]
+        #[argh(usage)]
+        _height: usize,
+
+        /// hidden from usage
+        #[argh(option)]
+        _hidden: usize,
+    }
+
+    assert_help_string::<Height>(
+        r#"Usage: test_arg_0 --height <height>
+
+Height options
+
+Options:
+  --height          how high to go
+  --hidden          hidden from usage
+  -h, --help, help  display usage information
+"#,
+    );
 }

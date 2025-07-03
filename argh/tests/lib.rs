@@ -85,6 +85,7 @@ fn custom_from_str_example() {
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn help_trigger_example() {
     /// Height options
     #[derive(FromArgs)]
@@ -304,6 +305,7 @@ fn dynamic_subcommand_example() {
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn multiline_doc_comment_description() {
     #[derive(FromArgs)]
     /// Short description
@@ -330,6 +332,7 @@ Options:
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn escaped_doc_comment_description() {
     #[derive(FromArgs)]
     /// A \description\:
@@ -440,6 +443,7 @@ fn missing_option_value() {
     assert!(e.status.is_err());
 }
 
+#[cfg(feature = "help")]
 fn assert_help_string<T: FromArgs>(help_str: &str) {
     match T::from_args(&["test_arg_0"], &["--help"]) {
         Ok(_) => panic!("help was parsed as args"),
@@ -491,6 +495,7 @@ mod options {
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn repeating() {
         assert_help_string::<Repeating>(
             r###"Usage: test_arg_0 [-n <n...>]
@@ -513,6 +518,7 @@ Options:
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn with_arg_name() {
         assert_help_string::<WithArgName>(
             r###"Usage: test_arg_0 [--option-name <name>]
@@ -593,6 +599,7 @@ Options:
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn choice_help() {
         assert_help_string::<WithChoices>(
             r###"Usage: test_arg_0 [--choice1 <choice1>] --choice2 <choice2>
@@ -623,6 +630,7 @@ mod positional {
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn repeating() {
         assert_output(&["5"], LastRepeating { a: 5, b: vec![] });
         assert_output(&["5", "foo"], LastRepeating { a: 5, b: vec!["foo".into()] });
@@ -663,6 +671,7 @@ Options:
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn positional_greedy() {
         assert_output(&["5"], LastRepeatingGreedy { a: 5, b: false, c: None, d: vec![] });
         assert_output(
@@ -1125,12 +1134,14 @@ mod fuchsia_commandline_tools_rubric {
     /// Second subcommand for testing `help`.
     struct HelpSecondSub {}
 
+    #[cfg(feature = "help")]
     fn expect_help(args: &[&str], expected_help_string: &str) {
         let e = HelpTopLevel::from_args(&["cmdname"], args).expect_err("should exit early");
         assert_eq!(expected_help_string, e.output);
         e.status.expect("help returned an error");
     }
 
+    #[cfg(feature = "help")]
     const MAIN_HELP_STRING: &str = r###"Usage: cmdname <command> [<args>]
 
 A type for testing `--help`/`help`
@@ -1142,6 +1153,7 @@ Commands:
   first             First subcommmand for testing `help`.
 "###;
 
+    #[cfg(feature = "help")]
     const FIRST_HELP_STRING: &str = r###"Usage: cmdname first <command> [<args>]
 
 First subcommmand for testing `help`.
@@ -1153,6 +1165,7 @@ Commands:
   second            Second subcommand for testing `help`.
 "###;
 
+    #[cfg(feature = "help")]
     const SECOND_HELP_STRING: &str = r###"Usage: cmdname first second
 
 Second subcommand for testing `help`.
@@ -1162,31 +1175,37 @@ Options:
 "###;
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_keyword_main() {
         expect_help(&["help"], MAIN_HELP_STRING)
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_keyword_with_following_subcommand() {
         expect_help(&["help", "first"], FIRST_HELP_STRING);
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_keyword_between_subcommands() {
         expect_help(&["first", "help", "second"], SECOND_HELP_STRING);
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_keyword_with_two_trailing_subcommands() {
         expect_help(&["help", "first", "second"], SECOND_HELP_STRING);
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_flag_main() {
         expect_help(&["--help"], MAIN_HELP_STRING);
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_flag_subcommand() {
         expect_help(&["first", "--help"], FIRST_HELP_STRING);
     }
@@ -1326,6 +1345,7 @@ Options:
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn help_example() {
         assert_help_string::<HelpExample>(
             r###"Usage: test_arg_0 [-f] [--really-really-really-long-name-for-pat] -s <scribble> [-v] <command> [<args>]
@@ -1369,6 +1389,7 @@ Error codes:
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn with_arg_name() {
         assert_help_string::<WithArgName>(
             r###"Usage: test_arg_0 [--] <name>
@@ -1385,6 +1406,7 @@ Options:
     }
 
     #[test]
+    #[cfg(feature = "help")]
     fn hidden_help_attribute() {
         #[derive(FromArgs)]
         /// Short description
@@ -1756,6 +1778,7 @@ fn redact_arg_values_subcommand_with_space_in_name() {
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn redact_arg_values_produces_help() {
     #[derive(argh::FromArgs, Debug, PartialEq)]
     /// Woot
@@ -1889,6 +1912,7 @@ fn long_alphanumeric() {
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn override_usage() {
     /// Height options
     #[derive(FromArgs)]
@@ -1913,6 +1937,7 @@ Options:
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn customize_usage() {
     /// Height options
     #[derive(FromArgs)]

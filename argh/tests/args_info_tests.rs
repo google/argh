@@ -371,7 +371,7 @@ fn args_info_test_notes_examples_errors() {
     one
     two
     three then a blank
-
+    
     and one last line with "quoted text"."##,
         example = r##"
     Use the command with 1 file:
@@ -379,7 +379,7 @@ fn args_info_test_notes_examples_errors() {
     Use it with a "wildcard":
     `{command_name} /path/to/*`
      a blank line
-
+    
     and one last line with "quoted text"."##,
         error_code(0, "Success"),
         error_code(1, "General Error"),
@@ -394,7 +394,7 @@ fn args_info_test_notes_examples_errors() {
             &CommandInfoWithArgs {
                 name: "NotesExamplesErrors",
                 description: "Command with Examples and usage Notes, including error codes.",
-                examples: &["\n    Use the command with 1 file:\n    `{command_name} /path/to/file`\n    Use it with a \"wildcard\":\n    `{command_name} /path/to/*`\n     a blank line\n\n    and one last line with \"quoted text\"."],
+                examples: &["\n    Use the command with 1 file:\n    `{command_name} /path/to/file`\n    Use it with a \"wildcard\":\n    `{command_name} /path/to/*`\n     a blank line\n    \n    and one last line with \"quoted text\"."],
                 flags: &[HELP_FLAG
                 ],
                 positionals: &[
@@ -405,7 +405,7 @@ fn args_info_test_notes_examples_errors() {
                         hidden:false
                     }
                 ],
-                notes: &["\n    These usage notes appear for {command_name} and how to best use it.\n    The formatting should be preserved.\n    one\n    two\n    three then a blank\n\n    and one last line with \"quoted text\"."],
+                notes: &["\n    These usage notes appear for {command_name} and how to best use it.\n    The formatting should be preserved.\n    one\n    two\n    three then a blank\n    \n    and one last line with \"quoted text\"."],
                 error_codes: & [ErrorCodeInfo { code: 0, description: "Success" }, ErrorCodeInfo { code: 1, description: "General Error" }, ErrorCodeInfo { code: 2, description: "Some error with \"quotes\"" }],
                 ..Default::default()
             });
@@ -752,7 +752,7 @@ fn args_info_test_example() {
                 commands: vec![
                     SubCommandInfo { name: "blow-up",
                  command: CommandInfoWithArgs { name: "blow-up",
-                  description: "explosively separate",
+                  description: "explosively separate", 
                   flags:& [HELP_FLAG,
                    FlagInfo { kind: FlagInfoKind::Switch, optionality: Optionality::Optional, long: "--safely", short: None, description: "blow up bombs safely",
                    hidden:false }

@@ -174,6 +174,41 @@ struct SubCommandTwo {
 }
 ```
 
+## Synonyms
+
+Synonyms can be specified for subcommands, options, and switches using the `synonyms` attribute.
+These synonyms will be hidden from the help output but will be accepted during parsing.
+
+```rust
+use argh::FromArgs;
+
+#[derive(FromArgs)]
+/// A command with synonyms.
+struct Cmd {
+    /// an option with synonyms
+    #[argh(option, synonyms = ["bar", "baz"])]
+    foo: String,
+
+    #[argh(subcommand)]
+    nested: MySubCommandEnum,
+}
+
+#[derive(FromArgs)]
+#[argh(subcommand)]
+enum MySubCommandEnum {
+    One(SubCommandOne),
+}
+
+#[derive(FromArgs)]
+/// First subcommand.
+#[argh(subcommand, name = "one", synonyms = ["uno", "eins"])]
+struct SubCommandOne {
+    #[argh(option)]
+    /// how many x
+    x: usize,
+}
+```
+
 NOTE: This is not an officially supported Google product.
 
 

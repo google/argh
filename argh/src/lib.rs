@@ -220,6 +220,41 @@
 //! }
 //! ```
 //!
+//! ## Synonyms
+//!
+//! Synonyms can be specified for subcommands, options, and switches using the `synonyms` attribute.
+//! These synonyms will be hidden from the help output but will be accepted during parsing.
+//!
+//! ```rust
+//! use argh::FromArgs;
+//!
+//! #[derive(FromArgs)]
+//! /// A command with synonyms.
+//! struct Cmd {
+//!     /// an option with synonyms
+//!     #[argh(option, synonyms = ["bar", "baz"])]
+//!     foo: String,
+//!
+//!     #[argh(subcommand)]
+//!     nested: MySubCommandEnum,
+//! }
+//!
+//! #[derive(FromArgs)]
+//! #[argh(subcommand)]
+//! enum MySubCommandEnum {
+//!     One(SubCommandOne),
+//! }
+//!
+//! #[derive(FromArgs)]
+//! /// First subcommand.
+//! #[argh(subcommand, name = "one", synonyms = ["uno", "eins"])]
+//! struct SubCommandOne {
+//!     #[argh(option)]
+//!     /// how many x
+//!     x: usize,
+//! }
+//! ```
+//!
 //! You can also discover subcommands dynamically at runtime. To do this,
 //! declare subcommands as usual and add a variant to the enum with the
 //! `dynamic` attribute. Instead of deriving `FromArgs`, the value inside the
@@ -638,6 +673,9 @@ pub trait SubCommands: FromArgs {
     /// Info for the commands.
     const COMMANDS: &'static [&'static CommandInfo];
 
+    /// Synonyms for the commands.
+    const COMMAND_SYNONYMS: &'static [(&'static str, &'static [&'static str])] = &[];
+
     /// Get a list of commands that are discovered at runtime.
     fn dynamic_commands() -> &'static [&'static CommandInfo] {
         &[]
@@ -648,10 +686,16 @@ pub trait SubCommands: FromArgs {
 pub trait SubCommand: FromArgs {
     /// Information about the subcommand.
     const COMMAND: &'static CommandInfo;
+
+    /// Synonyms for the subcommand.
+    const SYNONYMS: &'static [&'static str] = &[];
 }
 
 impl<T: SubCommand> SubCommands for T {
     const COMMANDS: &'static [&'static CommandInfo] = &[T::COMMAND];
+    const COMMAND_SYNONYMS: &'static [(&'static str, &'static [&'static str])] = &[
+        (T::COMMAND.name, T::SYNONYMS),
+    ];
 }
 
 /// Trait implemented by values returned from a dynamic subcommand handler.
@@ -1136,6 +1180,9 @@ pub struct ParseStructSubCommand<'a> {
     // The subcommand commands
     pub subcommands: &'static [&'static CommandInfo],
 
+    // The subcommand synonyms
+    pub command_synonyms: &'static [(&'static str, &'static [&'static str])],
+
     pub dynamic_subcommands: &'a [&'static CommandInfo],
 
     // The function to parse the subcommand arguments.
@@ -1153,23 +1200,39 @@ impl ParseStructSubCommand<'_> {
     ) -> Result<bool, EarlyExit> {
         for subcommand in self.subcommands.iter().chain(self.dynamic_subcommands.iter()) {
             if subcommand.name == arg {
-                let mut command = cmd_name.to_owned();
-                command.push(subcommand.name);
-                let prepended_help;
-                let remaining_args = if help {
-                    prepended_help = prepend_help(remaining_args);
-                    &prepended_help
-                } else {
-                    remaining_args
-                };
+                return self.parse_subcommand(help, cmd_name, subcommand.name, remaining_args);
+            }
+        }
 
-                (self.parse_func)(&command, remaining_args)?;
-
-                return Ok(true);
+        for (name, synonyms) in self.command_synonyms {
+            if synonyms.contains(&arg) {
+                return self.parse_subcommand(help, cmd_name, name, remaining_args);
             }
         }
 
         Ok(false)
+    }
+
+    fn parse_subcommand(
+        &mut self,
+        help: bool,
+        cmd_name: &[&str],
+        subcommand_name: &str,
+        remaining_args: &[&str],
+    ) -> Result<bool, EarlyExit> {
+        let mut command = cmd_name.to_owned();
+        command.push(subcommand_name);
+        let prepended_help;
+        let remaining_args = if help {
+            prepended_help = prepend_help(remaining_args);
+            &prepended_help
+        } else {
+            remaining_args
+        };
+
+        (self.parse_func)(&command, remaining_args)?;
+
+        Ok(true)
     }
 }
 

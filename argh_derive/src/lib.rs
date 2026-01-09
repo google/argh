@@ -465,7 +465,8 @@ fn impl_from_args_struct_from_args<'a>(
 ///
 /// Defaults to vec!["--help", "help"] if type_attrs.help_triggers is None
 fn get_help_triggers(type_attrs: &TypeAttrs) -> Vec<String> {
-    let help_triggers = type_attrs.help_triggers.as_ref().map_or_else(
+    
+    type_attrs.help_triggers.as_ref().map_or_else(
         || vec!["--help".to_owned(), "help".to_owned()],
         |s| {
             s.iter()
@@ -476,8 +477,7 @@ fn get_help_triggers(type_attrs: &TypeAttrs) -> Vec<String> {
                 })
                 .collect::<Vec<_>>()
         },
-    );
-    help_triggers
+    )
 }
 
 fn impl_from_args_struct_redact_arg_values<'a>(
@@ -1021,15 +1021,12 @@ fn ty_expect_switch(errors: &Errors, ty: &syn::Type) -> bool {
             }
             let ident = &path.path.segments[0].ident;
             // `Option<bool>` can be used as a `switch`.
-            if ident == "Option" {
-                if let PathArguments::AngleBracketed(args) = &path.path.segments[0].arguments {
-                    if let GenericArgument::Type(Type::Path(p)) = &args.args[0] {
-                        if p.path.segments[0].ident == "bool" {
+            if ident == "Option"
+                && let PathArguments::AngleBracketed(args) = &path.path.segments[0].arguments
+                    && let GenericArgument::Type(Type::Path(p)) = &args.args[0]
+                        && p.path.segments[0].ident == "bool" {
                             return true;
                         }
-                    }
-                }
-            }
             ["bool", "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128"]
                 .iter()
                 .any(|path| ident == path)

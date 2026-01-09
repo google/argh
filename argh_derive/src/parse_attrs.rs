@@ -424,11 +424,10 @@ impl TypeAttrs {
 
     fn parse_attr_name(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
         parse_attr_single_string(errors, m, "name", &mut self.name);
-        if let Some(name) = &self.name {
-            if name.value() == "help" {
+        if let Some(name) = &self.name
+            && name.value() == "help" {
                 errors.err(name, "Custom `help` commands are not supported.");
             }
-        }
     }
 
     fn parse_attr_note(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
@@ -667,14 +666,12 @@ fn unescape_doc(s: String) -> String {
 
     let mut characters = s.chars().peekable();
     while let Some(mut character) = characters.next() {
-        if character == '\\' {
-            if let Some(next_character) = characters.peek() {
-                if next_character.is_ascii_punctuation() {
+        if character == '\\'
+            && let Some(next_character) = characters.peek()
+                && next_character.is_ascii_punctuation() {
                     character = *next_character;
                     characters.next();
                 }
-            }
-        }
 
         // Braces must be escaped as this string will be used as a format string
         if character == '{' || character == '}' {
@@ -695,11 +692,10 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
     };
 
     // Don't allow multiple explicit (non doc-comment) descriptions
-    if let Some(description) = slot {
-        if description.explicit {
+    if let Some(description) = slot
+        && description.explicit {
             errors.duplicate_attrs("description", &description.content, lit_str);
         }
-    }
 
     *slot = Some(Description { explicit: true, content: lit_str.clone() });
 }
@@ -734,11 +730,10 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     if let Some(name) = name {
         err_unused_enum_attr(errors, name);
     }
-    if let Some(description) = description {
-        if description.explicit {
+    if let Some(description) = description
+        && description.explicit {
             err_unused_enum_attr(errors, &description.content);
         }
-    }
     if let Some(example) = examples.first() {
         err_unused_enum_attr(errors, example);
     }
@@ -748,11 +743,10 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     if let Some(err_code) = error_codes.first() {
         err_unused_enum_attr(errors, &err_code.0);
     }
-    if let Some(triggers) = help_triggers {
-        if let Some(trigger) = triggers.first() {
+    if let Some(triggers) = help_triggers
+        && let Some(trigger) = triggers.first() {
             err_unused_enum_attr(errors, trigger);
         }
-    }
     if let Some(usage) = usage {
         err_unused_enum_attr(errors, usage);
     }

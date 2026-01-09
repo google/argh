@@ -3,14 +3,13 @@
 // license that can be found in the LICENSE file.
 
 use crate::{
-    enum_only_single_field_unnamed_variants,
+    Optionality, StructField, enum_only_single_field_unnamed_variants,
     errors::Errors,
     help::require_description,
-    parse_attrs::{check_enum_type_attrs, FieldAttrs, FieldKind, TypeAttrs, VariantAttrs},
-    Optionality, StructField,
+    parse_attrs::{FieldAttrs, FieldKind, TypeAttrs, VariantAttrs, check_enum_type_attrs},
 };
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use syn::LitStr;
 
 /// Implement the derive macro for ArgsInfo.

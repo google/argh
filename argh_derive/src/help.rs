@@ -5,9 +5,9 @@
 use std::fmt::Write;
 use {
     crate::{
+        Optionality, StructField,
         errors::Errors,
         parse_attrs::{Description, FieldKind, TypeAttrs},
-        Optionality, StructField,
     },
     argh_shared::INDENT,
     proc_macro2::{Span, TokenStream},

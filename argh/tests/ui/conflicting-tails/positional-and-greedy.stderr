@@ -1,11 +1,15 @@
 error: Only the last positional argument may be `Option`, `Vec`, or defaulted.
  --> tests/ui/conflicting-tails/positional-and-greedy.rs:4:5
   |
-4 |     #[argh(positional)]
-  |     ^
+4 | /     #[argh(positional)]
+5 | |     /// positional
+6 | |     positional: Vec<String>,
+  | |___________________________^
 
 error: Later positional argument declared here.
- --> tests/ui/conflicting-tails/positional-and-greedy.rs:8:5
-  |
-8 |     #[argh(positional, greedy)]
-  |     ^
+  --> tests/ui/conflicting-tails/positional-and-greedy.rs:8:5
+   |
+ 8 | /     #[argh(positional, greedy)]
+ 9 | |     /// remainder
+10 | |     remainder: Vec<String>,
+   | |__________________________^

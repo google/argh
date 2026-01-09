@@ -14,12 +14,12 @@ extern crate proc_macro;
 use {
     crate::{
         errors::Errors,
-        parse_attrs::{check_long_name, FieldAttrs, FieldKind, TypeAttrs},
+        parse_attrs::{FieldAttrs, FieldKind, TypeAttrs, check_long_name},
     },
     proc_macro2::{Span, TokenStream},
-    quote::{quote, quote_spanned, ToTokens},
+    quote::{ToTokens, quote, quote_spanned},
     std::{collections::HashMap, str::FromStr},
-    syn::{spanned::Spanned, GenericArgument, LitStr, PathArguments, Type},
+    syn::{GenericArgument, LitStr, PathArguments, Type, spanned::Spanned},
 };
 
 mod args_info;
@@ -31,24 +31,24 @@ mod parse_attrs;
 #[proc_macro_derive(FromArgs, attributes(argh))]
 pub fn argh_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
-    let gen = impl_from_args(&ast);
-    gen.into()
+    let generated_code = impl_from_args(&ast);
+    generated_code.into()
 }
 
 /// Entrypoint for `#[derive(FromArgValue)]`.
 #[proc_macro_derive(FromArgValue, attributes(argh))]
 pub fn argh_value_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
-    let gen = impl_from_arg_value(&ast);
-    gen.into()
+    let generated_code = impl_from_arg_value(&ast);
+    generated_code.into()
 }
 
 /// Entrypoint for `#[derive(ArgsInfo)]`.
 #[proc_macro_derive(ArgsInfo, attributes(argh))]
 pub fn args_info_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input!(input as syn::DeriveInput);
-    let gen = args_info::impl_args_info(&ast);
-    gen.into()
+    let generated_code = args_info::impl_args_info(&ast);
+    generated_code.into()
 }
 
 /// Transform the input into a token stream containing any generated implementations,
@@ -433,7 +433,7 @@ fn impl_from_args_struct_from_args<'a>(
                         #(
                             argh::ParseStructPositional {
                                 name: #positional_field_names,
-                                slot: &mut #positional_field_idents as &mut argh::ParseValueSlot,
+                                slot: &mut #positional_field_idents as &mut dyn argh::ParseValueSlot,
                             },
                         )*
                     ],
@@ -472,11 +472,7 @@ fn get_help_triggers(type_attrs: &TypeAttrs) -> Vec<String> {
                 .filter_map(|s| {
                     let trigger = s.value();
                     let trigger_trimmed = trigger.trim().to_owned();
-                    if trigger_trimmed.is_empty() {
-                        None
-                    } else {
-                        Some(trigger_trimmed)
-                    }
+                    if trigger_trimmed.is_empty() { None } else { Some(trigger_trimmed) }
                 })
                 .collect::<Vec<_>>()
         },
@@ -581,7 +577,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                         #(
                             argh::ParseStructPositional {
                                 name: #positional_field_names,
-                                slot: &mut #positional_field_idents as &mut argh::ParseValueSlot,
+                                slot: &mut #positional_field_idents as &mut dyn argh::ParseValueSlot,
                             },
                         )*
                     ],

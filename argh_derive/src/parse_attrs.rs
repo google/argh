@@ -599,7 +599,10 @@ fn test_initialisms() {
     check("descriptions must begin with a lowercase letter unless it's an initialism", true);
     check("HTTP is OK", true);
     check("I2C is OK", true);
-    check("A sentence starting with a single-letter uppercase letter is bad even though it looks like an initialism", false);
+    check(
+        "A sentence starting with a single-letter uppercase letter is bad even though it looks like an initialism",
+        false,
+    );
     check("a sentence starting with a lowercase letter is good", true);
     check("非ラテン文字は常に受け入れられるべきです", true);
 

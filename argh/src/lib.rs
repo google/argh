@@ -970,11 +970,7 @@ pub fn parse_struct_args(
         options_ended |= parse_positionals.parse(&mut positional_index, next_arg)?;
     }
 
-    if help {
-        Err(EarlyExit { output: help_func(), status: Ok(()) })
-    } else {
-        Ok(())
-    }
+    if help { Err(EarlyExit { output: help_func(), status: Ok(()) }) } else { Ok(()) }
 }
 
 #[doc(hidden)]

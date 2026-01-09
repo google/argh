@@ -1,6 +1,6 @@
 [workspace.package]
 version = "0.1.13"
-authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>"]
+authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>", "Budi Syahiddin <founders@haxiom.io>"]
 edition = "2018"
 license = "BSD-3-Clause"
 description = "Derive-based argument parsing optimized for code size"

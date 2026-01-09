@@ -23,6 +23,7 @@ pub struct FieldAttrs {
     pub greedy: Option<syn::Path>,
     pub hidden_help: bool,
     pub usage: bool,
+    pub env: Option<syn::LitStr>,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -129,12 +130,16 @@ impl FieldAttrs {
                     this.hidden_help = true;
                 } else if name.is_ident("usage") {
                     this.usage = true;
+                } else if name.is_ident("env") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        this.parse_attr_env(errors, m);
+                    }
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
-                            "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `greedy`, ",
+                            "Expected one of: `arg_name`, `default`, `description`, `env`, `from_str_fn`, `greedy`, ",
                             "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`, `usage`",
                         ),
                     );
@@ -150,6 +155,13 @@ impl FieldAttrs {
                     "`default` may only be specified on `#[argh(option)]` \
                      or `#[argh(positional)]` fields",
                 ),
+            }
+        }
+
+        if let (Some(env), Some(field_type)) = (&this.env, &this.field_type) {
+            match field_type.kind {
+                FieldKind::Option => {}
+                _ => errors.err(env, "`env` may only be specified on `#[argh(option)]` fields"),
             }
         }
 
@@ -198,6 +210,10 @@ impl FieldAttrs {
                 errors.err(lit_char, "Short names must be ASCII");
             }
         }
+    }
+
+    fn parse_attr_env(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
+        parse_attr_single_string(errors, m, "env", &mut self.env);
     }
 }
 

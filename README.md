@@ -67,6 +67,31 @@ optional, or repeating, depending on whether they are contained in an
 `#[argh(default = "<your_code_here>")]` attribute, and in this case an
 option is treated as optional.
 
+You can also specify an environment variable fallback using the `env` attribute.
+If the argument is not provided via the command line, `argh` will look for the
+environment variable.
+
+```rust
+use argh::FromArgs;
+
+#[derive(FromArgs)]
+/// Reach new heights.
+struct GoUp {
+    /// an optional nickname for the pilot
+    #[argh(option, env = "GO_UP_PILOT")]
+    pilot_nickname: Option<String>,
+
+    /// an optional height
+    #[argh(option, env = "GO_UP_HEIGHT")]
+    height: usize,
+}
+
+fn main() {
+    let up: GoUp = argh::from_env();
+}
+```
+
+
 ```rust
 use argh::FromArgs;
 

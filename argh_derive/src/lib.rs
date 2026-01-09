@@ -383,6 +383,8 @@ fn impl_from_args_struct_from_args<'a>(
     let append_missing_requirements =
         append_missing_requirements(&missing_requirements_ident, fields);
 
+    let apply_env_vars = apply_env_vars(fields);
+
     let parse_subcommands = if let Some(subcommand) = subcommand {
         let name = subcommand.name;
         let ty = subcommand.ty_without_wrapper;
@@ -441,6 +443,8 @@ fn impl_from_args_struct_from_args<'a>(
                 #parse_subcommands,
                 &|| #help,
             )?;
+
+            #( #apply_env_vars )*
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
             #(
@@ -901,6 +905,43 @@ fn unwrap_redacted_fields<'a>(
                 }
             }
         }
+    })
+}
+
+/// Generate code to check for environment variables and populate fields if empty.
+fn apply_env_vars<'a>(fields: &'a [StructField<'a>]) -> impl Iterator<Item = TokenStream> + 'a {
+    fields.iter().filter_map(move |field| {
+        let env_name = field.attrs.env.as_ref()?;
+        let field_name = &field.field.ident;
+
+        let check_empty = match field.optionality {
+             Optionality::Repeating => quote! { #field_name.slot.is_empty() },
+             _ => quote! { #field_name.slot.is_none() },
+        };
+
+        let assign_value = match field.optionality {
+             Optionality::Repeating => quote! { #field_name.slot.push(__value) },
+             Optionality::DefaultedRepeating(_) => quote! { #field_name.slot = Some(std::vec::Vec::from([__value])) },
+             _ => quote! { #field_name.slot = Some(__value) },
+        };
+
+        Some(quote! {
+            if #check_empty {
+                if let Some(__env_val) = std::env::var_os(#env_name) {
+                     let __env_val_lossy = __env_val.to_string_lossy();
+                     match (#field_name.parse_func)(#env_name, &__env_val_lossy) {
+                         Ok(__value) => {
+                             #assign_value;
+                         }
+                         Err(__e) => {
+                             return ::core::result::Result::Err(argh::EarlyExit::from(
+                                 format!("Error parsing environment variable '{}': {}", #env_name, __e)
+                             ));
+                         }
+                     }
+                }
+            }
+        })
     })
 }
 

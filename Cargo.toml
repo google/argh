@@ -1,17 +1,19 @@
 [workspace.package]
 version = "0.1.13"
-authors = ["Taylor Cramer <cramertj@google.com>", "Benjamin Brittain <bwb@google.com>", "Erick Tryzelaar <etryzelaar@google.com>", "Budi Syahiddin <founders@haxiom.io>"]
-edition = "2018"
+authors = [
+    "Taylor Cramer <cramertj@google.com>",
+    "Benjamin Brittain <bwb@google.com>",
+    "Erick Tryzelaar <etryzelaar@google.com>",
+    "Budi Syahiddin <founders@haxiom.io>",
+]
+edition = "2024"
 license = "BSD-3-Clause"
 description = "Derive-based argument parsing optimized for code size"
 repository = "https://github.com/google/argh"
 
 [workspace]
-members = [
-    "argh",
-    "argh_derive",
-    "argh_shared",
-]
+members = ["argh", "argh_derive", "argh_shared"]
+resolver = "3"
 
 [workspace.dependencies]
 argh_shared = { version = "0.1.13", path = "argh_shared" }

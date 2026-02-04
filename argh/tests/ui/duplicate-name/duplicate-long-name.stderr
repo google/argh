@@ -9,8 +9,8 @@ error: The long name of "--foo" was already used here.
 error: Later usage here.
   --> tests/ui/duplicate-name/duplicate-long-name.rs:8:5
    |
-8  | /     /// foo2
-9  | |     #[argh(option, long = "foo")]
+ 8 | /     /// foo2
+ 9 | |     #[argh(option, long = "foo")]
 10 | |     foo2: u32,
    | |_____________^
 

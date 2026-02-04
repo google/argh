@@ -264,7 +264,7 @@ fn positional_description(out: &mut String, field: &StructField<'_>) {
 }
 
 fn positional_description_format(out: &mut String, name: &str, description: &str) {
-    let info = argh_shared::CommandInfo { name, description };
+    let info = argh_shared::CommandInfo { name, description, short: &'\0' };
     argh_shared::write_description(out, &info);
 }
 
@@ -294,6 +294,6 @@ fn option_description_format(
     }
     name.push_str(long_with_leading_dashes);
 
-    let info = argh_shared::CommandInfo { name: &name, description };
+    let info = argh_shared::CommandInfo { name: &name, description, short: &'\0' };
     argh_shared::write_description(out, &info);
 }

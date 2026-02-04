@@ -689,11 +689,14 @@ fn top_or_sub_cmd_impl(
             errors.err(name, "`#[argh(name = \"...\")]` attribute is required for subcommands");
             &empty_str
         });
+        let short_name =
+            type_attrs.short.as_ref().map(|c| quote! { &#c }).unwrap_or_else(|| quote! { &'\0' });
         quote! {
             #[automatically_derived]
             impl #impl_generics argh::SubCommand for #name #ty_generics #where_clause {
                 const COMMAND: &'static argh::CommandInfo = &argh::CommandInfo {
                     name: #subcommand_name,
+                    short: #short_name,
                     description: #description,
                 };
             }
@@ -1110,7 +1113,11 @@ fn impl_from_args_enum(
                 };
 
                 #(
-                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
+                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name
+                        || (*<#variant_ty as argh::SubCommand>::COMMAND.short != '\0'
+                            && subcommand_name.len() == 1
+                            && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
+                    {
                         return ::core::result::Result::Ok(#name_repeating::#variant_names(
                             <#variant_ty as argh::FromArgs>::from_args(command_name, args)?
                         ));
@@ -1130,7 +1137,11 @@ fn impl_from_args_enum(
                 };
 
                 #(
-                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name {
+                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name
+                        || (*<#variant_ty as argh::SubCommand>::COMMAND.short != '\0'
+                            && subcommand_name.len() == 1
+                            && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
+                    {
                         return <#variant_ty as argh::FromArgs>::redact_arg_values(command_name, args);
                     }
                 )*

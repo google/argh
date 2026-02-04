@@ -59,6 +59,7 @@ fn args_info_test_subcommand() {
 
     let command_one = CommandInfoWithArgs {
         name: "one",
+        short: &'\0',
         description: "First subcommand.",
         flags: &[
             HELP_FLAG,
@@ -76,6 +77,7 @@ fn args_info_test_subcommand() {
 
     assert_args_info::<TopLevel>(&CommandInfoWithArgs {
         name: "TopLevel",
+        short: &'\0',
         description: "Top-level command.",
         examples: &[],
         flags: &[HELP_FLAG],
@@ -88,6 +90,7 @@ fn args_info_test_subcommand() {
                 name: "two",
                 command: CommandInfoWithArgs {
                     name: "two",
+                    short: &'\0',
                     description: "Second subcommand.",
                     flags: &[
                         HELP_FLAG,
@@ -124,6 +127,7 @@ fn args_info_test_multiline_doc_comment() {
     assert_args_info::<Cmd>(
             &CommandInfoWithArgs {
                 name: "Cmd",
+                short: &'\0',
                 description: "Short description",
                 flags: &[HELP_FLAG,
                 FlagInfo {
@@ -163,6 +167,7 @@ fn args_info_test_basic_args() {
     }
     assert_args_info::<Basic>(&CommandInfoWithArgs {
         name: "Basic",
+        short: &'\0',
         description:
             "Basic command args demonstrating multiple types and cardinality. \"With quotes\"",
         flags: &[
@@ -231,6 +236,7 @@ fn args_info_test_positional_args() {
     }
     assert_args_info::<Positional>(&CommandInfoWithArgs {
         name: "Positional",
+        short: &'\0',
         description: "Command with positional args demonstrating. \"With quotes\"",
         flags: &[HELP_FLAG],
         positionals: &[
@@ -278,6 +284,7 @@ fn args_info_test_optional_positional_args() {
     }
     assert_args_info::<Positional>(&CommandInfoWithArgs {
         name: "Positional",
+        short: &'\0',
         description: "Command with positional args demonstrating last value is optional",
         flags: &[FlagInfo {
             kind: FlagInfoKind::Switch,
@@ -332,6 +339,7 @@ fn args_info_test_default_positional_args() {
     }
     assert_args_info::<Positional>(&CommandInfoWithArgs {
         name: "Positional",
+        short: &'\0',
         description: "Command with positional args demonstrating last value is defaulted.",
         flags: &[HELP_FLAG],
         positionals: &[
@@ -393,6 +401,7 @@ fn args_info_test_notes_examples_errors() {
     assert_args_info::<NotesExamplesErrors>(
             &CommandInfoWithArgs {
                 name: "NotesExamplesErrors",
+                short: &'\0',
                 description: "Command with Examples and usage Notes, including error codes.",
                 examples: &["\n    Use the command with 1 file:\n    `{command_name} /path/to/file`\n    Use it with a \"wildcard\":\n    `{command_name} /path/to/*`\n     a blank line\n    \n    and one last line with \"quoted text\"."],
                 flags: &[HELP_FLAG
@@ -481,6 +490,7 @@ fn args_info_test_subcommands() {
 
     assert_args_info::<TopLevel>(&CommandInfoWithArgs {
         name: "TopLevel",
+        short: &'\0',
         description: "Top level command with \"subcommands\".",
         flags: &[
             HELP_FLAG,
@@ -499,6 +509,7 @@ fn args_info_test_subcommands() {
                 name: "one",
                 command: CommandInfoWithArgs {
                     name: "one",
+                    short: &'\0',
                     description: "Command1 args are used for Command1.",
                     flags: &[HELP_FLAG],
                     positionals: &[
@@ -528,6 +539,7 @@ fn args_info_test_subcommands() {
                 name: "two",
                 command: CommandInfoWithArgs {
                     name: "two",
+                    short: &'\0',
                     description: "Command2 args are used for Command2.",
                     flags: &[
                         HELP_FLAG,
@@ -573,6 +585,7 @@ fn args_info_test_subcommands() {
                 name: "three",
                 command: CommandInfoWithArgs {
                     name: "three",
+                    short: &'\0',
                     description:
                         "Command3 args are used for Command3 which has no options or arguments.",
                     flags: &[HELP_FLAG],
@@ -635,6 +648,7 @@ fn args_info_test_subcommand_notes_examples() {
 
     let command_one = CommandInfoWithArgs {
         name: "one",
+        short: &'\0',
         description: "Command1 args are used for subcommand one.",
         error_codes: &[ErrorCodeInfo { code: 0, description: "one level success" }],
         examples: &["\"Typical\" usage is `{command_name}`."],
@@ -665,6 +679,7 @@ fn args_info_test_subcommand_notes_examples() {
 
     assert_args_info::<TopLevel>(&CommandInfoWithArgs {
         name: "TopLevel",
+        short: &'\0',
         description: "Top level command with \"subcommands\".",
         error_codes: &[ErrorCodeInfo { code: 0, description: "Top level success" }],
         examples: &["Top level example"],
@@ -735,6 +750,7 @@ fn args_info_test_example() {
     assert_args_info::<HelpExample>(
             &CommandInfoWithArgs {
                 name: "HelpExample",
+                short: &'\0',
                 description: "Destroy the contents of <file> with a specific \"method of destruction\".",
                 examples: &["Scribble 'abc' and then run |grind|.\n$ {command_name} -s 'abc' grind old.txt taxes.cp"],
                 flags: &[HELP_FLAG,
@@ -752,6 +768,7 @@ fn args_info_test_example() {
                 commands: vec![
                     SubCommandInfo { name: "blow-up",
                  command: CommandInfoWithArgs { name: "blow-up",
+                  short: &'\0',
                   description: "explosively separate", 
                   flags:& [HELP_FLAG,
                    FlagInfo { kind: FlagInfoKind::Switch, optionality: Optionality::Optional, long: "--safely", short: None, description: "blow up bombs safely",
@@ -796,6 +813,7 @@ fn positional_greedy() {
     }
     assert_args_info::<LastRepeatingGreedy>(&CommandInfoWithArgs {
         name: "LastRepeatingGreedy",
+        short: &'\0',
         description: "Woot",
         flags: &[
             HELP_FLAG,
@@ -892,9 +910,9 @@ fn test_dynamic_subcommand() {
     impl argh::DynamicSubCommand for DynamicSubCommandImpl {
         fn commands() -> &'static [&'static argh::CommandInfo] {
             &[
-                &argh::CommandInfo { name: "three", description: "Third command" },
-                &argh::CommandInfo { name: "four", description: "Fourth command" },
-                &argh::CommandInfo { name: "five", description: "Fifth command" },
+                &argh::CommandInfo { name: "three", short: &'\0', description: "Third command" },
+                &argh::CommandInfo { name: "four", short: &'\0', description: "Fourth command" },
+                &argh::CommandInfo { name: "five", short: &'\0', description: "Fifth command" },
             ]
         }
 
@@ -960,6 +978,7 @@ fn test_dynamic_subcommand() {
 
     assert_args_info::<TopLevel>(&CommandInfoWithArgs {
         name: "TopLevel",
+        short: &'\0',
         description: "Top-level command.",
         flags: &[HELP_FLAG],
         commands: vec![
@@ -967,6 +986,7 @@ fn test_dynamic_subcommand() {
                 name: "one",
                 command: CommandInfoWithArgs {
                     name: "one",
+                    short: &'\0',
                     description: "First subcommand.",
                     flags: &[
                         HELP_FLAG,
@@ -986,6 +1006,7 @@ fn test_dynamic_subcommand() {
                 name: "two",
                 command: CommandInfoWithArgs {
                     name: "two",
+                    short: &'\0',
                     description: "Second subcommand.",
                     flags: &[
                         HELP_FLAG,
@@ -1005,6 +1026,7 @@ fn test_dynamic_subcommand() {
                 name: "three",
                 command: CommandInfoWithArgs {
                     name: "three",
+                    short: &'\0',
                     description: "Third command",
                     ..Default::default()
                 },
@@ -1013,6 +1035,7 @@ fn test_dynamic_subcommand() {
                 name: "four",
                 command: CommandInfoWithArgs {
                     name: "four",
+                    short: &'\0',
                     description: "Fourth command",
                     ..Default::default()
                 },
@@ -1021,6 +1044,7 @@ fn test_dynamic_subcommand() {
                 name: "five",
                 command: CommandInfoWithArgs {
                     name: "five",
+                    short: &'\0',
                     description: "Fifth command",
                     ..Default::default()
                 },

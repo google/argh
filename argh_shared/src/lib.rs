@@ -10,16 +10,26 @@
 pub struct CommandInfo<'a> {
     /// The name of the command.
     pub name: &'a str,
+    /// A short name for the command (alias).
+    pub short: &'a char,
     /// A short description of the command's functionality.
     pub description: &'a str,
 }
 
+impl<'a> Default for CommandInfo<'a> {
+    fn default() -> Self {
+        Self { name: Default::default(), short: &'\0', description: Default::default() }
+    }
+}
+
 /// Information about the command line arguments for a given command.
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct CommandInfoWithArgs<'a> {
     /// The name of the command.
     pub name: &'a str,
+    /// A short name for the command (alias).
+    pub short: &'a char,
     /// A short description of the command's functionality.
     pub description: &'a str,
     /// Examples of usage
@@ -34,6 +44,22 @@ pub struct CommandInfoWithArgs<'a> {
     pub positionals: &'a [PositionalInfo<'a>],
     /// Error code information
     pub error_codes: &'a [ErrorCodeInfo<'a>],
+}
+
+impl<'a> Default for CommandInfoWithArgs<'a> {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            short: &'\0',
+            description: Default::default(),
+            examples: Default::default(),
+            flags: Default::default(),
+            notes: Default::default(),
+            commands: Default::default(),
+            positionals: Default::default(),
+            error_codes: Default::default(),
+        }
+    }
 }
 
 /// Information about a documented error code.

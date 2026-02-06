@@ -201,9 +201,9 @@ fn dynamic_subcommand_example() {
     impl argh::DynamicSubCommand for DynamicSubCommandImpl {
         fn commands() -> &'static [&'static argh::CommandInfo] {
             &[
-                &argh::CommandInfo { name: "three", description: "Third command" },
-                &argh::CommandInfo { name: "four", description: "Fourth command" },
-                &argh::CommandInfo { name: "five", description: "Fifth command" },
+                &argh::CommandInfo { name: "three", short: &'\0', description: "Third command" },
+                &argh::CommandInfo { name: "four", short: &'\0', description: "Fourth command" },
+                &argh::CommandInfo { name: "five", short: &'\0', description: "Fifth command" },
             ]
         }
 
@@ -1280,7 +1280,11 @@ Options:
 
     impl argh::DynamicSubCommand for HelpExamplePlugin {
         fn commands() -> &'static [&'static argh::CommandInfo] {
-            &[&argh::CommandInfo { name: "plugin", description: "Example dynamic command" }]
+            &[&argh::CommandInfo {
+                name: "plugin",
+                short: &'\0',
+                description: "Example dynamic command",
+            }]
         }
 
         fn try_redact_arg_values(
@@ -1848,6 +1852,7 @@ fn subcommand_does_not_panic() {
     #[argh(subcommand)]
     enum SubCommandEnum {
         Cmd(SubCommand),
+        CmdTwo(SubCommandTwo),
     }
 
     #[derive(FromArgs, PartialEq, Debug)]

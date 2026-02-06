@@ -276,6 +276,7 @@
 //!             // don't know about until runtime!
 //!             commands.push(&*Box::leak(Box::new(CommandInfo {
 //!                 name: "dynamic_command",
+//!                 short: &'d',
 //!                 description: "A dynamic command",
 //!             })));
 //!
@@ -1152,7 +1153,9 @@ impl ParseStructSubCommand<'_> {
         remaining_args: &[&str],
     ) -> Result<bool, EarlyExit> {
         for subcommand in self.subcommands.iter().chain(self.dynamic_subcommands.iter()) {
-            if subcommand.name == arg {
+            if subcommand.name == arg
+                || arg.chars().count() == 1 && arg.chars().next().unwrap() == *subcommand.short
+            {
                 let mut command = cmd_name.to_owned();
                 command.push(subcommand.name);
                 let prepended_help;

@@ -20,7 +20,7 @@ enum MySubCommandEnum {
 
 #[derive(FromArgs, PartialEq, Debug)]
 /// First subcommand.
-#[argh(subcommand, name = "one")]
+#[argh(subcommand, name = "one", short = 'o')]
 struct SubCommandOne {
     #[argh(option)]
     /// how many x

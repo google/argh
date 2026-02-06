@@ -9,8 +9,8 @@ error: The short name of "-f" was already used here.
 error: Later usage here.
   --> tests/ui/duplicate-name/duplicate-short-name.rs:8:5
    |
-8  | /     /// foo2
-9  | |     #[argh(option, short = 'f')]
+ 8 | /     /// foo2
+ 9 | |     #[argh(option, short = 'f')]
 10 | |     foo2: u32,
    | |_____________^
 

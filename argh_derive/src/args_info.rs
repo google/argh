@@ -148,6 +148,7 @@ fn impl_arg_info_enum(
                 name: s.name,
                 command: CommandInfoWithArgs {
                     name: s.name,
+                    short: s.short,
                     description: s.description,
                     ..Default::default()
                 }
@@ -173,6 +174,12 @@ fn impl_arg_info_enum(
         LitStr::new("", Span::call_site())
     };
 
+    let short_name = if let Some(id) = &type_attrs.short {
+        quote! { &#id }
+    } else {
+        quote! { &'\0' }
+    };
+
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
 
     quote! {
@@ -188,6 +195,7 @@ fn impl_arg_info_enum(
 
             argh::CommandInfoWithArgs {
                 name: #cmd_name,
+                short: #short_name,
                /// A short description of the command's functionality.
                 description: " enum of subcommands",
                 commands: the_subcommands,
@@ -345,9 +353,16 @@ fn impl_args_info_data<'a>(
         quote! { argh::ErrorCodeInfo{code:#code, description: #text} }
     });
 
+    let short_name = if let Some(id) = &type_attrs.short {
+        quote! { &#id }
+    } else {
+        quote! { &'\0' }
+    };
+
     quote_spanned! { impl_span =>
         argh::CommandInfoWithArgs {
             name: #subcommand_name,
+            short: #short_name,
             description: #description,
             examples: &[#( #examples, )*],
             notes: &[#( #notes, )*],

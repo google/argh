@@ -164,6 +164,10 @@ pub fn write_description(out: &mut String, cmd: &CommandInfo<'_>) {
     let mut current_line = INDENT.to_string();
     current_line.push_str(cmd.name);
 
+    if *cmd.short != '\0' {
+        current_line.push_str(&format!("  {}", cmd.short));
+    }
+
     if cmd.description.is_empty() {
         new_line(&mut current_line, out);
         return;

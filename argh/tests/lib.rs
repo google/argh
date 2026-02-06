@@ -1018,9 +1018,9 @@ mod fuchsia_commandline_tools_rubric {
 
         let e = OneOption::from_args(&["cmdname"], &["--foo=bar"])
             .expect_err("Parsing option value using `=` should fail");
-        #[cfg(feature = "rust-fuzzy-search")]
+        #[cfg(feature = "fuzzy_search")]
         assert_eq!(e.output, "Unrecognized argument: \"--foo=bar\". Did you mean \"--foo\"?\n");
-        #[cfg(not(feature = "rust-fuzzy-search"))]
+        #[cfg(not(feature = "fuzzy_search"))]
         assert_eq!(e.output, "Unrecognized argument: --foo=bar\n");
         assert!(e.status.is_err());
     }

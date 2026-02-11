@@ -163,7 +163,7 @@ fn subcommand_example() {
     #[argh(subcommand)]
     enum MySubCommandEnum {
         One(SubCommandOne),
-        Two(SubCommandTwo),
+        Two(Box<SubCommandTwo>),
     }
 
     #[derive(FromArgs, PartialEq, Debug)]
@@ -185,10 +185,13 @@ fn subcommand_example() {
     }
 
     let one = TopLevel::from_args(&["cmdname"], &["one", "--x", "2"]).expect("sc 1");
-    assert_eq!(one, TopLevel { nested: MySubCommandEnum::One(SubCommandOne { x: 2 }) },);
+    assert_eq!(one, TopLevel { nested: MySubCommandEnum::One(SubCommandOne { x: 2 }) });
 
     let two = TopLevel::from_args(&["cmdname"], &["two", "--fooey"]).expect("sc 2");
-    assert_eq!(two, TopLevel { nested: MySubCommandEnum::Two(SubCommandTwo { fooey: true }) },);
+    assert_eq!(
+        two,
+        TopLevel { nested: MySubCommandEnum::Two(Box::new(SubCommandTwo { fooey: true })) }
+    );
 }
 
 #[test]

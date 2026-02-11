@@ -631,6 +631,16 @@ pub trait FromArgs: Sized {
     }
 }
 
+impl<T: FromArgs> FromArgs for Box<T> {
+    fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit> {
+        T::from_args(command_name, args).map(Box::new)
+    }
+
+    fn redact_arg_values(command_name: &[&str], args: &[&str]) -> Result<Vec<String>, EarlyExit> {
+        T::redact_arg_values(command_name, args)
+    }
+}
+
 /// A top-level `FromArgs` implementation that is not a subcommand.
 pub trait TopLevelCommand: FromArgs {}
 
@@ -645,14 +655,18 @@ pub trait SubCommands: FromArgs {
     }
 }
 
+impl<T: SubCommand> SubCommands for T {
+    const COMMANDS: &'static [&'static CommandInfo] = &[T::COMMAND];
+}
+
 /// A `FromArgs` implementation that represents a single subcommand.
 pub trait SubCommand: FromArgs {
     /// Information about the subcommand.
     const COMMAND: &'static CommandInfo;
 }
 
-impl<T: SubCommand> SubCommands for T {
-    const COMMANDS: &'static [&'static CommandInfo] = &[T::COMMAND];
+impl<T: SubCommand> SubCommand for Box<T> {
+    const COMMAND: &'static CommandInfo = T::COMMAND;
 }
 
 /// Trait implemented by values returned from a dynamic subcommand handler.

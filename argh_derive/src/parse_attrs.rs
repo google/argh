@@ -23,6 +23,7 @@ pub struct FieldAttrs {
     pub greedy: Option<syn::Path>,
     pub hidden_help: bool,
     pub usage: bool,
+    pub synonyms: Vec<syn::LitStr>,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -129,13 +130,17 @@ impl FieldAttrs {
                     this.hidden_help = true;
                 } else if name.is_ident("usage") {
                     this.usage = true;
+                } else if name.is_ident("synonyms") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        this.parse_attr_synonyms(errors, m);
+                    }
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
                             "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `greedy`, ",
-                            "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`, `usage`",
+                            "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`, `usage`, `synonyms`",
                         ),
                     );
                 }
@@ -198,6 +203,10 @@ impl FieldAttrs {
                 errors.err(lit_char, "Short names must be ASCII");
             }
         }
+    }
+
+    fn parse_attr_synonyms(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
+        parse_attr_list_string(errors, m, &mut self.synonyms);
     }
 }
 
@@ -285,6 +294,7 @@ pub struct TypeAttrs {
     /// Arguments that trigger printing of the help message
     pub help_triggers: Option<Vec<syn::LitStr>>,
     pub usage: Option<syn::LitStr>,
+    pub synonyms: Vec<syn::LitStr>,
 }
 
 impl TypeAttrs {
@@ -343,13 +353,17 @@ impl TypeAttrs {
                     if let Some(m) = errors.expect_meta_name_value(&meta) {
                         this.parse_attr_usage(errors, m);
                     }
+                } else if name.is_ident("synonyms") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        this.parse_attr_synonyms(errors, m);
+                    }
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid type-level `argh` attribute\n",
                             "Expected one of: `description`, `error_code`, `example`, `name`, ",
-                            "`note`, `short`, `subcommand`, `usage`",
+                            "`note`, `short`, `subcommand`, `synonyms`, `usage`",
                         ),
                     );
                 }
@@ -464,12 +478,17 @@ impl TypeAttrs {
     fn parse_attr_usage(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
         parse_attr_single_string(errors, m, "usage", &mut self.usage)
     }
+
+    fn parse_attr_synonyms(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
+        parse_attr_list_string(errors, m, &mut self.synonyms);
+    }
 }
 
 /// Represents a `FromArgs` enum variant's attributes.
 #[derive(Default)]
 pub struct VariantAttrs {
     pub is_dynamic: Option<syn::Path>,
+    pub synonyms: Vec<syn::LitStr>,
 }
 
 impl VariantAttrs {
@@ -506,17 +525,25 @@ impl VariantAttrs {
                     } else {
                         this.is_dynamic = errors.expect_meta_word(&meta).cloned();
                     }
+                } else if name.is_ident("synonyms") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        this.parse_attr_synonyms(errors, m);
+                    }
                 } else {
                     errors.err(
                         &meta,
                         "Invalid variant-level `argh` attribute\n\
-                         Subcommand variants can only have the #[argh(dynamic)] attribute.",
+                         Subcommand variants can only have the #[argh(dynamic)] or #[argh(synonyms)] attribute.",
                     );
                 }
             }
         }
 
         this
+    }
+
+    fn parse_attr_synonyms(&mut self, errors: &Errors, m: &syn::MetaNameValue) {
+        parse_attr_list_string(errors, m, &mut self.synonyms);
     }
 }
 
@@ -631,6 +658,20 @@ fn parse_attr_multi_string(errors: &Errors, m: &syn::MetaNameValue, list: &mut V
     }
 }
 
+fn parse_attr_list_string(errors: &Errors, m: &syn::MetaNameValue, list: &mut Vec<syn::LitStr>) {
+    if let syn::Expr::Array(array) = &m.value {
+        for elem in &array.elems {
+            if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(lit_str), .. }) = elem {
+                list.push(lit_str.clone());
+            } else {
+                errors.err(elem, "Expected string literal in synonyms array");
+            }
+        }
+    } else {
+        errors.err(&m.value, "Expected array literal for synonyms, e.g. synonyms = [\"a\", \"b\"]");
+    }
+}
+
 fn parse_attr_doc(errors: &Errors, attr: &syn::Attribute, slot: &mut Option<Description>) {
     let nv = if let Some(nv) = errors.expect_meta_name_value(&attr.meta) {
         nv
@@ -714,6 +755,7 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
         error_codes,
         help_triggers,
         usage,
+        synonyms,
     } = type_attrs;
 
     // Ensure that `#[argh(subcommand)]` is present.
@@ -756,6 +798,9 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
     if let Some(usage) = usage {
         err_unused_enum_attr(errors, usage);
+    }
+    if let Some(synonym) = synonyms.first() {
+        err_unused_enum_attr(errors, synonym);
     }
 }
 

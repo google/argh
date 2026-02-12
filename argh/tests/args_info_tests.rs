@@ -769,7 +769,7 @@ fn args_info_test_example() {
                     SubCommandInfo { name: "blow-up",
                  command: CommandInfoWithArgs { name: "blow-up",
                   short: &'\0',
-                  description: "explosively separate", 
+                  description: "explosively separate",
                   flags:& [HELP_FLAG,
                    FlagInfo { kind: FlagInfoKind::Switch, optionality: Optionality::Optional, long: "--safely", short: None, description: "blow up bombs safely",
                    hidden:false }

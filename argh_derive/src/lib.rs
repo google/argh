@@ -389,6 +389,7 @@ fn impl_from_args_struct_from_args<'a>(
         quote_spanned! { impl_span =>
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
+                command_synonyms: <#ty as argh::SubCommands>::COMMAND_SYNONYMS,
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
                 parse_func: &mut |__command, __remaining_args| {
                     #name = Some(<#ty as argh::FromArgs>::from_args(__command, __remaining_args)?);
@@ -533,6 +534,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
         quote_spanned! { impl_span =>
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
+                command_synonyms: <#ty as argh::SubCommands>::COMMAND_SYNONYMS,
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
                 parse_func: &mut |__command, __remaining_args| {
                     #name = Some(<#ty as argh::FromArgs>::redact_arg_values(__command, __remaining_args)?);
@@ -633,33 +635,48 @@ fn ensure_only_last_positional_is_optional(errors: &Errors, fields: &[StructFiel
 
 /// Ensures that only one short or long name is used.
 fn ensure_unique_names(errors: &Errors, fields: &[StructField<'_>]) {
-    let mut seen_short_names = HashMap::new();
-    let mut seen_long_names = HashMap::new();
+    let mut seen_short_names: HashMap<String, &StructField> = HashMap::new();
+    let mut seen_long_names: HashMap<String, &StructField> = HashMap::new();
 
     for field in fields {
         if let Some(short_name) = &field.attrs.short {
-            let short_name = short_name.value();
+            let short_name = short_name.value().to_string();
             if let Some(first_use_field) = seen_short_names.get(&short_name) {
                 errors.err_span_tokens(
-                    first_use_field,
+                    (*first_use_field).field,
                     &format!("The short name of \"-{}\" was already used here.", short_name),
                 );
                 errors.err_span_tokens(field.field, "Later usage here.");
             }
 
-            seen_short_names.insert(short_name, &field.field);
+            seen_short_names.insert(short_name, field);
         }
 
         if let Some(long_name) = &field.long_name {
-            if let Some(first_use_field) = seen_long_names.get(&long_name) {
+            if let Some(first_use_field) = seen_long_names.get(long_name) {
                 errors.err_span_tokens(
-                    *first_use_field,
+                    (*first_use_field).field,
                     &format!("The long name of \"{}\" was already used here.", long_name),
                 );
                 errors.err_span_tokens(field.field, "Later usage here.");
             }
 
-            seen_long_names.insert(long_name, field.field);
+            seen_long_names.insert(long_name.clone(), field);
+        }
+
+        for synonym in &field.attrs.synonyms {
+            let synonym_value = synonym.value();
+            if let Some(first_use_field) = seen_long_names.get(&synonym_value) {
+                errors.err_span_tokens(
+                    (*first_use_field).field,
+                    &format!("The synonym \"{}\" was already used here.", synonym_value),
+                );
+                errors.err_span_tokens(field.field, "Later usage here.");
+            }
+            // Synonyms are treated as long names, so we don't check against short names unless we want to support short synonyms (which we don't seem to support explicitly as short flags).
+            // Actually, if a synonym is "x", it becomes "--x". Short name is "-x". They don't conflict.
+
+            seen_long_names.insert(synonym_value, field);
         }
     }
 }
@@ -691,6 +708,7 @@ fn top_or_sub_cmd_impl(
         });
         let short_name =
             type_attrs.short.as_ref().map(|c| quote! { &#c }).unwrap_or_else(|| quote! { &'\0' });
+        let synonyms = &type_attrs.synonyms;
         quote! {
             #[automatically_derived]
             impl #impl_generics argh::SubCommand for #name #ty_generics #where_clause {
@@ -699,6 +717,8 @@ fn top_or_sub_cmd_impl(
                     short: #short_name,
                     description: #description,
                 };
+
+                const SYNONYMS: &'static [&'static str] = &[#( #synonyms ),*];
             }
         }
     }
@@ -922,6 +942,11 @@ fn flag_str_to_output_table_map_entries<'a>(fields: &'a [StructField<'a>]) -> Ve
         }
 
         flag_str_to_output_table_map.push(quote! { (#long_name, #i) });
+
+        for synonym in &field.attrs.synonyms {
+            let synonym = format!("--{}", synonym.value());
+            flag_str_to_output_table_map.push(quote! { (#synonym, #i) });
+        }
     }
     flag_str_to_output_table_map
 }
@@ -1075,6 +1100,12 @@ fn impl_from_args_enum(
     let name_repeating = std::iter::repeat(name.clone());
     let variant_ty = variants.iter().map(|x| x.ty).collect::<Vec<_>>();
     let variant_names = variants.iter().map(|x| x.name).collect::<Vec<_>>();
+    let variant_synonyms = variants.iter().map(|x| {
+        let ty = x.ty;
+        quote! {
+            || <#ty as argh::SubCommand>::SYNONYMS.contains(&subcommand_name)
+        }
+    }).collect::<Vec<_>>();
     let dynamic_from_args =
         dynamic_type_and_variant.as_ref().map(|(dynamic_type, dynamic_variant)| {
             quote! {
@@ -1113,7 +1144,7 @@ fn impl_from_args_enum(
                 };
 
                 #(
-                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name
+                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name #variant_synonyms
                         || (*<#variant_ty as argh::SubCommand>::COMMAND.short != '\0'
                             && subcommand_name.len() == 1
                             && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
@@ -1137,7 +1168,7 @@ fn impl_from_args_enum(
                 };
 
                 #(
-                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name
+                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name #variant_synonyms
                         || (*<#variant_ty as argh::SubCommand>::COMMAND.short != '\0'
                             && subcommand_name.len() == 1
                             && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
@@ -1155,6 +1186,10 @@ fn impl_from_args_enum(
         impl #impl_generics argh::SubCommands for #name #ty_generics #where_clause {
             const COMMANDS: &'static [&'static argh::CommandInfo] = &[#(
                 <#variant_ty as argh::SubCommand>::COMMAND,
+            )*];
+
+            const COMMAND_SYNONYMS: &'static [(&'static str, &'static [&'static str])] = &[#(
+                (<#variant_ty as argh::SubCommand>::COMMAND.name, <#variant_ty as argh::SubCommand>::SYNONYMS),
             )*];
 
             #dynamic_commands

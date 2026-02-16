@@ -495,6 +495,22 @@ pub trait FromArgs: Sized {
     /// ```
     fn from_args(command_name: &[&str], args: &[&str]) -> Result<Self, EarlyExit>;
 
+    /// Implementation of `from_args` that accepts global arguments.
+    /// This allows subcommands to recognize parent options when `#[argh(global)]` is used.
+    ///
+    /// * `command_name` and `args` are the same as in `from_args`.
+    /// * `parent_options` ("global") is usually passed in by a top-level command.
+    #[doc(hidden)]
+    fn from_args_global(
+        command_name: &[&str],
+        args: &[&str],
+        parent_options: Option<&mut ParseStructOptions<'_>>,
+    ) -> Result<Self, EarlyExit> {
+        // Default implementation for types that don't support global arguments
+        let _ = parent_options;
+        Self::from_args(command_name, args)
+    }
+
     /// Get a String with just the argument names, e.g., options, flags, subcommands, etc, but
     /// without the values of the options and arguments. This can be useful as a means to capture
     /// anonymous usage statistics without revealing the content entered by the end user.
@@ -938,6 +954,7 @@ impl_flag_for_integers![u8, u16, u32, u64, u128, i8, i16, i32, i64, i128,];
 /// `parse_options`: Helper to parse optional arguments.
 /// `parse_positionals`: Helper to parse positional arguments.
 /// `parse_subcommand`: Helper to parse a subcommand.
+/// `parent_options`: Optional parent command's options ("global" arguments).
 /// `help_func`: Generate a help message.
 #[doc(hidden)]
 pub fn parse_struct_args(
@@ -946,6 +963,7 @@ pub fn parse_struct_args(
     mut parse_options: ParseStructOptions<'_>,
     mut parse_positionals: ParseStructPositionals<'_>,
     mut parse_subcommand: Option<ParseStructSubCommand<'_>>,
+    mut parent_options: Option<&mut ParseStructOptions<'_>>,
     help_func: &dyn Fn() -> String,
 ) -> Result<(), EarlyExit> {
     let mut help = false;
@@ -970,12 +988,18 @@ pub fn parse_struct_args(
                 return Err("Trailing arguments are not allowed after `help`.".to_string().into());
             }
 
-            parse_options.parse(next_arg, &mut remaining_args)?;
+            parse_options.parse(next_arg, &mut remaining_args).or_else(
+                |err| match parent_options.as_mut() {
+                    Some(parent) => parent.parse(next_arg, &mut remaining_args),
+                    None => Err(err),
+                },
+            )?;
             continue;
         }
 
         if let Some(ref mut parse_subcommand) = parse_subcommand {
-            if parse_subcommand.parse(help, cmd_name, next_arg, remaining_args)? {
+            let parent_options = Some(&mut parse_options);
+            if parse_subcommand.parse(help, cmd_name, next_arg, remaining_args, parent_options)? {
                 // Unset `help`, since we handled it in the subcommand
                 help = false;
                 break 'parse_args;
@@ -1155,7 +1179,11 @@ pub struct ParseStructSubCommand<'a> {
 
     // The function to parse the subcommand arguments.
     #[allow(clippy::type_complexity)]
-    pub parse_func: &'a mut dyn FnMut(&[&str], &[&str]) -> Result<(), EarlyExit>,
+    pub parse_func: &'a mut dyn FnMut(
+        &[&str],
+        &[&str],
+        Option<&mut ParseStructOptions<'_>>,
+    ) -> Result<(), EarlyExit>,
 }
 
 impl ParseStructSubCommand<'_> {
@@ -1165,6 +1193,7 @@ impl ParseStructSubCommand<'_> {
         cmd_name: &[&str],
         arg: &str,
         remaining_args: &[&str],
+        parent_options: Option<&mut ParseStructOptions<'_>>,
     ) -> Result<bool, EarlyExit> {
         for subcommand in self.subcommands.iter().chain(self.dynamic_subcommands.iter()) {
             if subcommand.name == arg
@@ -1180,7 +1209,7 @@ impl ParseStructSubCommand<'_> {
                     remaining_args
                 };
 
-                (self.parse_func)(&command, remaining_args)?;
+                (self.parse_func)(&command, remaining_args, parent_options)?;
 
                 return Ok(true);
             }

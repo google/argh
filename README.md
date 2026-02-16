@@ -166,7 +166,7 @@ struct SubCommandOne {
 
 #[derive(FromArgs, PartialEq, Debug)]
 /// Second subcommand.
-#[argh(subcommand, name = "two")]
+#[argh(subcommand, name = "two", short = "t")]
 struct SubCommandTwo {
     #[argh(switch)]
     /// whether to fooey
@@ -174,7 +174,64 @@ struct SubCommandTwo {
 }
 ```
 
-NOTE: This is not an officially supported Google product.
+## Advanced Description
+
+You can define a complex help output that includes an **Examples** section.
+Use a `{command_name}` placeholder.
+
+```rust
+#[derive(FromArgs, Debug)]
+#[argh(
+    description = "{command_name} is a tool to reach new heights.\n\n\
+    Start exploring new heights:\n\n\
+    \u{00A0} {command_name} --height 5 jump\n\
+    ",
+    example = "\
+    {command_name} --height 5\n\
+    {command_name} --height 5 j\n\
+    {command_name} --height 5 --pilot-nickname Wes jump"
+)]
+pub struct CliArgs {
+    /// how high to go
+    #[argh(option)]
+    height: usize,
+    /// an optional nickname for the pilot
+    #[argh(option)]
+    pilot_nickname: Option<String>,
+    /// command to execute
+    #[argh(subcommand)]
+    pub command: Command,
+}
+```
+
+Output:
+
+```
+Usage: goup --height <height> [--pilot-nickname <pilot-nickname>] <command> [<args>]
+
+goup is a tool to reach new heights.
+
+Start exploring new heights:
+
+  goup --height 5 jump
+
+Options:
+  --height          how high to go
+  --pilot-nickname  an optional nickname for the pilot
+  --help, help      display usage information
+
+Commands:
+  jump  j           whether or not to jump
+
+Examples:
+  goup --height 5
+  goup --height 5 j
+  goup --height 5 --pilot-nickname Wes jump
+```
+
+## Note
+
+This is not an officially supported Google product.
 
 
 ## How to debug the expanded derive macro for `argh`

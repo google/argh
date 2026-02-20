@@ -229,11 +229,6 @@ Examples:
   goup --height 5 --pilot-nickname Wes jump
 ```
 
-## Note
-
-This is not an officially supported Google product.
-
-
 ## How to debug the expanded derive macro for `argh`
 
 The `argh::FromArgs` derive macro can be debugged with the [cargo-expand](https://crates.io/crates/cargo-expand) crate.
@@ -245,3 +240,7 @@ See [argh/examples/simple_example.rs](./argh/examples/simple_example.rs) for the
 First, install `cargo-expand` by running `cargo install cargo-expand`. Note this requires the nightly build of Rust.
 
 Once installed, run `cargo expand` with in the `argh` package and you can see the expanded code.
+
+## Note
+
+This is not an officially supported Google product.

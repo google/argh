@@ -11,6 +11,7 @@ members = [
     "argh",
     "argh_derive",
     "argh_shared",
+    "argh_complete",
 ]
 
 [workspace.dependencies]

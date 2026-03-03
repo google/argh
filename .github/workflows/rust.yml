@@ -17,6 +17,12 @@ jobs:
     - name: Run simple_example
       run: cargo run --package argh --example simple_example two --fooey --woot quiet
 
+    - name: Run completion_example
+      run: |
+        cargo run --package argh --example completion_example completion bash
+        cargo run --package argh --example completion_example completion zsh
+        cargo run --package argh --example completion_example completion fish
+
   rustfmt:
     name: rustfmt
     runs-on: ubuntu-latest

@@ -16,6 +16,7 @@ argh_derive.workspace = true
 rust-fuzzy-search = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
+argh_complete = { version = "0.1.0", path = "../argh_complete" }
 trybuild = "1.0.63"
 
 [features]

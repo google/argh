@@ -1,0 +1,12 @@
+[package]
+name = "argh_complete"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Autocompletion generators for argh-based CLIs"
+readme = "README.md"
+
+[dependencies]
+argh_shared = { version = "0.1.13", path = "../argh_shared" }

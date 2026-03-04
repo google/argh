@@ -322,7 +322,7 @@
 //!
 //! ```rust
 //! # use argh::FromArgs;
-//! #[derive(FromArgs, Debug)]
+//! #[derive(FromArgs, PartialEq, Debug)]
 //! #[argh(
 //!     description = "{command_name} is a tool to reach new heights.\n\n\
 //!     Start exploring new heights:\n\n\
@@ -333,7 +333,7 @@
 //!     {command_name} --height 5 j\n\
 //!     {command_name} --height 5 --pilot-nickname Wes jump"
 //! )]
-//! pub struct CliArgs {
+//! struct CliArgs {
 //!     /// how high to go
 //!     #[argh(option)]
 //!     height: usize,
@@ -342,8 +342,12 @@
 //!     pilot_nickname: Option<String>,
 //!     /// command to execute
 //!     #[argh(subcommand)]
-//!     pub command: Command,
+//!     command: Command,
 //! }
+//!
+//! # #[derive(FromArgs, PartialEq, Debug)]
+//! # #[argh(subcommand)]
+//! # enum Command {}
 //! ```
 //!
 //! Output:

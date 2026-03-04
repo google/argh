@@ -1,6 +1,6 @@
 use argh::FromArgs;
 
-#[derive(FromArgs, Debug)]
+#[derive(FromArgs, PartialEq, Debug)]
 #[argh(
     description = "{command_name} is a tool to reach new heights.\n\n\
     Start exploring new heights:\n\n\
@@ -11,7 +11,7 @@ use argh::FromArgs;
     {command_name} --height 5 j\n\
     {command_name} --height 5 --pilot-nickname Wes jump"
 )]
-pub struct CliArgs {
+struct CliArgs {
     /// how high to go
     #[argh(option)]
     height: usize,
@@ -20,19 +20,19 @@ pub struct CliArgs {
     pilot_nickname: Option<String>,
     /// command to execute
     #[argh(subcommand)]
-    pub command: Command,
+    command: Command,
 }
 
-#[derive(FromArgs, Debug)]
+#[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand)]
-pub enum Command {
+enum Command {
     Jump(JumpCmd),
 }
 
-#[derive(FromArgs, Debug)]
+#[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "jump", short = 'j')]
 /// whether or not to jump
-pub struct JumpCmd {}
+struct JumpCmd {}
 
 fn main() {
     let args: CliArgs = argh::from_env();

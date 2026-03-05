@@ -17,6 +17,7 @@ struct MyCmd {
 enum Subcommands {
     Completion(CompletionCmd),
     DoThings(DoThingsCmd),
+    DoMoreThings(DoMoreThingsCmd),
 }
 
 #[derive(FromArgs, ArgsInfo)]
@@ -39,6 +40,39 @@ struct DoThingsCmd {
     /// do it quickly
     #[argh(switch, short = 'q')]
     quick: bool,
+}
+
+#[derive(FromArgs, ArgsInfo)]
+#[argh(subcommand)]
+enum MoreThingsSubcommands {
+    ThingOne(ThingOneCommand),
+    ThingTwo(ThingTwoCommand),
+}
+
+#[derive(FromArgs, ArgsInfo)]
+/// Do thing one.
+#[argh(subcommand, name = "one")]
+struct ThingOneCommand {
+    /// do it slowly
+    #[argh(switch, short = 's')]
+    slow: bool,
+}
+
+#[derive(FromArgs, ArgsInfo)]
+/// Do thing two.
+#[argh(subcommand, name = "two")]
+struct ThingTwoCommand {
+    /// do it quickly
+    #[argh(switch, short = 'q')]
+    quick: bool,
+}
+
+#[derive(FromArgs, ArgsInfo)]
+/// Do some more things.
+#[argh(subcommand, name = "do-more-things")]
+struct DoMoreThingsCmd {
+    #[argh(subcommand)]
+    cmd: MoreThingsSubcommands,
 }
 
 fn main() {
@@ -74,5 +108,13 @@ fn main() {
         Subcommands::DoThings(cmd) => {
             println!("Doing {} things (quick: {})", cmd.count, cmd.quick);
         }
+        Subcommands::DoMoreThings(cmd) => match cmd.cmd {
+            MoreThingsSubcommands::ThingOne(cmd) => {
+                println!("Doing more thing one (slow: {})", cmd.slow);
+            }
+            MoreThingsSubcommands::ThingTwo(cmd) => {
+                println!("Doing more thing two (quick: {})", cmd.quick);
+            }
+        },
     }
 }

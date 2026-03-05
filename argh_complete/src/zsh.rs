@@ -78,7 +78,7 @@ fn generate_zsh_args(out: &mut String, prefix: &str, cmd: &CommandInfoWithArgs<'
         if has_short && has_long {
             let short = format!("-{}", flag.short.unwrap());
             def.push_str(&format!(
-                "'({} {})'{{{},{}}}[{}]",
+                "'({} {})'{{{},{}}}'[{}]'",
                 short, flag.long, short, flag.long, desc
             ));
         } else if has_long {
@@ -107,9 +107,9 @@ fn generate_zsh_args(out: &mut String, prefix: &str, cmd: &CommandInfoWithArgs<'
             writeln!(out, "{}            '{}:{}'", ind, subcmd.name, desc).unwrap();
         }
         writeln!(out, "{}        )", ind).unwrap();
-        writeln!(out, "{}        _describe -t commands '{} commands' subcommands", ind, cmd.name)
-            .unwrap();
         writeln!(out, "{}        if (( CURRENT == 1 )); then", ind).unwrap();
+        writeln!(out, "{}          _describe -t commands '{} commands' subcommands", ind, cmd.name)
+            .unwrap();
         writeln!(out, "{}            return", ind).unwrap();
         writeln!(out, "{}        fi", ind).unwrap();
         writeln!(out, "{}        local cmd=$words[1]", ind).unwrap();

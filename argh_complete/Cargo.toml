@@ -9,4 +9,4 @@ description = "Autocompletion generators for argh-based CLIs"
 readme = "README.md"
 
 [dependencies]
-argh_shared = { version = "0.1.13", path = "../argh_shared" }
+argh_shared.workspace = true

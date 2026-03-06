@@ -1,0 +1,44 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish argh_shared
+        run: cargo publish --manifest-path argh_shared/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish argh_derive
+        run: |
+          sleep 10 # Wait for crates.io index to update
+          cargo publish --manifest-path argh_derive/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish argh_complete
+        run: |
+          sleep 10 # Wait for crates.io index to update
+          cargo publish --manifest-path argh_complete/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish argh
+        run: |
+          sleep 10 # Wait for crates.io index to update
+          cargo publish --manifest-path argh/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

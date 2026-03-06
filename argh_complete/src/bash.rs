@@ -49,14 +49,7 @@ impl Generator for Bash {
 
         // Now dispatch based on the determined `cmd`
         writeln!(&mut out, "    case \"${{cmd}}\" in").unwrap();
-        generate_bash_dispatch(&mut out, cmd_name, cmd);
-        for subcmd in &cmd.commands {
-            generate_bash_dispatch(
-                &mut out,
-                &format!("{}_{}", cmd_name, subcmd.name),
-                &subcmd.command,
-            );
-        }
+        generate_all_dispatch(&mut out, cmd_name, cmd);
         writeln!(&mut out, "    esac").unwrap();
         writeln!(&mut out, "}}").unwrap();
         writeln!(&mut out).unwrap();
@@ -129,4 +122,11 @@ fn generate_bash_dispatch(out: &mut String, full_name: &str, cmd: &CommandInfoWi
     }
 
     writeln!(out, "            ;;").unwrap();
+}
+fn generate_all_dispatch(out: &mut String, full_name: &str, cmd: &CommandInfoWithArgs<'_>) {
+    generate_bash_dispatch(out, full_name, cmd);
+    for subcmd in &cmd.commands {
+        let next_full_name = format!("{}_{}", full_name, subcmd.name);
+        generate_all_dispatch(out, &next_full_name, &subcmd.command);
+    }
 }

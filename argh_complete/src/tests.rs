@@ -52,6 +52,6 @@ fn test_fish_generator() {
     let cmd = make_mock_command();
     let fish_out = crate::fish::Fish::generate("mycmd", &cmd);
 
-    assert!(fish_out.contains("complete -c mycmd -l verbose -s v -d 'verbose output'"));
-    assert!(fish_out.contains("complete -c mycmd -f -a 'subcmd' -d 'a sub command'"));
+    assert!(fish_out.contains("complete -c mycmd -n 'not __fish_seen_subcommand_from subcmd' -f -l verbose -s v -d 'verbose output'"));
+    assert!(fish_out.contains("complete -c mycmd -n 'not __fish_seen_subcommand_from subcmd' -f -a 'subcmd' -d 'a sub command'"));
 }

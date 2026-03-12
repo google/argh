@@ -6,6 +6,7 @@
 
 pub mod bash;
 pub mod fish;
+pub mod nushell;
 pub mod zsh;
 
 use argh_shared::CommandInfoWithArgs;

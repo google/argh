@@ -24,7 +24,7 @@ enum Subcommands {
 /// Generate shell completions.
 #[argh(subcommand, name = "completion")]
 struct CompletionCmd {
-    /// the shell to generate for (bash, zsh, fish)
+    /// the shell to generate for (bash, zsh, fish, nushell)
     #[argh(positional)]
     shell: String,
 }
@@ -101,6 +101,12 @@ fn main() {
                 }
                 "fish" => {
                     println!("{}", argh_complete::fish::Fish::generate(&command_name, &cmd_info))
+                }
+                "nushell" => {
+                    println!(
+                        "{}",
+                        argh_complete::nushell::Nushell::generate(&command_name, &cmd_info)
+                    )
                 }
                 _ => eprintln!("Unsupported shell: {}", cmd.shell),
             }

@@ -59,3 +59,14 @@ fn test_fish_generator() {
     assert!(fish_out.contains("complete -c mycmd -n 'not __fish_seen_subcommand_from subcmd' -f -l verbose -s v -d 'verbose output'"));
     assert!(fish_out.contains("complete -c mycmd -n 'not __fish_seen_subcommand_from subcmd' -f -a 'subcmd' -d 'a sub command'"));
 }
+
+#[cfg(test)]
+#[test]
+fn test_nushell_generator() {
+    let cmd = make_mock_command();
+    let nushell_out = crate::nushell::Nushell::generate("mycmd", &cmd);
+
+    assert!(nushell_out.contains("export extern \"mycmd\" ["));
+    assert!(nushell_out.contains("--verbose(-v) # verbose output"));
+    assert!(nushell_out.contains("export extern \"mycmd subcmd\" ["));
+}

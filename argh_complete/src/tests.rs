@@ -2,15 +2,49 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#[cfg(test)]
 use crate::Generator;
-#[cfg(test)]
 use argh_shared::{CommandInfoWithArgs, FlagInfo, FlagInfoKind, Optionality, SubCommandInfo};
 
-#[cfg(test)]
 fn make_mock_command() -> CommandInfoWithArgs<'static> {
-    let subcmd_info =
-        CommandInfoWithArgs { name: "subcmd", description: "a sub command", ..Default::default() };
+    let subcmd_test_list =
+        CommandInfoWithArgs { name: "list", description: "a list command", ..Default::default() };
+    let subcmd_test_run =
+        CommandInfoWithArgs { name: "run", description: "a run command", ..Default::default() };
+    let subcmd_test = CommandInfoWithArgs {
+        name: "test",
+        description: "a test command inside subcmd",
+        commands: vec![
+            SubCommandInfo { name: "list", command: subcmd_test_list },
+            SubCommandInfo { name: "run", command: subcmd_test_run },
+        ],
+        ..Default::default()
+    };
+    let subcmd_help =
+        CommandInfoWithArgs { name: "help", description: "a help command", ..Default::default() };
+
+    let subcmd_info = CommandInfoWithArgs {
+        name: "subcmd",
+        description: "a sub command",
+        commands: vec![
+            SubCommandInfo { name: "help", command: subcmd_help },
+            SubCommandInfo { name: "test", command: subcmd_test },
+        ],
+        ..Default::default()
+    };
+
+    let test_run_info =
+        CommandInfoWithArgs { name: "run", description: "a run command", ..Default::default() };
+    let test_build_info =
+        CommandInfoWithArgs { name: "build", description: "a build command", ..Default::default() };
+    let subcmd_2info = CommandInfoWithArgs {
+        name: "test",
+        description: "a test command",
+        commands: vec![
+            SubCommandInfo { name: "run", command: test_run_info },
+            SubCommandInfo { name: "build", command: test_build_info },
+        ],
+        ..Default::default()
+    };
 
     CommandInfoWithArgs {
         name: "mycmd",
@@ -23,12 +57,14 @@ fn make_mock_command() -> CommandInfoWithArgs<'static> {
             description: "verbose output",
             hidden: false,
         }],
-        commands: vec![SubCommandInfo { name: "subcmd", command: subcmd_info }],
+        commands: vec![
+            SubCommandInfo { name: "subcmd", command: subcmd_info },
+            SubCommandInfo { name: "test", command: subcmd_2info },
+        ],
         ..Default::default()
     }
 }
 
-#[cfg(test)]
 #[test]
 fn test_bash_generator() {
     let cmd = make_mock_command();
@@ -36,10 +72,9 @@ fn test_bash_generator() {
 
     assert!(bash_out.contains("cmd=\"mycmd_subcmd\""));
     assert!(bash_out.contains("opts=\"--verbose -v\""));
-    assert!(bash_out.contains("cmds=\"subcmd\""));
+    assert!(bash_out.contains("cmds=\"help test\""), "bash should have updated cmds for subcmd");
 }
 
-#[cfg(test)]
 #[test]
 fn test_zsh_generator() {
     let cmd = make_mock_command();
@@ -50,17 +85,20 @@ fn test_zsh_generator() {
     assert!(zsh_out.contains("(-v --verbose)")); // Simplified check
 }
 
-#[cfg(test)]
 #[test]
 fn test_fish_generator() {
     let cmd = make_mock_command();
     let fish_out = crate::fish::Fish::generate("mycmd", &cmd);
 
-    assert!(fish_out.contains("complete -c mycmd -n 'not __fish_seen_subcommand_from subcmd' -f -l verbose -s v -d 'verbose output'"));
-    assert!(fish_out.contains("complete -c mycmd -n 'not __fish_seen_subcommand_from subcmd' -f -a 'subcmd' -d 'a sub command'"));
+    assert!(fish_out.contains("function __fish_mycmd_using_command"));
+    assert!(fish_out.contains(
+        "complete -c mycmd -n '__fish_mycmd_using_command' -f -l verbose -s v -d 'verbose output'"
+    ));
+    assert!(fish_out.contains(
+        "complete -c mycmd -n '__fish_mycmd_using_command' -f -a 'subcmd' -d 'a sub command'"
+    ));
 }
 
-#[cfg(test)]
 #[test]
 fn test_nushell_generator() {
     let cmd = make_mock_command();

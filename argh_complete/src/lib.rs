@@ -17,4 +17,5 @@ pub trait Generator {
     fn generate(cmd_name: &str, cmd: &CommandInfoWithArgs<'_>) -> String;
 }
 
+#[cfg(test)]
 mod tests;

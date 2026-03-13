@@ -11,63 +11,102 @@ use std::fmt::Write;
 /// A generator for Fish shell completions.
 pub struct Fish;
 
+fn collect_value_flags(cmd: &CommandInfoWithArgs<'_>, out: &mut Vec<String>) {
+    for flag in cmd.flags {
+        if let FlagInfoKind::Option { .. } = flag.kind {
+            if let Some(short) = flag.short {
+                out.push(short.to_string());
+            }
+            let long = flag.long.trim_start_matches('-');
+            if !long.is_empty() {
+                out.push(long.to_string());
+            }
+        }
+    }
+    for sub in &cmd.commands {
+        collect_value_flags(&sub.command, out);
+    }
+}
+
 impl Generator for Fish {
     fn generate(cmd_name: &str, cmd: &CommandInfoWithArgs<'_>) -> String {
         let mut out = String::new();
-        generate_fish_cmd(&mut out, cmd_name, cmd, &[]);
+
+        let mut value_flags = Vec::new();
+        collect_value_flags(cmd, &mut value_flags);
+
+        value_flags.sort();
+        value_flags.dedup();
+
+        let mut known_value_flags_str = String::new();
+        for flag in value_flags {
+            known_value_flags_str.push_str(&format!("'{flag}' "));
+        }
+
+        // Generate the custom parsing state machine function that replaces `__fish_seen_subcommand_from`
+        writeln!(
+            out,
+            "function __fish_{cmd_name}_using_command\n\
+            \x20   set -l cmd (commandline -xpc)\n\
+            \x20   set -e cmd[1]\n\
+            \x20   set -l target_cmd $argv\n\
+            \n\
+            \x20   set -l known_value_flags {known_value_flags_str}\n\
+            \n\
+            \x20   set -l i 1\n\
+            \x20   set -l cleaned_cmd\n\
+            \x20   while test $i -le (count $cmd)\n\
+            \x20       set -l arg $cmd[$i]\n\
+            \x20       if string match -q -- \"-*\" $arg\n\
+            \x20           set -l pure_flag (string replace -r '^--?' '' -- $arg)\n\
+            \x20           if contains -- $pure_flag $known_value_flags\n\
+            \x20               set -l next_i (math $i + 1)\n\
+            \x20               if test $next_i -le (count $cmd)\n\
+            \x20                   if not string match -q -- \"-*\" $cmd[$next_i]\n\
+            \x20                       set i $next_i\n\
+            \x20                   end\n\
+            \x20               end\n\
+            \x20           end\n\
+            \x20       else\n\
+            \x20           set -a cleaned_cmd $arg\n\
+            \x20       end\n\
+            \x20       set i (math $i + 1)\n\
+            \x20   end\n\
+            \n\
+            \x20   set -l count_cleaned (count $cleaned_cmd)\n\
+            \x20   set -l count_target (count $target_cmd)\n\
+            \x20   \n\
+            \x20   if test $count_cleaned -ne $count_target\n\
+            \x20       return 1\n\
+            \x20   end\n\
+            \x20   \n\
+            \x20   for i in (seq $count_target)\n\
+            \x20       if test $cleaned_cmd[$i] != $target_cmd[$i]\n\
+            \x20           return 1\n\
+            \x20       end\n\
+            \x20   end\n\
+            \x20   \n\
+            \x20   return 0\n\
+            end\n"
+        )
+        .unwrap();
+
+        generate_fish_cmd(&mut out, cmd_name, cmd_name, cmd, &[]);
         out
     }
 }
 
 fn generate_fish_cmd(
     out: &mut String,
+    bin_name: &str,
     base_cmd: &str,
     cmd: &CommandInfoWithArgs<'_>,
     parent_subcommands: &[&str],
 ) {
-    // Condition for the current command's flags and immediate subcommands.
-    // It must be active (all parents seen) AND no children seen yet.
-    let mut conditions = Vec::new();
-
-    // 1. Requirement: All parent subcommands must be effectively "seen" (in order).
-    // actually `__fish_seen_subcommand_from` handles the check if *any* of them are seen,
-    // but for specific nesting, we usually want to say "we have seen parent X" and "we have NOT seen any child of X yet".
-
-    // For the root command, we don't need `__fish_seen_subcommand_from`.
-    // For subcommand `A`, we need `__fish_seen_subcommand_from A`.
-    // For nested `A B`, we need `__fish_seen_subcommand_from B`.
-    // The issue with `__fish_seen_subcommand_from` is it returns true if the subcommand is present *anywhere*.
-    // However, typical fish completion scripts use this pattern:
-    // `complete -c cmd -n '__fish_seen_subcommand_from sub' ...`
-    // This implies we are "in" the subcommand.
-
-    // If we have parents, the last parent must be seen.
-    if let Some(last_parent) = parent_subcommands.last() {
-        conditions.push(format!("__fish_seen_subcommand_from {}", last_parent));
+    let joined_condition = if parent_subcommands.is_empty() {
+        format!("-n '__fish_{bin_name}_using_command'")
     } else {
-        // Root command: ensure NO subcommands are seen (if we want to prevent root flags from showing up in subcommands).
-        // BUT strict `not __fish_seen_subcommand_from ...` for ALL descendants is hard.
-        // Usually, we just check immediate children to distinguish "root context" from "subcommand context".
-        conditions.push("not __fish_seen_subcommand_from".to_string());
-        for sub in &cmd.commands {
-            conditions[0].push_str(&format!(" {}", sub.name));
-        }
-    }
-
-    // 2. Requirement: No immediate child of THIS command must be seen.
-    if !cmd.commands.is_empty() && !parent_subcommands.is_empty() {
-        let mut not_seen_child = String::from("not __fish_seen_subcommand_from");
-        for sub in &cmd.commands {
-            not_seen_child.push_str(&format!(" {}", sub.name));
-        }
-        conditions.push(not_seen_child);
-    }
-
-    let joined_condition = if conditions.is_empty() {
-        String::new()
-    } else {
-        let parts: Vec<String> = conditions.iter().map(|c| format!("-n '{}'", c)).collect();
-        parts.join(" ")
+        format!("-n '__fish_{bin_name}_using_command {}'", parent_subcommands.join(" "))
     };
 
     // If the command has no positional arguments, disable file completion.
@@ -127,6 +166,6 @@ fn generate_fish_cmd(
     for subcmd in &cmd.commands {
         let mut new_parents = parent_subcommands.to_vec();
         new_parents.push(subcmd.name);
-        generate_fish_cmd(out, base_cmd, &subcmd.command, &new_parents);
+        generate_fish_cmd(out, bin_name, base_cmd, &subcmd.command, &new_parents);
     }
 }

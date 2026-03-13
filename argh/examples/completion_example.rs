@@ -8,6 +8,9 @@ use argh_complete::Generator;
 #[derive(FromArgs, ArgsInfo)]
 /// An example command showing off autocompletion generation.
 struct MyCmd {
+    /// do things verbosely
+    #[argh(switch, short = 'v')]
+    verbose: bool,
     #[argh(subcommand)]
     cmd: Subcommands,
 }
@@ -77,6 +80,10 @@ struct DoMoreThingsCmd {
 
 fn main() {
     let args: MyCmd = argh::from_env();
+
+    if args.verbose && matches!(args.cmd, Subcommands::Completion(_)) {
+        println!("Doing things verbosely ")
+    }
 
     match args.cmd {
         Subcommands::Completion(cmd) => {

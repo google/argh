@@ -149,6 +149,9 @@
 //! }
 //! ```
 //!
+//! Positional arguments accept values starting with a dash, such as negative numbers
+//! (e.g., `-5`) or dash-prefixed filenames. To explicitly mark the end of options, 
+//! use `--` as a separator.
 //! The last positional argument may include a default, or be wrapped in
 //! `Option` or `Vec` to indicate an optional or repeating positional argument.
 //!

@@ -400,7 +400,7 @@
 
 #![deny(missing_docs)]
 
-use std::str::FromStr;
+use std::{ffi::OsString, str::FromStr};
 
 pub use argh_derive::{ArgsInfo, FromArgValue, FromArgs};
 
@@ -783,19 +783,55 @@ fn cmd<'a>(default: &'a str, path: &'a str) -> &'a str {
     std::path::Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(default)
 }
 
+/// Error returned by [`try_from_env`]
+pub enum FromEnvError {
+    /// An argument contained an invalid Utf-8 character.
+    Utf8(OsString),
+    /// Parsing arguments led to a request for an early exit, either to display
+    /// help or because the arguments were invalid.
+    EarlyExit(EarlyExit, String),
+}
+
+impl FromEnvError {
+    /// Handle an error returned from parsing options by printing information to
+    /// the user and exiting with the appropriate status code.
+    pub fn handle(self) -> ! {
+        match self {
+            FromEnvError::Utf8(arg) => {
+                eprintln!("Invalid utf8: {}", arg.to_string_lossy());
+                std::process::exit(1)
+            }
+            FromEnvError::EarlyExit(early_exit, cmd) => {
+                std::process::exit(match early_exit.status {
+                    Ok(()) => {
+                        println!("{}", early_exit.output);
+                        0
+                    }
+                    Err(()) => {
+                        eprintln!(
+                            "{}\nRun {} --help for more information.",
+                            early_exit.output, cmd
+                        );
+                        1
+                    }
+                })
+            }
+        }
+    }
+}
+
 /// Create a `FromArgs` type from the current process's `env::args`.
 ///
-/// This function will exit early from the current process if argument parsing
-/// was unsuccessful or if information like `--help` was requested. Error messages will be printed
-/// to stderr, and `--help` output to stdout.
-pub fn from_env<T: TopLevelCommand>() -> T {
+/// This function will return an error if argument parsing was unsuccessful or
+/// if information like `--help` was requested. The standard behavior in this
+/// case is usually some form of early exit, which can be performed by calling
+/// [`FromEnvError::handle`]. You can also call [`from_env`] to
+/// automatically handle the error and exit.
+pub fn try_from_env<T: TopLevelCommand>() -> Result<T, FromEnvError> {
     let strings: Vec<String> = std::env::args_os()
         .map(|s| s.into_string())
         .collect::<Result<Vec<_>, _>>()
-        .unwrap_or_else(|arg| {
-            eprintln!("Invalid utf8: {}", arg.to_string_lossy());
-            std::process::exit(1)
-        });
+        .map_err(FromEnvError::Utf8)?;
 
     if strings.is_empty() {
         eprintln!("No program name, argv is empty");
@@ -804,18 +840,16 @@ pub fn from_env<T: TopLevelCommand>() -> T {
 
     let cmd = cmd(&strings[0], &strings[0]);
     let strs: Vec<&str> = strings.iter().map(|s| s.as_str()).collect();
-    T::from_args(&[cmd], &strs[1..]).unwrap_or_else(|early_exit| {
-        std::process::exit(match early_exit.status {
-            Ok(()) => {
-                println!("{}", early_exit.output);
-                0
-            }
-            Err(()) => {
-                eprintln!("{}\nRun {} --help for more information.", early_exit.output, cmd);
-                1
-            }
-        })
-    })
+    T::from_args(&[cmd], &strs[1..]).map_err(|e| FromEnvError::EarlyExit(e, cmd.to_owned()))
+}
+
+/// Create a `FromArgs` type from the current process's `env::args`.
+///
+/// This function will exit early from the current process if argument parsing
+/// was unsuccessful or if information like `--help` was requested. Error messages will be printed
+/// to stderr, and `--help` output to stdout.
+pub fn from_env<T: TopLevelCommand>() -> T {
+    try_from_env().unwrap_or_else(|e| e.handle())
 }
 
 /// Create a `FromArgs` type from the current process's `env::args`.

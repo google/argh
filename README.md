@@ -166,7 +166,7 @@ struct SubCommandOne {
 
 #[derive(FromArgs, PartialEq, Debug)]
 /// Second subcommand.
-#[argh(subcommand, name = "two", short = "t")]
+#[argh(subcommand, name = "two", short = 't')]
 struct SubCommandTwo {
     #[argh(switch)]
     /// whether to fooey

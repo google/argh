@@ -33,6 +33,7 @@ struct SubCommandTwo {
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn test_subcommand_short_help() {
     let early_exit = TopLevel::from_args(&["cmd"], &["help"]).unwrap_err();
     let output = early_exit.output;
@@ -54,6 +55,7 @@ fn test_subcommand_short_help() {
 }
 
 #[test]
+#[cfg(feature = "help")]
 fn test_subcommand_short_help_own() {
     // Invoke via full name
     let early_exit_full = TopLevel::from_args(&["cmd"], &["one", "help"]).unwrap_err();

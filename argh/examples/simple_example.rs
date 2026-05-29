@@ -5,8 +5,13 @@
 use {argh::FromArgs, std::fmt::Debug};
 
 #[derive(FromArgs, PartialEq, Debug)]
+#[argh(global)]
 /// Top-level command.
 struct TopLevel {
+    #[argh(switch, short = 'v')]
+    /// verbose mode
+    verbose: bool,
+
     #[argh(subcommand)]
     nested: MySubCommandEnum,
 }

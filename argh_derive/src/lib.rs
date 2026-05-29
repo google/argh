@@ -383,6 +383,12 @@ fn impl_from_args_struct_from_args<'a>(
     let append_missing_requirements =
         append_missing_requirements(&missing_requirements_ident, fields);
 
+    let forward_options = if type_attrs.global.is_some() {
+        quote! { __parent_options }
+    } else {
+        quote! { None }
+    };
+
     let parse_subcommands = if let Some(subcommand) = subcommand {
         let name = subcommand.name;
         let ty = subcommand.ty_without_wrapper;
@@ -390,8 +396,8 @@ fn impl_from_args_struct_from_args<'a>(
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
-                parse_func: &mut |__command, __remaining_args| {
-                    #name = Some(<#ty as argh::FromArgs>::from_args(__command, __remaining_args)?);
+                parse_func: &mut |__command, __remaining_args, __parent_options| {
+                    #name = Some(<#ty as argh::FromArgs>::from_args_global(__command, __remaining_args, #forward_options)?);
                     ::core::result::Result::Ok(())
                 },
             })
@@ -413,6 +419,16 @@ fn impl_from_args_struct_from_args<'a>(
     let method_impl = quote_spanned! { impl_span =>
         fn from_args(__cmd_name: &[&str], __args: &[&str])
             -> ::core::result::Result<Self, argh::EarlyExit>
+        {
+            Self::from_args_global(__cmd_name, __args, None)
+        }
+
+        #[doc(hidden)]
+        fn from_args_global(
+            __cmd_name: &[&str],
+            __args: &[&str],
+            mut __parent_options: Option<&mut argh::ParseStructOptions<'_>>,
+        ) -> ::core::result::Result<Self, argh::EarlyExit>
         {
             #![allow(clippy::unwrap_in_result)]
 
@@ -439,7 +455,8 @@ fn impl_from_args_struct_from_args<'a>(
                     last_is_greedy: #last_positional_is_greedy,
                 },
                 #parse_subcommands,
-                &|| #help,
+                __parent_options.as_deref_mut(),
+                &|| #help
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -534,7 +551,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
             Some(argh::ParseStructSubCommand {
                 subcommands: <#ty as argh::SubCommands>::COMMANDS,
                 dynamic_subcommands: &<#ty as argh::SubCommands>::dynamic_commands(),
-                parse_func: &mut |__command, __remaining_args| {
+                parse_func: &mut |__command, __remaining_args, _parent_options| {
                     #name = Some(<#ty as argh::FromArgs>::redact_arg_values(__command, __remaining_args)?);
                     ::core::result::Result::Ok(())
                 },
@@ -585,7 +602,8 @@ fn impl_from_args_struct_redact_arg_values<'a>(
                     last_is_greedy: #last_positional_is_greedy,
                 },
                 #redact_subcommands,
-                &|| #help,
+                None,
+                &|| #help
             )?;
 
             let mut #missing_requirements_ident = argh::MissingRequirements::default();
@@ -1106,6 +1124,16 @@ fn impl_from_args_enum(
             fn from_args(command_name: &[&str], args: &[&str])
                 -> std::result::Result<Self, argh::EarlyExit>
             {
+                Self::from_args_global(command_name, args, None)
+            }
+
+            #[doc(hidden)]
+            fn from_args_global(
+                command_name: &[&str],
+                args: &[&str],
+                parent_options: Option<&mut argh::ParseStructOptions<'_>>,
+            ) -> std::result::Result<Self, argh::EarlyExit>
+            {
                 let subcommand_name = if let Some(subcommand_name) = command_name.last() {
                     *subcommand_name
                 } else {
@@ -1119,7 +1147,7 @@ fn impl_from_args_enum(
                             && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
                     {
                         return ::core::result::Result::Ok(#name_repeating::#variant_names(
-                            <#variant_ty as argh::FromArgs>::from_args(command_name, args)?
+                            <#variant_ty as argh::FromArgs>::from_args_global(command_name, args, parent_options)?
                         ));
                     }
                 )*

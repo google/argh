@@ -282,6 +282,7 @@ pub struct TypeAttrs {
     pub examples: Vec<syn::LitStr>,
     pub notes: Vec<syn::LitStr>,
     pub error_codes: Vec<(syn::LitInt, syn::LitStr)>,
+    pub global: Option<syn::Ident>,
     /// Arguments that trigger printing of the help message
     pub help_triggers: Option<Vec<syn::LitStr>>,
     pub usage: Option<syn::LitStr>,
@@ -335,6 +336,11 @@ impl TypeAttrs {
                     {
                         this.parse_attr_subcommand(errors, ident);
                     }
+                } else if name.is_ident("global") {
+                    if let Some(ident) = errors.expect_meta_word(&meta).and_then(|p| p.get_ident())
+                    {
+                        this.parse_attr_global(errors, ident);
+                    }
                 } else if name.is_ident("help_triggers") {
                     if let Some(m) = errors.expect_meta_list(&meta) {
                         Self::parse_help_triggers(m, errors, &mut this);
@@ -349,7 +355,7 @@ impl TypeAttrs {
                         concat!(
                             "Invalid type-level `argh` attribute\n",
                             "Expected one of: `description`, `error_code`, `example`, `name`, ",
-                            "`note`, `short`, `subcommand`, `usage`",
+                            "`note`, `short`, `subcommand`, `usage`, `global`",
                         ),
                     );
                 }
@@ -440,6 +446,14 @@ impl TypeAttrs {
             errors.duplicate_attrs("subcommand", first, ident);
         } else {
             self.is_subcommand = Some(ident.clone());
+        }
+    }
+
+    fn parse_attr_global(&mut self, errors: &Errors, ident: &syn::Ident) {
+        if let Some(first) = &self.global {
+            errors.duplicate_attrs("global", first, ident);
+        } else {
+            self.global = Some(ident.clone());
         }
     }
 
@@ -712,6 +726,7 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
         examples,
         notes,
         error_codes,
+        global,
         help_triggers,
         usage,
     } = type_attrs;
@@ -748,6 +763,9 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
     if let Some(err_code) = error_codes.first() {
         err_unused_enum_attr(errors, &err_code.0);
+    }
+    if let Some(global) = global {
+        err_unused_enum_attr(errors, global);
     }
     if let Some(triggers) = help_triggers {
         if let Some(trigger) = triggers.first() {

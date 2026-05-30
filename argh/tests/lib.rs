@@ -922,6 +922,118 @@ Required options not provided:
 "###,
         );
     }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct NegativeNumber {
+        #[argh(positional)]
+        /// a number
+        n: i32,
+    }
+
+    #[test]
+    fn negative_number_positional() {
+        assert_output(&["-5"], NegativeNumber { n: -5 });
+        assert_output(&["-42"], NegativeNumber { n: -42 });
+        assert_output(&["5"], NegativeNumber { n: 5 });
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct DashPrefixedString {
+        #[argh(positional)]
+        /// a string
+        s: String,
+    }
+
+    #[test]
+    fn dash_prefixed_string_positional() {
+        assert_output(&["-filename"], DashPrefixedString { s: "-filename".into() });
+        assert_output(&["--weird-name"], DashPrefixedString { s: "--weird-name".into() });
+        assert_output(&["-"], DashPrefixedString { s: "-".into() });
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct NegativeWithOption {
+        #[argh(positional)]
+        /// a number
+        n: i32,
+        #[argh(option)]
+        /// an option
+        opt: Option<String>,
+    }
+
+    #[test]
+    fn negative_number_with_option() {
+        assert_output(&["-5"], NegativeWithOption { n: -5, opt: None });
+        assert_output(&["-5", "--opt", "value"], NegativeWithOption { n: -5, opt: Some("value".into()) });
+        assert_output(&["--opt", "value", "-10"], NegativeWithOption { n: -10, opt: Some("value".into()) });
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct NegativeFloatNumber {
+        #[argh(positional)]
+        /// a float number
+        f: f64,
+    }
+
+    #[test]
+    fn negative_float_positional() {
+        assert_output(&["-5.5"], NegativeFloatNumber { f: -5.5 });
+        assert_output(&["-42.1"], NegativeFloatNumber { f: -42.1 });
+        assert_output(&["5.5"], NegativeFloatNumber { f: 5.5 });
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct WithOptionAndPositional {
+        #[argh(option)]
+        /// an option
+        opt: Option<String>,
+        #[argh(positional)]
+        /// a positional
+        pos: String,
+    }
+
+    #[derive(FromArgs, Debug, PartialEq)]
+    /// Woot
+    struct OnlyOption {
+        #[argh(option)]
+        /// an option
+        opt: Option<String>,
+    }
+
+    #[test]
+    fn unrecognized_option_error() {
+        // When there are no positional arguments, unrecognized options should error
+        // Note: error message includes quotes when fuzzy_search is available
+        #[cfg(not(feature = "fuzzy_search"))]
+        {
+            assert_error::<OnlyOption>(
+                &["--unknown"],
+                r###"Unrecognized argument: --unknown
+"###,
+            );
+        }
+        #[cfg(feature = "fuzzy_search")]
+        {
+            assert_error::<OnlyOption>(
+                &["--unknown"],
+                r###"Unrecognized argument: "--unknown"
+"###,
+            );
+        }
+    }
+
+    #[test]
+    fn negative_number_not_mistaken_for_option() {
+        assert_output(&["-5"], WithOptionAndPositional { opt: None, pos: "-5".into() });
+        assert_output(&["-100", "--opt", "val"], WithOptionAndPositional { opt: Some("val".into()), pos: "-100".into() });
+        // Dash-prefixed strings are also accepted as positional arguments
+        assert_output(&["--unknown"], WithOptionAndPositional { opt: None, pos: "--unknown".into() });
+    }
 }
 
 /// Tests derived from

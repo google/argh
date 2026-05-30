@@ -149,6 +149,9 @@
 //! }
 //! ```
 //!
+//! Positional arguments accept values starting with a dash, such as negative numbers
+//! (e.g., `-5`) or dash-prefixed filenames. To explicitly mark the end of options, 
+//! use `--` as a separator.
 //! The last positional argument may include a default, or be wrapped in
 //! `Option` or `Vec` to indicate an optional or repeating positional argument.
 //!
@@ -1058,12 +1061,16 @@ pub fn parse_struct_args(
                 continue;
             }
 
-            if help {
-                return Err("Trailing arguments are not allowed after `help`.".to_string().into());
-            }
+            let is_valid_option = parse_options.arg_to_slot.iter().any(|&(name, _)| name == next_arg);
+            if is_valid_option {
+                if help {
+                    return Err("Trailing arguments are not allowed after `help`.".to_string().into());
+                }
 
-            parse_options.parse(next_arg, &mut remaining_args)?;
-            continue;
+                parse_options.parse(next_arg, &mut remaining_args)?;
+                continue;
+            }
+            // If it's not a valid option, fall through to parse as positional
         }
 
         if let Some(ref mut parse_subcommand) = parse_subcommand {

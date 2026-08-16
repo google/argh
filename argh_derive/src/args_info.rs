@@ -161,9 +161,12 @@ fn impl_arg_info_enum(
     let variant_ty_info = variants.iter().map(|t| {
         let ty = t.ty;
         quote!(
-            argh::SubCommandInfo {
-                name: #ty::get_args_info().name,
-                command: #ty::get_args_info()
+            {
+                let __arg_info = #ty::get_args_info();
+                argh::SubCommandInfo {
+                    name: __arg_info.name,
+                    command: __arg_info,
+                }
             }
         )
     });

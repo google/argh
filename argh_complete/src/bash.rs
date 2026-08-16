@@ -73,41 +73,55 @@ fn generate_bash_case(out: &mut String, prefix: &str, cmd: &CommandInfoWithArgs<
 fn generate_bash_dispatch(out: &mut String, full_name: &str, cmd: &CommandInfoWithArgs<'_>) {
     writeln!(out, "        {})", full_name).unwrap();
 
-    let mut opts = Vec::new();
+    let mut opts = String::new();
     for flag in cmd.flags {
         if !flag.long.is_empty() {
-            opts.push(flag.long.to_string());
+            if !opts.is_empty() {
+                opts.push(' ');
+            }
+            opts.push_str(flag.long);
         }
         if let Some(short) = flag.short {
-            opts.push(format!("-{}", short));
+            if !opts.is_empty() {
+                opts.push(' ');
+            }
+            opts.push('-');
+            opts.push(short);
         }
     }
 
-    let mut cmds = Vec::new();
+    let mut cmds = String::new();
     for subcmd in &cmd.commands {
-        cmds.push(subcmd.name.to_string());
+        if !cmds.is_empty() {
+            cmds.push(' ');
+        }
+        cmds.push_str(subcmd.name);
     }
 
     if !opts.is_empty() {
-        writeln!(out, "            opts=\"{}\"", opts.join(" ")).unwrap();
+        writeln!(out, "            opts=\"{}\"", opts).unwrap();
     }
     if !cmds.is_empty() {
-        writeln!(out, "            cmds=\"{}\"", cmds.join(" ")).unwrap();
+        writeln!(out, "            cmds=\"{}\"", cmds).unwrap();
     }
 
     if !opts.is_empty() || !cmds.is_empty() {
         writeln!(out, "            case \"${{prev}}\" in").unwrap();
         for flag in cmd.flags {
             if let FlagInfoKind::Option { .. } = flag.kind {
-                let mut prev_matches = Vec::new();
+                let mut prev_matches = String::new();
                 if !flag.long.is_empty() {
-                    prev_matches.push(flag.long.to_string());
+                    prev_matches.push_str(flag.long);
                 }
                 if let Some(short) = flag.short {
-                    prev_matches.push(format!("-{}", short));
+                    if !prev_matches.is_empty() {
+                        prev_matches.push_str(" | ");
+                    }
+                    prev_matches.push('-');
+                    prev_matches.push(short);
                 }
                 if !prev_matches.is_empty() {
-                    writeln!(out, "                {})", prev_matches.join(" | ")).unwrap();
+                    writeln!(out, "                {})", prev_matches).unwrap();
                     writeln!(out, "                    COMPREPLY=()").unwrap();
                     writeln!(out, "                    return 0").unwrap();
                     writeln!(out, "                    ;;").unwrap();

@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::LitStr;
+
 use crate::{
     enum_only_single_field_unnamed_variants,
     errors::Errors,
@@ -9,9 +13,6 @@ use crate::{
     parse_attrs::{check_enum_type_attrs, FieldAttrs, FieldKind, TypeAttrs, VariantAttrs},
     Optionality, StructField,
 };
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
-use syn::LitStr;
 
 /// Implement the derive macro for ArgsInfo.
 pub(crate) fn impl_args_info(input: &syn::DeriveInput) -> TokenStream {
@@ -67,6 +68,9 @@ fn impl_arg_info_struct(
         .iter()
         .filter_map(|field| {
             let attrs = FieldAttrs::parse(errors, field);
+            if attrs.skip {
+                return None;
+            }
             StructField::new(errors, field, attrs)
         })
         .collect();

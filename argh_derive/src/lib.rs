@@ -11,15 +11,15 @@ use syn::ext::IdentExt as _;
 /// For more thorough documentation, see the `argh` crate itself.
 extern crate proc_macro;
 
-use {
-    crate::{
-        errors::Errors,
-        parse_attrs::{check_long_name, FieldAttrs, FieldKind, TypeAttrs},
-    },
-    proc_macro2::{Span, TokenStream},
-    quote::{quote, quote_spanned, ToTokens},
-    std::{collections::HashMap, str::FromStr},
-    syn::{spanned::Spanned, GenericArgument, LitStr, PathArguments, Type},
+use std::{collections::HashMap, str::FromStr};
+
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::{spanned::Spanned, GenericArgument, LitStr, PathArguments, Type};
+
+use crate::{
+    errors::Errors,
+    parse_attrs::{check_long_name, FieldAttrs, FieldKind, TypeAttrs},
 };
 
 mod args_info;
@@ -306,16 +306,21 @@ fn impl_from_args_struct(
         .iter()
         .filter_map(|field| {
             let attrs = FieldAttrs::parse(errors, field);
+            if attrs.skip {
+                return None;
+            }
             StructField::new(errors, field, attrs)
         })
         .collect();
+
+    let skipped = skipped_field_initializers(errors, ds);
 
     ensure_unique_names(errors, &fields);
     ensure_only_last_positional_is_optional(errors, &fields);
 
     let impl_span = Span::call_site();
 
-    let from_args_method = impl_from_args_struct_from_args(errors, type_attrs, &fields);
+    let from_args_method = impl_from_args_struct_from_args(errors, type_attrs, &fields, &skipped);
 
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
@@ -341,6 +346,7 @@ fn impl_from_args_struct_from_args<'a>(
     errors: &Errors,
     type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
+    skipped: &[TokenStream],
 ) -> TokenStream {
     let init_fields = declare_local_storage_for_from_args_fields(fields);
     let unwrap_fields = unwrap_from_args_fields(fields);
@@ -450,6 +456,7 @@ fn impl_from_args_struct_from_args<'a>(
 
             ::core::result::Result::Ok(Self {
                 #( #unwrap_fields, )*
+                #( #skipped, )*
             })
         }
     };
@@ -609,6 +616,46 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     };
 
     method_impl
+}
+
+/// Generate `field_name: <value>` initializers for fields marked `#[argh(skip)]`.
+///
+/// Skipped fields are omitted entirely from parsing and help output; they are populated
+/// from the `default` expression if one is supplied, or `Default::default()` otherwise.
+fn skipped_field_initializers(errors: &Errors, data_struct: &syn::DataStruct) -> Vec<TokenStream> {
+    let mut initializers = vec![];
+
+    for field in data_struct.fields.iter() {
+        let FieldAttrs { skip, default, .. } = FieldAttrs::parse(errors, field);
+
+        if !skip {
+            continue;
+        }
+
+        let name = field.ident.as_ref().expect("missing ident for named field");
+
+        let value = if let Some(default) = default {
+            match TokenStream::from_str(&default.value()) {
+                Err(_) => {
+                    errors.err(&default, "Invalid tokens: unable to lex `default` value");
+                    quote! { std::default::Default::default() }
+                }
+                Ok(tokens) => tokens
+                    .into_iter()
+                    .map(|mut tree| {
+                        tree.set_span(default.span());
+                        tree
+                    })
+                    .collect::<TokenStream>(),
+            }
+        } else {
+            quote! { std::default::Default::default() }
+        };
+
+        initializers.push(quote! { #name: #value });
+    }
+
+    initializers
 }
 
 /// Ensures that only the last positional arg is non-required.

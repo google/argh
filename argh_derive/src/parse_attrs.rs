@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+use std::collections::hash_map::{Entry, HashMap};
+
+use proc_macro2::Span;
 use syn::{parse::Parser, punctuated::Punctuated};
 
-use {
-    crate::errors::Errors,
-    proc_macro2::Span,
-    std::collections::hash_map::{Entry, HashMap},
-};
+use crate::errors::Errors;
 
 /// Attributes applied to a field of a `#![derive(FromArgs)]` struct.
 #[derive(Default)]
@@ -23,6 +22,7 @@ pub struct FieldAttrs {
     pub greedy: Option<syn::Path>,
     pub hidden_help: bool,
     pub usage: bool,
+    pub skip: bool,
 }
 
 /// The purpose of a particular field on a `#![derive(FromArgs)]` struct.
@@ -129,13 +129,15 @@ impl FieldAttrs {
                     this.hidden_help = true;
                 } else if name.is_ident("usage") {
                     this.usage = true;
+                } else if name.is_ident("skip") {
+                    this.skip = true;
                 } else {
                     errors.err(
                         &meta,
                         concat!(
                             "Invalid field-level `argh` attribute\n",
                             "Expected one of: `arg_name`, `default`, `description`, `from_str_fn`, `greedy`, ",
-                            "`long`, `option`, `short`, `subcommand`, `switch`, `hidden_help`, `usage`",
+                            "`long`, `option`, `short`, `skip`, `subcommand`, `switch`, `hidden_help`, `usage`",
                         ),
                     );
                 }
@@ -573,9 +575,10 @@ fn check_option_description(errors: &Errors, desc: &str, span: Span) {
 
 #[test]
 fn test_initialisms() {
+    use std::panic::Location;
+
     use proc_macro2::TokenStream;
     use quote::ToTokens;
-    use std::panic::Location;
 
     #[track_caller]
     fn check(s: &str, should_succeed: bool) {

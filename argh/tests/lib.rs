@@ -11,10 +11,9 @@
     clippy::unwrap_in_result
 )]
 
-use {
-    argh::{FromArgValue, FromArgs},
-    std::fmt::Debug,
-};
+use std::fmt::Debug;
+
+use argh::{FromArgValue, FromArgs};
 
 #[test]
 fn basic_example() {
@@ -40,8 +39,7 @@ fn basic_example() {
 
 #[test]
 fn generic_example() {
-    use std::fmt::Display;
-    use std::str::FromStr;
+    use std::{fmt::Display, str::FromStr};
 
     #[derive(FromArgs, PartialEq, Debug)]
     /// Reach new heights.
@@ -466,6 +464,82 @@ fn assert_error<T: FromArgs + Debug>(args: &[&str], err_msg: &str) {
     let e = T::from_args(&["cmd"], args).expect_err("unexpectedly succeeded parsing");
     assert_eq!(err_msg, e.output);
     e.status.expect_err("error had a positive status");
+}
+
+mod skip {
+    use super::*;
+
+    #[derive(Debug, Default, PartialEq)]
+    struct DefaultableValue {
+        inner: bool,
+    }
+
+    #[derive(Debug, PartialEq, argh::FromArgs)]
+    /// SkipTest
+    struct WithSkipDefaultImpl {
+        #[argh(switch)]
+        /// foo bar baz
+        flag: bool,
+        /// skipped, falls back to `Default::default()`
+        #[argh(skip)]
+        skipped: DefaultableValue,
+    }
+
+    #[derive(Debug, PartialEq, argh::FromArgs)]
+    /// SkipTest
+    struct WithSkipExplicitDefault {
+        #[argh(option)]
+        /// foo bar baz
+        option: usize,
+        /// skipped, uses the provided `default`
+        #[argh(skip, default = "DefaultableValue { inner: true }")]
+        skipped: DefaultableValue,
+    }
+
+    #[test]
+    fn skip_uses_default_impl() {
+        assert_output(
+            &["--flag"],
+            WithSkipDefaultImpl { flag: true, skipped: DefaultableValue { inner: false } },
+        );
+    }
+
+    #[test]
+    fn skip_honors_explicit_default() {
+        assert_output(
+            &["--option", "5"],
+            WithSkipExplicitDefault { option: 5, skipped: DefaultableValue { inner: true } },
+        );
+    }
+
+    #[test]
+    fn skip_is_not_parsed_as_an_option() {
+        #[cfg(not(feature = "fuzzy_search"))]
+        let expected = "Unrecognized argument: --skipped\n";
+
+        #[cfg(feature = "fuzzy_search")]
+        let expected = "Unrecognized argument: \"--skipped\". Did you mean \"--option\"?\n";
+
+        assert_error::<WithSkipExplicitDefault>(
+            &["--option", "5", "--skipped", "whatever"],
+            expected,
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "help")]
+    fn skip_is_omitted_from_help() {
+        assert_help_string::<WithSkipExplicitDefault>(
+            r#"Usage: test_arg_0 --option <option>
+
+SkipTest
+
+Options:
+  --option          foo bar baz
+  --help, help      display usage information
+"#,
+        );
+    }
 }
 
 mod options {

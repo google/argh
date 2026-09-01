@@ -10,6 +10,19 @@
 //! a top-level `FromArgs` type from the current program's commandline
 //! arguments.
 //!
+//! ## Table of Contents
+//!
+//! - [Basic Example](#basic-example)
+//! - [Switches and Options](#switches-and-options)
+//! - [Custom Option Types](#custom-option-types)
+//! - [Positional Arguments](#positional-arguments)
+//! - [Subcommands](#subcommands)
+//!   - [Dynamic Subcommands](#dynamic-subcommands)
+//! - [Custom Help and Examples](#custom-help-and-examples)
+//! - [Hidden Arguments](#hidden-arguments)
+//!   - [Skipped Fields](#skipped-fields)
+//! - [Supported `#[argh(...)]` Attributes](#supported-argh-attributes)
+//!
 //! ## Basic Example
 //!
 //! ```rust,no_run
@@ -53,6 +66,8 @@
 //! - `./some_bin -j --height 5`
 //! - `./some_bin --jump --height 5 --pilot-nickname Wes`
 //!
+//! ## Switches and Options
+//!
 //! Switches, like `jump`, are optional and will be set to true if provided.
 //!
 //! Options, like `height` and `pilot_nickname`, can be either required,
@@ -89,6 +104,8 @@
 //!     let up: GoUp = argh::from_env();
 //! }
 //! ```
+//!
+//! ## Custom Option Types
 //!
 //! Custom option types can be deserialized so long as they implement the
 //! `FromArgValue` trait (automatically implemented for all `FromStr` types).
@@ -135,6 +152,8 @@
 //! // > Error parsing option '--how' with value 'whatever': expected "soft_core" or "hard_core"
 //! ```
 //!
+//! ## Positional Arguments
+//!
 //! Positional arguments can be declared using `#[argh(positional)]`.
 //! These arguments will be parsed in order of their declaration in
 //! the structure:
@@ -180,6 +199,8 @@
 //! before the rest of the arguments can be interpreted, and shouldn't be used
 //! for regular use as it might be confusing.
 //!
+//! ## Subcommands
+//!
 //! Subcommands are also supported. To use a subcommand, declare a separate
 //! `FromArgs` type for each subcommand as well as an enum that cases
 //! over each command:
@@ -219,6 +240,8 @@
 //!     fooey: bool,
 //! }
 //! ```
+//!
+//! ### Dynamic Subcommands
 //!
 //! You can also discover subcommands dynamically at runtime. To do this,
 //! declare subcommands as usual and add a variant to the enum with the
@@ -317,6 +340,8 @@
 //! }
 //! ```
 //!
+//! ## Custom Help and Examples
+//!
 //! You can define a complex help output that includes an **Examples** section.
 //! Use a `{command_name}` placeholder.
 //!
@@ -375,6 +400,8 @@
 //!   goup --height 5 --pilot-nickname Wes jump
 //! ```
 //!
+//! ## Hidden Arguments
+//!
 //! Programs that are run from an environment such as cargo may find it
 //! useful to have positional arguments present in the structure but
 //! omitted from the usage output. This can be accomplished by adding
@@ -397,6 +424,82 @@
 //!     real_first_arg: String,
 //! }
 //! ```
+//!
+//! ### Skipped Fields
+//!
+//! The `skip` attribute excludes a field from argument parsing entirely. Fields
+//! marked `skip` do not appear in help or usage text and are never set from the
+//! parsed command line arguments. Skipped fields are initialized using the value
+//! passed by `default` attribute if one is provided, or simply `Default::default()`
+//! otherwise. This is useful for fields that are part of a type but are/should be
+//! populated by other means (for example, computed after parsing).
+//!
+//! ```rust
+//! # use argh::FromArgs;
+//! use std::sync::OnceLock;
+//!
+//! # type InternalState = ();
+//!
+//! #[derive(FromArgs)]
+//! /// Reach new heights.
+//! struct GoUp {
+//!     /// how high to go
+//!     #[argh(option)]
+//!     height: usize,
+//!
+//!     // Never parsed from the command line;
+//!     // initialized with `Default::default()`
+//!     #[argh(skip)]
+//!     state: OnceLock<InternalState>,
+//! }
+//! ```
+//!
+//! ## Supported `#[argh(...)]` Attributes
+//!
+//! ### Field-level attributes
+//!
+//! | Attribute       | Description                                                                                                              | Example                                                  |
+//! | :-------------- | :----------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------- |
+//! | `arg_name`      | override the placeholder name shown for the value in usage/help                                                          | `#[argh(option, arg_name = "path")]` -> `--foo <path>`   |
+//! | `default`       | fallback expression used when an `option`/`positional` is not supplied                                                   | `#[argh(option, default = "5")] foo: u32`                |
+//! | `description`   | explicit help text for the field (usually supplied via a `///` doc comment instead)                                      | `#[argh(description = "how high to go")]`                |
+//! | `from_str_fn`   | custom parser `fn(&str) -> Result<T, String>` for an `option`/`positional`                                               | `#[argh(option, from_str_fn(parse_five))]`               |
+//! | `greedy`        | make the final `positional` consume all remaining arguments, including flags                                             | `#[argh(positional, greedy)]`                            |
+//! | `hidden_help`   | omit the argument from generated usage/help output                                                                       | `#[argh(option, hidden_help)]`                           |
+//! | `long`          | override the `--`-prefixed long name (defaults to the kebab-cased field name)                                            | `#[argh(option, long = "foo")]` -> `--foo`               |
+//! | `option`        | mark the field as a `--key value` option; the field may be required, `Option`, or `Vec` (repeating)                      | `#[argh(option)] foo: u32` -> `--foo 5`                  |
+//! | `positional`    | mark the field as a positional argument, parsed in declaration order                                                     | `#[argh(positional)] foo: String` -> `bar`               |
+//! | `short`         | add a single-character short alias for a `switch`/`option`                                                               | `#[argh(switch, short = 'f')]` -> `-f`                   |
+//! | `skip`          | unconditionally omit the field from parsing and help; initialized from `default` if present, else `Default::default()`   | `#[argh(skip)] foo: MyType`                              |
+//! | `subcommand`    | mark the field as a subcommand enum (at most one per struct)                                                             | `#[argh(subcommand)] cmd: MyCmd`                         |
+//! | `switch`        | mark the field as an optional boolean switch, set to `true` by passing the flag                                          | `#[argh(switch)] foo: bool` -> `--foo`                   |
+//! | `usage`         | opt a field into the explicit usage line (when at least one field is annotated, only annotated fields appear)            | `#[argh(option, usage)]`                                 |
+//!
+//! ### Type-level attributes
+//!
+//! | Attribute         | Description                                                                            | Example                                            |
+//! | :---------------- |:-------------------------------------------------------------------------------------- | :------------------------------------------------- |
+//! | `description`     | explicit help text for the command (usually supplied via a `///` doc comment instead)  | `#[argh(description = "a tool")]`                  |
+//! | `error_code`      | document an exit code in the `Error codes:` help section                               | `#[argh(error_code(2, "file not found"))]`         |
+//! | `example`         | add an entry to the `Examples:` help section (`{command_name}` is substituted)         | `#[argh(example = "{command_name} --foo")]`        |
+//! | `help_triggers`   | override the arguments that trigger help (defaults to `"--help"`, `"help"`)            | `#[argh(help_triggers("-h", "--help", "help"))]`   |
+//! | `name`            | the invoked name of a subcommand (required on subcommand structs)                      | `#[argh(name = "list")]`                           |
+//! | `note`            | add an entry to the `Notes:` help section                                              | `#[argh(note = "some note")]`                      |
+//! | `short`           | single-character alias for a subcommand's name                                         | `#[argh(short = 'l')]`                             |
+//! | `subcommand`      | mark a struct or enum as participating in subcommand dispatch                          | `#[argh(subcommand)]`                              |
+//! | `usage`           | fully override the generated usage line                                                | `#[argh(usage = "--foo <foo>")]`                   |
+//!
+//! ### Subcommand variant attributes
+//!
+//! | Attribute   | Description                                                                                                | Example                       |
+//! | :---------- | :--------------------------------------------------------------------------------------------------------- | :---------------------------- |
+//! | `dynamic`   | mark a subcommand enum variant as providing [dynamic subcommands](DynamicSubCommand) resolved at runtime   | `#[argh(dynamic)] Foo(Foo)`   |
+//!
+//! ### [`FromArgValue`] choice-enum variant attributes
+//!
+//! | Attribute   | Description                                                                                       | Example                                    |
+//! | :---------- | :------------------------------------------------------------------------------------------------ | :----------------------------------------- |
+//! | `name`      | override the string that maps to this choice variant (defaults to the snake-cased variant name)   | `#[argh(name = "read-write")] ReadWrite`   |
 
 #![deny(missing_docs)]
 
@@ -414,7 +517,6 @@ pub type CommandInfoWithArgs = argh_shared::CommandInfoWithArgs<'static>;
 pub type SubCommandInfo = argh_shared::SubCommandInfo<'static>;
 
 pub use argh_shared::{ErrorCodeInfo, FlagInfo, FlagInfoKind, Optionality, PositionalInfo};
-
 #[cfg(feature = "fuzzy_search")]
 use rust_fuzzy_search::fuzzy_search_best_n;
 

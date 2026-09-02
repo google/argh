@@ -7,7 +7,6 @@ use quote::{quote, quote_spanned, ToTokens};
 use syn::LitStr;
 
 use crate::{
-    enum_only_single_field_unnamed_variants,
     errors::Errors,
     help::require_description,
     parse_attrs::{check_enum_type_attrs, FieldAttrs, FieldKind, TypeAttrs, VariantAttrs},
@@ -48,32 +47,43 @@ fn impl_arg_info_struct(
 ) -> TokenStream {
     // Collect the fields, skipping fields that are not supported.
     let fields = match &ds.fields {
-        syn::Fields::Named(fields) => fields,
         syn::Fields::Unnamed(_) => {
             errors.err(
                 &ds.struct_token,
                 "`#![derive(ArgsInfo)]` is not currently supported on tuple structs",
             );
+
             return TokenStream::new();
         }
+        syn::Fields::Named(fields) => fields
+            .named
+            .iter()
+            .filter_map(|field| {
+                let attrs = FieldAttrs::parse(errors, field);
+
+                if attrs.skip {
+                    return None;
+                }
+
+                StructField::new(errors, field, attrs)
+            })
+            .collect::<Vec<_>>(),
         syn::Fields::Unit => {
-            errors.err(&ds.struct_token, "#![derive(ArgsInfo)]` cannot be applied to unit structs");
-            return TokenStream::new();
+            // Unit structs with an explicit `#[argh(subcommand)]` attribute
+            // at the type level are supported as no-argument subcommands.
+            if type_attrs.is_subcommand.is_none() {
+                errors.err(
+                    &ds.struct_token,
+                    concat!(
+                        "`#[derive(ArgsInfo)]` on unit structs is only supported for subcommands.\n",
+                        "Add `#[argh(subcommand, name = \"...\")]` to the struct declaration.",
+                    ),
+                );
+            }
+
+            Vec::new()
         }
     };
-
-    // Map the fields into StructField objects.
-    let fields: Vec<_> = fields
-        .named
-        .iter()
-        .filter_map(|field| {
-            let attrs = FieldAttrs::parse(errors, field);
-            if attrs.skip {
-                return None;
-            }
-            StructField::new(errors, field, attrs)
-        })
-        .collect();
 
     let impl_span = Span::call_site();
 
@@ -101,59 +111,88 @@ fn impl_arg_info_enum(
     generic_args: &syn::Generics,
     de: &syn::DataEnum,
 ) -> TokenStream {
-    // Validate the enum is OK for argh.
+    // Validate the enum is OK for argh. (Both top-level and nested subcommand
+    // enums are supported; the absence of an explicit `#[argh(subcommand)]` is
+    // interpreted to mean "this is a top-level command".)
     check_enum_type_attrs(errors, type_attrs, &de.enum_token.span);
-
-    // Ensure that `#[argh(subcommand)]` is present.
-    if type_attrs.is_subcommand.is_none() {
-        errors.err_span(
-            de.enum_token.span,
-            concat!(
-                "`#![derive(ArgsInfo)]` on `enum`s can only be used to enumerate subcommands.\n",
-                "Consider adding `#[argh(subcommand)]` to the `enum` declaration.",
-            ),
-        );
-    }
 
     // One of the variants can be annotated as providing dynamic subcommands.
     // We treat this differently since we need to call a function at runtime
     // to determine the subcommands provided.
     let mut dynamic_type_and_variant = None;
 
-    // An enum variant like `<name>(<ty>)`. This is used to collect
-    // the type of the variant for each subcommand.
+    enum VariantKind<'a> {
+        /// `Foo` — a no-argument subcommand.
+        Unit,
+        /// `Foo(Bar)` — delegate to `Bar`'s `ArgsInfo`.
+        Delegated(&'a syn::Type),
+        /// `Foo { ... }` — an inline subcommand with its own arguments.
+        Struct(&'a syn::FieldsNamed),
+    }
+
     struct ArgInfoVariant<'a> {
-        ty: &'a syn::Type,
+        ident: &'a syn::Ident,
+        kind: VariantKind<'a>,
+        attrs: crate::parse_attrs::VariantAttrs,
     }
 
     let variants: Vec<ArgInfoVariant<'_>> = de
         .variants
         .iter()
         .filter_map(|variant| {
-            let name = &variant.ident;
-            let ty = enum_only_single_field_unnamed_variants(errors, &variant.fields)?;
-            if VariantAttrs::parse(errors, variant).is_dynamic.is_some() {
-                if dynamic_type_and_variant.is_some() {
-                    errors.err(variant, "Only one variant can have the `dynamic` attribute");
+            let attrs = VariantAttrs::parse(errors, variant);
+            let kind = match &variant.fields {
+                syn::Fields::Unit => VariantKind::Unit,
+                syn::Fields::Named(fields) => VariantKind::Struct(fields),
+                syn::Fields::Unnamed(fields) => {
+                    match (fields.unnamed.len(), fields.unnamed.first()) {
+                        (1, Some(syn::Field { ty, .. })) => VariantKind::Delegated(ty),
+                        _ => {
+                            errors.err(
+                                fields,
+                                "`#![derive(ArgsInfo)]` tuple variants must contain exactly one field.",
+                            );
+
+                            return None;
+                        }
+                    }
                 }
-                dynamic_type_and_variant = Some((ty, name));
-                None
-            } else {
-                Some(ArgInfoVariant { ty })
+            };
+
+            if attrs.is_dynamic.is_some() {
+                match &kind {
+                    VariantKind::Delegated(ty) => {
+                        if dynamic_type_and_variant.is_some() {
+                            errors.err(variant, "Only one variant can have the `dynamic` attribute");
+                        }
+
+                        dynamic_type_and_variant = Some((*ty, &variant.ident));
+
+                        return None;
+                    }
+                    _ => {
+                        errors.err(
+                            variant,
+                            "The `dynamic` attribute may only be applied to a variant with a single unnamed field.",
+                        );
+                    }
+                }
             }
+
+            Some(ArgInfoVariant { attrs, kind, ident: &variant.ident })
         })
         .collect();
 
     let dynamic_subcommands = if let Some((dynamic_type, _)) = dynamic_type_and_variant {
         quote! {
             <#dynamic_type as argh::DynamicSubCommand>::commands().iter()
-            .map(|s|
-         SubCommandInfo {
-                name: s.name,
-                command: CommandInfoWithArgs {
-                    name: s.name,
-                    short: s.short,
-                    description: s.description,
+            .map(|subcommand|
+         argh::SubCommandInfo {
+                name: subcommand.name,
+                command: argh::CommandInfoWithArgs {
+                    name: subcommand.name,
+                    short: subcommand.short,
+                    description: subcommand.description,
                     ..Default::default()
                 }
             }).collect()
@@ -162,14 +201,56 @@ fn impl_arg_info_enum(
         quote! { vec![]}
     };
 
-    let variant_ty_info = variants.iter().map(|t| {
-        let ty = t.ty;
-        quote!(
+    let variant_ty_info = variants.iter().map(|variant| match &variant.kind {
+        VariantKind::Delegated(ty) => quote! {
             argh::SubCommandInfo {
                 name: #ty::get_args_info().name,
-                command: #ty::get_args_info()
+                command: #ty::get_args_info(),
             }
-        )
+        },
+        VariantKind::Unit => {
+            let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                syn::LitStr::new(&crate::default_variant_name(variant.ident), variant.ident.span())
+            });
+
+            let variant_attrs = crate::variant_type_attrs(
+                type_attrs,
+                &variant.attrs,
+                name_lit.clone(),
+                variant.ident.span(),
+            );
+
+            let command = impl_args_info_data(variant.ident, errors, &variant_attrs, &[]);
+
+            quote! {
+                argh::SubCommandInfo {
+                    name: #name_lit,
+                    command: #command,
+                }
+            }
+        }
+        VariantKind::Struct(fields) => {
+            let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                syn::LitStr::new(&crate::default_variant_name(variant.ident), variant.ident.span())
+            });
+
+            let variant_attrs = crate::variant_type_attrs(
+                type_attrs,
+                &variant.attrs,
+                name_lit.clone(),
+                variant.ident.span(),
+            );
+
+            let (parsed, _skipped) = crate::collect_named_fields(errors, fields);
+            let command = impl_args_info_data(variant.ident, errors, &variant_attrs, &parsed);
+
+            quote! {
+                argh::SubCommandInfo {
+                    name: #name_lit,
+                    command: #command,
+                }
+            }
+        }
     });
 
     let cmd_name = if let Some(id) = &type_attrs.name {

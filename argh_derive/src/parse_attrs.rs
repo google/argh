@@ -57,6 +57,7 @@ pub struct FieldType {
 ///
 /// Defaults to the docstring if one is present, or `#[argh(description = "...")]`
 /// if one is provided.
+#[derive(Clone)]
 pub struct Description {
     /// Whether the description was an explicit annotation or whether it was a doc string.
     pub explicit: bool,
@@ -471,7 +472,10 @@ impl TypeAttrs {
 /// Represents a `FromArgs` enum variant's attributes.
 #[derive(Default)]
 pub struct VariantAttrs {
+    pub name: Option<syn::LitStr>,
+    pub short: Option<syn::LitChar>,
     pub is_dynamic: Option<syn::Path>,
+    pub description: Option<Description>,
 }
 
 impl VariantAttrs {
@@ -479,13 +483,17 @@ impl VariantAttrs {
     pub fn parse(errors: &Errors, variant: &syn::Variant) -> Self {
         let mut this = VariantAttrs::default();
 
-        let fields = match &variant.fields {
-            syn::Fields::Named(fields) => Some(&fields.named),
+        // For delegated (single unnamed field) variants and unit variants,
+        // any`#[argh(...)]` attribute on the inner field is meaningless.
+        // For struct-style (named field) variants, field-level attributes
+        // describe the subcommand's arguments and are handled elsewhere,
+        // so they must not be flagged here.
+        let inner_fields = match &variant.fields {
+            syn::Fields::Unit | syn::Fields::Named(_) => None,
             syn::Fields::Unnamed(fields) => Some(&fields.unnamed),
-            syn::Fields::Unit => None,
         };
 
-        for field in fields.into_iter().flatten() {
+        for field in inner_fields.into_iter().flatten() {
             for attr in &field.attrs {
                 if is_argh_attr(attr) {
                     err_unused_enum_attr(errors, attr);
@@ -494,6 +502,11 @@ impl VariantAttrs {
         }
 
         for attr in &variant.attrs {
+            if is_doc_attr(attr) {
+                parse_attr_doc(errors, attr, &mut this.description);
+                continue;
+            }
+
             let ml = if let Some(ml) = argh_attr_to_meta_list(errors, attr) {
                 ml
             } else {
@@ -508,11 +521,36 @@ impl VariantAttrs {
                     } else {
                         this.is_dynamic = errors.expect_meta_word(&meta).cloned();
                     }
+                } else if name.is_ident("subcommand") {
+                    // Accepted (and ignored): each variant is implicitly a
+                    // subcommand, so `#[argh(subcommand)]` on a variant is a no-op.
+                    let _ = errors.expect_meta_word(&meta);
+                } else if name.is_ident("name") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        parse_attr_single_string(errors, m, "name", &mut this.name);
+                    }
+                } else if name.is_ident("short") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        if let Some(first) = &this.short {
+                            errors.duplicate_attrs("short", first, m);
+                        } else if let Some(lit_char) = errors.expect_lit_char(&m.value) {
+                            this.short = Some(lit_char.clone());
+
+                            if !lit_char.value().is_ascii() {
+                                errors.err(lit_char, "Short names must be ASCII");
+                            }
+                        }
+                    }
+                } else if name.is_ident("description") {
+                    if let Some(m) = errors.expect_meta_name_value(&meta) {
+                        parse_attr_description(errors, m, &mut this.description);
+                    }
                 } else {
                     errors.err(
                         &meta,
                         "Invalid variant-level `argh` attribute\n\
-                         Subcommand variants can only have the #[argh(dynamic)] attribute.",
+                         Subcommand variants can only have the `dynamic`, \
+                         `name`, `short`, and `subcommand` attributes.",
                     );
                 }
             }
@@ -704,34 +742,19 @@ fn parse_attr_description(errors: &Errors, m: &syn::MetaNameValue, slot: &mut Op
     *slot = Some(Description { explicit: true, content: lit_str.clone() });
 }
 
-/// Checks that a `#![derive(FromArgs)]` enum has an `#[argh(subcommand)]`
-/// attribute and that it does not have any other type-level `#[argh(...)]` attributes.
-pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span: &Span) {
-    let TypeAttrs {
-        is_subcommand,
-        name,
-        short,
-        description,
-        examples,
-        notes,
-        error_codes,
-        help_triggers,
-        usage,
-    } = type_attrs;
+/// Checks that a `#![derive(FromArgs)]` enum does not carry type-level
+/// `#[argh(...)]` attributes that are meaningless for a subcommand-dispatching
+/// enum.
+///
+/// An enum may optionally be marked `#[argh(subcommand)]` (making it a nested
+/// subcommand dispatcher). Without that marker it is treated as a top-level
+/// command. In either case, `help_triggers` and a description (from a doc
+/// comment) are permitted; all other attributes are rejected.
+pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, _span: &Span) {
+    let TypeAttrs { name, short, description, examples, notes, error_codes, usage, .. } =
+        type_attrs;
 
-    // Ensure that `#[argh(subcommand)]` is present.
-    if is_subcommand.is_none() {
-        errors.err_span(
-            *type_span,
-            concat!(
-                "`#![derive(FromArgs)]` on `enum`s can only be used to enumerate subcommands.\n",
-                "To enumerate subcommands, add `#[argh(subcommand)]` to the `enum` declaration.\n",
-                "To declare a choice `enum` instead, use `#![derive(FromArgValue)]`."
-            ),
-        );
-    }
-
-    // Error on all other type-level attributes.
+    // Error on unsupported type-level attributes.
     if let Some(name) = name {
         err_unused_enum_attr(errors, name);
     }
@@ -751,11 +774,6 @@ pub fn check_enum_type_attrs(errors: &Errors, type_attrs: &TypeAttrs, type_span:
     }
     if let Some(err_code) = error_codes.first() {
         err_unused_enum_attr(errors, &err_code.0);
-    }
-    if let Some(triggers) = help_triggers {
-        if let Some(trigger) = triggers.first() {
-            err_unused_enum_attr(errors, trigger);
-        }
     }
     if let Some(usage) = usage {
         err_unused_enum_attr(errors, usage);

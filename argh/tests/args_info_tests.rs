@@ -1071,3 +1071,73 @@ fn ok_hygiene() {
         input: String,
     }
 }
+
+#[test]
+fn args_info_unit_and_struct_variants() {
+    /// hocus pocus
+    #[derive(Debug, PartialEq, FromArgs, ArgsInfo)]
+    #[argh(subcommand, name = "magick")]
+    struct MagicCommand;
+
+    /// top-level command
+    #[derive(Debug, PartialEq, FromArgs, ArgsInfo)]
+    enum SomeCommand {
+        /// report info
+        Info,
+
+        /// do magic
+        Magic(MagicCommand),
+
+        /// create a macguffin
+        #[argh(name = "make")]
+        Create {
+            /// the macguffin name
+            #[argh(positional)]
+            macguffin: Option<String>,
+        },
+    }
+
+    let info = get_info::<SomeCommand>();
+
+    // Top-level enum has empty name and the fixed subcommand description.
+    assert_eq!(info.name, "");
+    assert_eq!(info.description, " enum of subcommands");
+
+    let names = info.commands.iter().map(|subcommand| subcommand.name).collect::<Vec<_>>();
+
+    assert_eq!(names, vec!["info", "magick", "make"]);
+
+    // Unit variant: no args beyond --help, name defaults to kebab-cased ident.
+    let unit = &info.commands[0].command;
+
+    assert_eq!(unit.name, "info");
+    assert_eq!(unit.flags, &[HELP_FLAG]);
+    assert_eq!(unit.description, "report info");
+    assert_eq!(unit.positionals, &[] as &[PositionalInfo<'_>]);
+
+    // Delegated variant defers to the unit struct's own info.
+    let magic = &info.commands[1].command;
+
+    assert_eq!(magic.name, "magick");
+    assert_eq!(magic.flags, &[HELP_FLAG]);
+    assert_eq!(magic.description, "hocus pocus");
+
+    // Struct-style variant exposes its own positional, honoring `name`.
+    let make = &info.commands[2].command;
+
+    assert_eq!(make.name, "make");
+    assert_eq!(make.description, "create a macguffin");
+    assert_eq!(
+        make.positionals,
+        &[PositionalInfo {
+            hidden: false,
+            name: "macguffin",
+            description: "the macguffin name",
+            optionality: Optionality::Optional,
+        }]
+    );
+}
+
+fn get_info<T: ArgsInfo>() -> CommandInfoWithArgs {
+    T::get_args_info()
+}

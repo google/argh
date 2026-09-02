@@ -11,15 +11,15 @@ use syn::ext::IdentExt as _;
 /// For more thorough documentation, see the `argh` crate itself.
 extern crate proc_macro;
 
-use {
-    crate::{
-        errors::Errors,
-        parse_attrs::{check_long_name, FieldAttrs, FieldKind, TypeAttrs},
-    },
-    proc_macro2::{Span, TokenStream},
-    quote::{quote, quote_spanned, ToTokens},
-    std::{collections::HashMap, str::FromStr},
-    syn::{spanned::Spanned, GenericArgument, LitStr, PathArguments, Type},
+use std::{collections::HashMap, str::FromStr};
+
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::{spanned::Spanned, GenericArgument, LitStr, PathArguments, Type};
+
+use crate::{
+    errors::Errors,
+    parse_attrs::{check_long_name, FieldAttrs, FieldKind, TypeAttrs},
 };
 
 mod args_info;
@@ -286,36 +286,53 @@ fn impl_from_args_struct(
     generic_args: &syn::Generics,
     ds: &syn::DataStruct,
 ) -> TokenStream {
-    let fields = match &ds.fields {
-        syn::Fields::Named(fields) => fields,
+    let named_fields = match &ds.fields {
         syn::Fields::Unnamed(_) => {
             errors.err(
                 &ds.struct_token,
                 "`#![derive(FromArgs)]` is not currently supported on tuple structs",
             );
+
             return TokenStream::new();
         }
+        syn::Fields::Named(fields) => Some(fields),
         syn::Fields::Unit => {
-            errors.err(&ds.struct_token, "#![derive(FromArgs)]` cannot be applied to unit structs");
-            return TokenStream::new();
+            if type_attrs.is_subcommand.is_none() {
+                errors.err(
+                    &ds.struct_token,
+                    concat!(
+                        "`#[derive(FromArgs)]` on unit structs is only supported for subcommands.\n",
+                        "Add `#[argh(subcommand, name = \"...\")]` to the struct declaration.",
+                    ),
+                );
+            }
+
+            None
         }
     };
 
-    let fields: Vec<_> = fields
-        .named
-        .iter()
+    let fields: Vec<_> = named_fields
+        .into_iter()
+        .flat_map(|fields| fields.named.iter())
         .filter_map(|field| {
             let attrs = FieldAttrs::parse(errors, field);
+            if attrs.skip {
+                return None;
+            }
             StructField::new(errors, field, attrs)
         })
         .collect();
+
+    let skipped = skipped_field_initializers(errors, &ds.fields);
 
     ensure_unique_names(errors, &fields);
     ensure_only_last_positional_is_optional(errors, &fields);
 
     let impl_span = Span::call_site();
 
-    let from_args_method = impl_from_args_struct_from_args(errors, type_attrs, &fields);
+    let ctor = quote! { Self };
+    let from_args_method =
+        impl_from_args_struct_from_args(errors, type_attrs, &fields, &skipped, &ctor);
 
     let redact_arg_values_method =
         impl_from_args_struct_redact_arg_values(errors, type_attrs, &fields);
@@ -341,6 +358,34 @@ fn impl_from_args_struct_from_args<'a>(
     errors: &Errors,
     type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
+    skipped: &[TokenStream],
+    ctor: &TokenStream,
+) -> TokenStream {
+    let (impl_span, parse_block) =
+        (Span::call_site(), from_args_parse_block(errors, type_attrs, fields, skipped, ctor));
+
+    quote_spanned! { impl_span =>
+        fn from_args(__cmd_name: &[&str], __args: &[&str])
+            -> ::core::result::Result<Self, argh::EarlyExit>
+        {
+            #![allow(clippy::unwrap_in_result)]
+            #parse_block
+        }
+    }
+}
+
+/// Generates the body of a `from_args`-style parse: declares slots, calls
+/// `argh::parse_struct_args`, checks missing requirements, and evaluates to
+/// `Result<Self, argh::EarlyExit>` by constructing `#ctor { .. }`.
+///
+/// The generated code references the local bindings `__cmd_name: &[&str]` and
+/// `__args: &[&str]`, which the caller must have in scope.
+fn from_args_parse_block<'a>(
+    errors: &Errors,
+    type_attrs: &TypeAttrs,
+    fields: &'a [StructField<'a>],
+    skipped: &[TokenStream],
+    ctor: &TokenStream,
 ) -> TokenStream {
     let init_fields = declare_local_storage_for_from_args_fields(fields);
     let unwrap_fields = unwrap_from_args_fields(fields);
@@ -411,11 +456,7 @@ fn impl_from_args_struct_from_args<'a>(
     };
 
     let method_impl = quote_spanned! { impl_span =>
-        fn from_args(__cmd_name: &[&str], __args: &[&str])
-            -> ::core::result::Result<Self, argh::EarlyExit>
         {
-            #![allow(clippy::unwrap_in_result)]
-
             #( #init_fields )*
 
             argh::parse_struct_args(
@@ -448,8 +489,9 @@ fn impl_from_args_struct_from_args<'a>(
             )*
             #missing_requirements_ident.err_on_any()?;
 
-            ::core::result::Result::Ok(Self {
+            ::core::result::Result::Ok(#ctor {
                 #( #unwrap_fields, )*
+                #( #skipped, )*
             })
         }
     };
@@ -481,6 +523,24 @@ fn get_help_triggers(type_attrs: &TypeAttrs) -> Vec<String> {
 }
 
 fn impl_from_args_struct_redact_arg_values<'a>(
+    errors: &Errors,
+    type_attrs: &TypeAttrs,
+    fields: &'a [StructField<'a>],
+) -> TokenStream {
+    let (impl_span, parse_block) =
+        (Span::call_site(), redact_arg_values_parse_block(errors, type_attrs, fields));
+
+    quote_spanned! { impl_span =>
+        fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
+            #parse_block
+        }
+    }
+}
+
+/// Generates the body of a `redact_arg_values`-style parse. The generated code
+/// references the local bindings `__cmd_name: &[&str]` and `__args: &[&str]`,
+/// and evaluates to `Result<Vec<String>, argh::EarlyExit>`.
+fn redact_arg_values_parse_block<'a>(
     errors: &Errors,
     type_attrs: &TypeAttrs,
     fields: &'a [StructField<'a>],
@@ -561,7 +621,7 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     };
 
     let method_impl = quote_spanned! { impl_span =>
-        fn redact_arg_values(__cmd_name: &[&str], __args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
+        {
             #( #init_fields )*
 
             argh::parse_struct_args(
@@ -609,6 +669,46 @@ fn impl_from_args_struct_redact_arg_values<'a>(
     };
 
     method_impl
+}
+
+/// Generate `field_name: <value>` initializers for fields marked `#[argh(skip)]`.
+///
+/// Skipped fields are omitted entirely from parsing and help output; they are populated
+/// from the `default` expression if one is supplied, or `Default::default()` otherwise.
+fn skipped_field_initializers(errors: &Errors, fields: &syn::Fields) -> Vec<TokenStream> {
+    let mut initializers = vec![];
+
+    for field in fields.iter() {
+        let FieldAttrs { skip, default, .. } = FieldAttrs::parse(errors, field);
+
+        if !skip {
+            continue;
+        }
+
+        let name = field.ident.as_ref().expect("missing ident for named field");
+
+        let value = if let Some(default) = default {
+            match TokenStream::from_str(&default.value()) {
+                Err(_) => {
+                    errors.err(&default, "Invalid tokens: unable to lex `default` value");
+                    quote! { std::default::Default::default() }
+                }
+                Ok(tokens) => tokens
+                    .into_iter()
+                    .map(|mut tree| {
+                        tree.set_span(default.span());
+                        tree
+                    })
+                    .collect::<TokenStream>(),
+            }
+        } else {
+            quote! { std::default::Default::default() }
+        };
+
+        initializers.push(quote! { #name: #value });
+    }
+
+    initializers
 }
 
 /// Ensures that only the last positional arg is non-required.
@@ -1037,6 +1137,62 @@ fn ty_inner<'a>(wrapper_names: &[&str], ty: &'a syn::Type) -> Option<&'a syn::Ty
 }
 
 /// Implements `FromArgs` and `SubCommands` for a `#![derive(FromArgs)]` enum.
+/// Collect the parseable fields of a named-field group (a struct body or a
+/// struct-style enum variant body), running the same validation as the struct
+/// path. Returns the parsed fields along with the initializers for any
+/// `#[argh(skip)]` fields.
+pub(crate) fn collect_named_fields<'a>(
+    errors: &Errors,
+    fields: &'a syn::FieldsNamed,
+) -> (Vec<StructField<'a>>, Vec<TokenStream>) {
+    let parsed = fields
+        .named
+        .iter()
+        .filter_map(|field| {
+            let attrs = FieldAttrs::parse(errors, field);
+
+            if attrs.skip {
+                return None;
+            }
+
+            StructField::new(errors, field, attrs)
+        })
+        .collect::<Vec<_>>();
+
+    ensure_unique_names(errors, &parsed);
+    ensure_only_last_positional_is_optional(errors, &parsed);
+
+    let skipped = skipped_field_initializers(errors, &syn::Fields::Named(fields.clone()));
+
+    (parsed, skipped)
+}
+
+/// Build a synthetic [`TypeAttrs`] describing an inline enum-variant subcommand
+/// (a unit or struct-style variant), so the shared struct-parsing machinery can
+/// generate its help output and error messages.
+pub(crate) fn variant_type_attrs(
+    TypeAttrs { help_triggers, .. }: &TypeAttrs,
+    parse_attrs::VariantAttrs { short, description, .. }: &parse_attrs::VariantAttrs,
+    name: syn::LitStr,
+    span: Span,
+) -> TypeAttrs {
+    let (name, short, description, help_triggers, is_subcommand) = (
+        Some(name),
+        short.clone(),
+        description.clone(),
+        help_triggers.clone(),
+        Some(syn::Ident::new("subcommand", span)),
+    );
+
+    TypeAttrs { name, short, description, help_triggers, is_subcommand, ..Default::default() }
+}
+
+/// The default subcommand name for an inline enum variant lacking an explicit
+/// `#[argh(name = "...")]`: the variant identifier in kebab-case.
+pub(crate) fn default_variant_name(ident: &syn::Ident) -> String {
+    to_kebab_case(&pascal_to_snake_case(&ident.unraw().to_string()))
+}
+
 fn impl_from_args_enum(
     errors: &Errors,
     name: &syn::Ident,
@@ -1046,52 +1202,261 @@ fn impl_from_args_enum(
 ) -> TokenStream {
     parse_attrs::check_enum_type_attrs(errors, type_attrs, &de.enum_token.span);
 
-    // An enum variant like `<name>(<ty>)`
-    struct SubCommandVariant<'a> {
-        name: &'a syn::Ident,
-        ty: &'a syn::Type,
+    // Whether this enum is a top-level command (usable with `from_env`) or a
+    // nested subcommand dispatcher (referenced from a struct's `#[argh(subcommand)]`
+    // field). Nested enums carry the `#[argh(subcommand)]` marker; top-level enums
+    // do not.
+    let is_top_level = type_attrs.is_subcommand.is_none();
+
+    enum VariantKind<'a> {
+        /// `Foo` — a no-argument subcommand.
+        Unit,
+        /// `Foo(Bar)` — delegate parsing to `Bar`.
+        Delegated(&'a syn::Type),
+        /// `Foo { .. }` — an inline subcommand with its own arguments.
+        Struct(&'a syn::FieldsNamed),
+    }
+
+    struct Variant<'a> {
+        ident: &'a syn::Ident,
+        attrs: parse_attrs::VariantAttrs,
+        kind: VariantKind<'a>,
     }
 
     let mut dynamic_type_and_variant = None;
 
-    let variants: Vec<SubCommandVariant<'_>> = de
+    let variants = de
         .variants
         .iter()
         .filter_map(|variant| {
-            let name = &variant.ident;
-            let ty = enum_only_single_field_unnamed_variants(errors, &variant.fields)?;
-            if parse_attrs::VariantAttrs::parse(errors, variant).is_dynamic.is_some() {
-                if dynamic_type_and_variant.is_some() {
-                    errors.err(variant, "Only one variant can have the `dynamic` attribute");
-                }
-                dynamic_type_and_variant = Some((ty, name));
-                None
-            } else {
-                Some(SubCommandVariant { name, ty })
-            }
-        })
-        .collect();
+            let attrs = parse_attrs::VariantAttrs::parse(errors, variant);
 
-    let name_repeating = std::iter::repeat(name.clone());
-    let variant_ty = variants.iter().map(|x| x.ty).collect::<Vec<_>>();
-    let variant_names = variants.iter().map(|x| x.name).collect::<Vec<_>>();
+            let kind = match &variant.fields {
+                syn::Fields::Unit => VariantKind::Unit,
+                syn::Fields::Named(fields) => VariantKind::Struct(fields),
+                syn::Fields::Unnamed(fields @ syn::FieldsUnnamed { unnamed, .. }) => {
+                    match (unnamed.len(), unnamed.first()) {
+                        (1, Some(syn::Field { ty, .. })) => VariantKind::Delegated(ty),
+                        _ => {
+                            errors.err(
+                                fields,
+                                "`#![derive(FromArgs)]` tuple variants must contain exactly one field.",
+                            );
+
+                            return None;
+                        }
+                    }
+                }
+            };
+
+            if attrs.is_dynamic.is_some() {
+                match &kind {
+                    VariantKind::Delegated(ty) => {
+                        if dynamic_type_and_variant.is_some() {
+                            errors.err(variant, "Only one variant can have the `dynamic` attribute");
+                        }
+
+                        dynamic_type_and_variant = Some((*ty, &variant.ident));
+
+                        return None;
+                    }
+                    _ => {
+                        errors.err(
+                            variant,
+                            "The `dynamic` attribute may only be applied to a variant with a single unnamed field.",
+                        );
+                    }
+                }
+            }
+
+            Some(Variant { ident: &variant.ident, attrs, kind })
+        })
+        .collect::<Vec<_>>();
+
+    // Per-variant `&'static argh::CommandInfo` expressions, used both for the
+    // `SubCommands::COMMANDS` list and for matching an incoming subcommand name.
+    let info_expr = |variant: &Variant<'_>| -> TokenStream {
+        match &variant.kind {
+            VariantKind::Delegated(ty) => quote! { <#ty as argh::SubCommand>::COMMAND },
+            VariantKind::Unit | VariantKind::Struct(_) => {
+                let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                    syn::LitStr::new(&default_variant_name(variant.ident), variant.ident.span())
+                });
+
+                let short = variant
+                    .attrs
+                    .short
+                    .as_ref()
+                    .map(|character| quote! { &#character })
+                    .unwrap_or_else(|| quote! { &'\0' });
+
+                let desc = if cfg!(feature = "help") {
+                    variant
+                        .attrs
+                        .description
+                        .as_ref()
+                        .map(|description| description.content.value().trim().to_owned())
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
+
+                quote! {
+                    &argh::CommandInfo { name: #name_lit, short: #short, description: #desc }
+                }
+            }
+        }
+    };
+
+    // The body that constructs the matched variant, evaluating to
+    // `Result<Self, argh::EarlyExit>`. References the `__dispatch_cmd` and
+    // `__dispatch_args` locals.
+    let from_args_body = |variant: &Variant<'_>| -> TokenStream {
+        match &variant.kind {
+            VariantKind::Delegated(ty) => {
+                let ident = variant.ident;
+
+                quote! {
+                    ::core::result::Result::Ok(#name::#ident(
+                        <#ty as argh::FromArgs>::from_args(__dispatch_cmd, __dispatch_args)?
+                    ))
+                }
+            }
+            VariantKind::Unit => {
+                let ident = variant.ident;
+                let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                    syn::LitStr::new(&default_variant_name(variant.ident), variant.ident.span())
+                });
+                let vattrs =
+                    variant_type_attrs(type_attrs, &variant.attrs, name_lit, variant.ident.span());
+                let ctor = quote! { #name::#ident };
+                let block = from_args_parse_block(errors, &vattrs, &[], &[], &ctor);
+                quote! {{
+                    let __cmd_name: &[&str] = __dispatch_cmd;
+                    let __args: &[&str] = __dispatch_args;
+                    #block
+                }}
+            }
+            VariantKind::Struct(fields) => {
+                let ident = variant.ident;
+
+                let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                    syn::LitStr::new(&default_variant_name(variant.ident), variant.ident.span())
+                });
+
+                let variant_attrs =
+                    variant_type_attrs(type_attrs, &variant.attrs, name_lit, variant.ident.span());
+                let (parsed, skipped) = collect_named_fields(errors, fields);
+                let ctor = quote! { #name::#ident };
+                let block = from_args_parse_block(errors, &variant_attrs, &parsed, &skipped, &ctor);
+
+                quote! {{
+                    let __cmd_name: &[&str] = __dispatch_cmd;
+                    let __args: &[&str] = __dispatch_args;
+                    #block
+                }}
+            }
+        }
+    };
+
+    // The body that redacts the matched variant, evaluating to
+    // `Result<Vec<String>, argh::EarlyExit>`.
+    let redact_body = |variant: &Variant<'_>| -> TokenStream {
+        match &variant.kind {
+            VariantKind::Delegated(ty) => quote! {
+                <#ty as argh::FromArgs>::redact_arg_values(__dispatch_cmd, __dispatch_args)
+            },
+            VariantKind::Unit => {
+                let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                    syn::LitStr::new(&default_variant_name(variant.ident), variant.ident.span())
+                });
+
+                let variant_attrs =
+                    variant_type_attrs(type_attrs, &variant.attrs, name_lit, variant.ident.span());
+                let block = redact_arg_values_parse_block(errors, &variant_attrs, &[]);
+
+                quote! {{
+                    let __cmd_name: &[&str] = __dispatch_cmd;
+                    let __args: &[&str] = __dispatch_args;
+                    #block
+                }}
+            }
+            VariantKind::Struct(fields) => {
+                let name_lit = variant.attrs.name.clone().unwrap_or_else(|| {
+                    syn::LitStr::new(&default_variant_name(variant.ident), variant.ident.span())
+                });
+
+                let variant_attrs =
+                    variant_type_attrs(type_attrs, &variant.attrs, name_lit, variant.ident.span());
+                let (parsed, _skipped) = collect_named_fields(errors, fields);
+                let block = redact_arg_values_parse_block(errors, &variant_attrs, &parsed);
+
+                quote! {{
+                    let __cmd_name: &[&str] = __dispatch_cmd;
+                    let __args: &[&str] = __dispatch_args;
+                    #block
+                }}
+            }
+        }
+    };
+
+    let from_args_arms = variants.iter().map(|variant| {
+        let info = info_expr(variant);
+        let body = from_args_body(variant);
+
+        quote! {
+            {
+                let __info: &argh::CommandInfo = #info;
+                if subcommand_name == __info.name
+                    || (*__info.short != '\0'
+                        && subcommand_name.len() == 1
+                        && subcommand_name.starts_with(*__info.short))
+                {
+                    return #body;
+                }
+            }
+        }
+    });
+
+    let redact_arms = variants.iter().map(|variant| {
+        let info = info_expr(variant);
+        let body = redact_body(variant);
+
+        quote! {
+            {
+                let __info: &argh::CommandInfo = #info;
+                if subcommand_name == __info.name
+                    || (*__info.short != '\0'
+                        && subcommand_name.len() == 1
+                        && subcommand_name.starts_with(*__info.short))
+                {
+                    return #body;
+                }
+            }
+        }
+    });
+
+    let commands_list = variants.iter().map(info_expr);
+
     let dynamic_from_args =
         dynamic_type_and_variant.as_ref().map(|(dynamic_type, dynamic_variant)| {
             quote! {
                 if let Some(result) = <#dynamic_type as argh::DynamicSubCommand>::try_from_args(
-                    command_name, args) {
+                    __dispatch_cmd, __dispatch_args) {
                     return result.map(#name::#dynamic_variant);
                 }
             }
         });
+
     let dynamic_redact_arg_values = dynamic_type_and_variant.as_ref().map(|(dynamic_type, _)| {
         quote! {
             if let Some(result) = <#dynamic_type as argh::DynamicSubCommand>::try_redact_arg_values(
-                command_name, args) {
+                __dispatch_cmd, __dispatch_args) {
                 return result;
             }
         }
     });
+
     let dynamic_commands = dynamic_type_and_variant.as_ref().map(|(dynamic_type, _)| {
         quote! {
             fn dynamic_commands() -> &'static [&'static argh::CommandInfo] {
@@ -1100,29 +1465,56 @@ fn impl_from_args_enum(
         }
     });
 
+    // Compute `subcommand_name`, `__dispatch_cmd`, and `__dispatch_args` from the
+    // entrypoint arguments. Nested enums receive the subcommand name already
+    // appended to `command_name`; top-level enums must read it from `args`.
+    let dispatch_prelude = if is_top_level {
+        quote! {
+            let subcommand_name = if let Some(subcommand_name) = args.first() {
+                *subcommand_name
+            } else {
+                return ::core::result::Result::Err(argh::EarlyExit::from("no subcommand name".to_owned()));
+            };
+            let mut __dispatch_cmd_buf = command_name.to_owned();
+            __dispatch_cmd_buf.push(subcommand_name);
+            let __dispatch_cmd: &[&str] = &__dispatch_cmd_buf;
+            let __dispatch_args: &[&str] = &args[1..];
+        }
+    } else {
+        quote! {
+            let subcommand_name = if let Some(subcommand_name) = command_name.last() {
+                *subcommand_name
+            } else {
+                return ::core::result::Result::Err(argh::EarlyExit::from("no subcommand name".to_owned()));
+            };
+            let __dispatch_cmd: &[&str] = command_name;
+            let __dispatch_args: &[&str] = args;
+        }
+    };
+
+    let (redact_arms, from_args_arms) =
+        (redact_arms.collect::<Vec<_>>(), from_args_arms.collect::<Vec<_>>());
+
+    let top_level_impl = if is_top_level {
+        let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
+        quote! {
+            #[automatically_derived]
+            impl #impl_generics argh::TopLevelCommand for #name #ty_generics #where_clause {}
+        }
+    } else {
+        TokenStream::new()
+    };
+
     let (impl_generics, ty_generics, where_clause) = generic_args.split_for_impl();
     quote! {
         impl #impl_generics argh::FromArgs for #name #ty_generics #where_clause {
             fn from_args(command_name: &[&str], args: &[&str])
                 -> std::result::Result<Self, argh::EarlyExit>
             {
-                let subcommand_name = if let Some(subcommand_name) = command_name.last() {
-                    *subcommand_name
-                } else {
-                    return ::core::result::Result::Err(argh::EarlyExit::from("no subcommand name".to_owned()));
-                };
+                #![allow(clippy::unwrap_in_result)]
+                #dispatch_prelude
 
-                #(
-                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name
-                        || (*<#variant_ty as argh::SubCommand>::COMMAND.short != '\0'
-                            && subcommand_name.len() == 1
-                            && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
-                    {
-                        return ::core::result::Result::Ok(#name_repeating::#variant_names(
-                            <#variant_ty as argh::FromArgs>::from_args(command_name, args)?
-                        ));
-                    }
-                )*
+                #( #from_args_arms )*
 
                 #dynamic_from_args
 
@@ -1130,21 +1522,9 @@ fn impl_from_args_enum(
             }
 
             fn redact_arg_values(command_name: &[&str], args: &[&str]) -> std::result::Result<Vec<String>, argh::EarlyExit> {
-                let subcommand_name = if let Some(subcommand_name) = command_name.last() {
-                    *subcommand_name
-                } else {
-                    return ::core::result::Result::Err(argh::EarlyExit::from("no subcommand name".to_owned()));
-                };
+                #dispatch_prelude
 
-                #(
-                    if subcommand_name == <#variant_ty as argh::SubCommand>::COMMAND.name
-                        || (*<#variant_ty as argh::SubCommand>::COMMAND.short != '\0'
-                            && subcommand_name.len() == 1
-                            && subcommand_name.starts_with(*<#variant_ty as argh::SubCommand>::COMMAND.short))
-                    {
-                        return <#variant_ty as argh::FromArgs>::redact_arg_values(command_name, args);
-                    }
-                )*
+                #( #redact_arms )*
 
                 #dynamic_redact_arg_values
 
@@ -1154,67 +1534,13 @@ fn impl_from_args_enum(
 
         impl #impl_generics argh::SubCommands for #name #ty_generics #where_clause {
             const COMMANDS: &'static [&'static argh::CommandInfo] = &[#(
-                <#variant_ty as argh::SubCommand>::COMMAND,
+                #commands_list,
             )*];
 
             #dynamic_commands
         }
-    }
-}
 
-/// Returns `Some(Bar)` if the field is a single-field unnamed variant like `Foo(Bar)`.
-/// Otherwise, generates an error.
-fn enum_only_single_field_unnamed_variants<'a>(
-    errors: &Errors,
-    variant_fields: &'a syn::Fields,
-) -> Option<&'a syn::Type> {
-    macro_rules! with_enum_suggestion {
-        ($help_text:literal) => {
-            concat!(
-                $help_text,
-                "\nInstead, use a variant with a single unnamed field for each subcommand:\n",
-                "    enum MyCommandEnum {\n",
-                "        SubCommandOne(SubCommandOne),\n",
-                "        SubCommandTwo(SubCommandTwo),\n",
-                "    }",
-            )
-        };
-    }
-
-    match variant_fields {
-        syn::Fields::Named(fields) => {
-            errors.err(
-                fields,
-                with_enum_suggestion!(
-                    "`#![derive(FromArgs)]` `enum`s do not support variants with named fields."
-                ),
-            );
-            None
-        }
-        syn::Fields::Unit => {
-            errors.err(
-                variant_fields,
-                with_enum_suggestion!(
-                    "`#![derive(FromArgs)]` does not support `enum`s with no variants."
-                ),
-            );
-            None
-        }
-        syn::Fields::Unnamed(fields) => {
-            if fields.unnamed.len() != 1 {
-                errors.err(
-                    fields,
-                    with_enum_suggestion!(
-                        "`#![derive(FromArgs)]` `enum` variants must only contain one field."
-                    ),
-                );
-                None
-            } else {
-                // `unwrap` is okay because of the length check above.
-                let first_field = fields.unnamed.first().unwrap();
-                Some(&first_field.ty)
-            }
-        }
+        #top_level_impl
     }
 }
 

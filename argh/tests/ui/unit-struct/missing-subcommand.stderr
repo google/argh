@@ -1,0 +1,6 @@
+error: `#[derive(FromArgs)]` on unit structs is only supported for subcommands.
+       Add `#[argh(subcommand, name = "...")]` to the struct declaration.
+ --> tests/ui/unit-struct/missing-subcommand.rs:4:1
+  |
+4 | struct Cmd;
+  | ^^^^^^

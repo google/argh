@@ -1,0 +1,5 @@
+error: `#![derive(FromArgs)]` tuple variants must contain exactly one field.
+ --> tests/ui/enum-variants/multi-field-tuple-variant.rs:6:9
+  |
+6 |     Pair(u32, u32),
+  |         ^^^^^^^^^^

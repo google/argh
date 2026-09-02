@@ -2047,3 +2047,196 @@ Options:
 "#,
     );
 }
+
+#[test]
+fn unit_struct_subcommand_parses_with_no_args() {
+    /// top-level command
+    #[derive(FromArgs, PartialEq, Debug)]
+    struct TopLevel {
+        #[argh(subcommand)]
+        sub: Sub,
+    }
+
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand)]
+    enum Sub {
+        Magic(MagicCommand),
+    }
+
+    /// do magic
+    #[derive(FromArgs, PartialEq, Debug)]
+    #[argh(subcommand, name = "magick")]
+    struct MagicCommand;
+
+    let parsed = TopLevel::from_args(&["cmd"], &["magick"]).expect("parse");
+
+    assert_eq!(parsed, TopLevel { sub: Sub::Magic(MagicCommand) });
+
+    let parsed = TopLevel::from_args(&["cmd"], &["magick", "extra"]);
+
+    assert!(
+        parsed.is_err(),
+        "expected unit-struct subcommand to reject extra positional arguments, but got: {:?}",
+        parsed,
+    );
+}
+
+#[test]
+fn top_level_enum_dispatch_mixed_variants() {
+    /// a top-level command enum
+    #[derive(FromArgs, PartialEq, Debug)]
+    enum SomeCommand {
+        /// report info
+        Info,
+
+        /// do magic
+        Magic(MagicCommand),
+
+        /// create a macguffin
+        #[argh(name = "make")]
+        Create {
+            /// the macguffin name
+            #[argh(positional)]
+            macguffin: Option<String>,
+        },
+
+        /// set up
+        Setup {
+            /// recipe to be prepared for
+            #[argh(positional)]
+            recipe: String,
+        },
+    }
+
+    /// do magic
+    #[derive(Debug, PartialEq, FromArgs)]
+    #[argh(subcommand, name = "magick")]
+    struct MagicCommand;
+
+    // Unit variant, default kebab-cased name.
+    assert_eq!(SomeCommand::from_args(&["cmd"], &["info"]).unwrap(), SomeCommand::Info);
+
+    // Delegated variant.
+    assert_eq!(
+        SomeCommand::from_args(&["cmd"], &["magick"]).unwrap(),
+        SomeCommand::Magic(MagicCommand)
+    );
+
+    // Struct-style variant, honoring `name` override and its own positional.
+    assert_eq!(
+        SomeCommand::from_args(&["cmd"], &["make"]).unwrap(),
+        SomeCommand::Create { macguffin: None }
+    );
+    assert_eq!(
+        SomeCommand::from_args(&["cmd"], &["make", "puffin"]).unwrap(),
+        SomeCommand::Create { macguffin: Some("puffin".into()) }
+    );
+
+    // Struct-style variant with required positional.
+    assert!(SomeCommand::from_args(&["cmd"], &["setup"]).is_err());
+    assert_eq!(
+        SomeCommand::from_args(&["cmd"], &["setup", "enchanted-puffin"]).unwrap(),
+        SomeCommand::Setup { recipe: "enchanted-puffin".into() }
+    );
+
+    // No subcommand name at all.
+    assert_eq!(
+        SomeCommand::from_args(&["cmd"], &[]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+
+    // Unknown subcommand.
+    assert_eq!(
+        SomeCommand::from_args(&["cmd"], &["nope"]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand matched".into(), status: Err(()) },
+    );
+}
+
+#[test]
+fn top_level_enum_default_kebab_name() {
+    /// dispatcher
+    #[derive(Debug, PartialEq, FromArgs)]
+    enum Cmd {
+        /// a two-word variant
+        DoThing,
+    }
+
+    // `DoThing` -> `do-thing`
+    assert!(Cmd::from_args(&["cmd"], &["DoThing"]).is_err());
+    assert_eq!(Cmd::from_args(&["cmd"], &["do-thing"]).unwrap(), Cmd::DoThing);
+}
+
+#[test]
+fn enum_variant_short_alias() {
+    /// dispatcher
+    #[derive(Debug, PartialEq, FromArgs)]
+    enum Cmd {
+        /// info
+        #[argh(short = 'i')]
+        Info,
+    }
+
+    assert_eq!(Cmd::from_args(&["cmd"], &["i"]).unwrap(), Cmd::Info);
+    assert_eq!(Cmd::from_args(&["cmd"], &["info"]).unwrap(), Cmd::Info);
+}
+
+#[test]
+fn top_level_enum_redaction() {
+    /// dispatcher
+    #[derive(Debug, PartialEq, FromArgs)]
+    enum Cmd {
+        /// report info
+        Info,
+
+        /// set up
+        Setup {
+            /// value
+            #[argh(positional)]
+            value: String,
+        },
+    }
+
+    // Unit variant redacts to just the command path.
+    assert_eq!(Cmd::redact_arg_values(&["cmd"], &["info"]).unwrap(), vec!["info".to_owned()],);
+
+    // Struct-style variant redacts its positional's arg name, not its value.
+    assert_eq!(
+        Cmd::redact_arg_values(&["cmd"], &["setup", "some-value"]).unwrap(),
+        vec!["setup".to_owned(), "value".to_owned()],
+    );
+
+    assert_eq!(
+        Cmd::redact_arg_values(&["cmd"], &[]).unwrap_err(),
+        argh::EarlyExit { output: "no subcommand name".into(), status: Err(()) },
+    );
+}
+
+#[test]
+fn nested_enum_with_unit_and_struct_variants() {
+    /// top-level command
+    #[derive(Debug, PartialEq, FromArgs)]
+    struct TopLevel {
+        #[argh(subcommand)]
+        sub: Sub,
+    }
+
+    #[derive(Debug, PartialEq, FromArgs)]
+    #[argh(subcommand)]
+    enum Sub {
+        /// a no-arg subcommand
+        Ping,
+
+        /// an inline subcommand
+        Echo {
+            /// the message
+            #[argh(positional)]
+            message: String,
+        },
+    }
+
+    assert_eq!(TopLevel::from_args(&["cmd"], &["ping"]).unwrap(), TopLevel { sub: Sub::Ping });
+    assert_eq!(
+        TopLevel::from_args(&["cmd"], &["echo", "hi"]).unwrap(),
+        TopLevel { sub: Sub::Echo { message: "hi".to_owned() } }
+    );
+}
